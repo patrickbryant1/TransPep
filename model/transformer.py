@@ -122,7 +122,8 @@ x = layers.GlobalAveragePooling1D()(x)
 x = layers.Dropout(0.1)(x)
 x = layers.Dense(20, activation="relu")(x)
 x = layers.Dropout(0.1)(x)
-outputs = layers.Dense(70, activation="softmax")(x)
+preds = layers.Dense(70*6, activation="softmax")(x)
+outputs = layers.Reshape((-1,70,6))(preds)
 
 model = keras.Model(inputs=inputs, outputs=outputs)
 model.compile("adam", "sparse_categorical_crossentropy", metrics=["accuracy"])
@@ -132,5 +133,8 @@ model.compile("adam", "sparse_categorical_crossentropy", metrics=["accuracy"])
 print(model.summary())
 
 history = model.fit(
-    x_train, y_train, batch_size=32, epochs=2, validation_data=(x_valid, y_valid)
+    x_train, y_train, batch_size=32, epochs=20, validation_data=(x_valid, y_valid)
 )
+
+pdb.set_trace()
+evals = np.argmax(model.predict(x_valid),axis=3)[:,0,:]

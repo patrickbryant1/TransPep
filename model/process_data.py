@@ -96,3 +96,9 @@ def parse_and_format(filename):
     Annotations = np.array(Annotations)
 
     return data, Seqs, Annotations
+
+
+
+def eval_cs(preds,true):
+    '''Evaluate the capacity to predict the clevage site
+    '''
