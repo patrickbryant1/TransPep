@@ -124,7 +124,7 @@ batch_size=32
 class_weights = []
 for i in range(batch_size):
     class_weights.append(weights)
-
+pdb.set_trace()
 inputs = layers.Input(shape=(maxlen,))
 embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
 x = embedding_layer(inputs)
@@ -137,10 +137,13 @@ x = layers.Dropout(0.1)(x)
 preds = layers.Dense(70*6, activation="softmax")(x)
 outputs = layers.Reshape((-1,70,6))(preds)
 
+scce = tf.keras.losses.SparseCategoricalCrossentropy()
 model = keras.Model(inputs=inputs, outputs=outputs)
 
+def custom_loss(y_true,y_pred):
+    return scce(y_true,y_pred,sample_weight=tf.constant(class_weights))
 
-model.compile("adam", loss=tf.keras.losses.SparseCategoricalCrossentropy(sample_weight=tf.constant(class_weights)), metrics=["accuracy"])
+model.compile("adam", loss=custom_loss, metrics=["accuracy"])
 
 
 #Summary of model
