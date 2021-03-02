@@ -33,7 +33,11 @@ def parse_and_format(filename):
     #Conversions
     kingdom_conversion = {'ARCHAEA':0,'EUKARYA':1,'NEGATIVE':2,'POSITIVE':3}
     annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
-
+    AMINO_ACIDS = { 'A':0,'R':1,'N':2,'D':3,'C':4,'E':5,
+                    'Q':6,'G':7,'H':8,'I':9,'L':10,'K':11,
+                    'M':12,'F':13,'P':14,'S':15,'T':16,'W':17,
+                    'Y':18,'V':19,'X':20
+                  }
     #Keep track of what to get
     get_seq = False
     get_annotation = False
@@ -56,7 +60,10 @@ def parse_and_format(filename):
                 line = line.rstrip()
                 if len(line)<70: #Add X if shorter than 70
                     line = line+'X'*(70-len(line))
-                Seqs.append(line)
+                current_seq = []
+                for char in line:
+                    current_seq.append(AMINO_ACIDS[char])
+                Seqs.append(current_seq)
                 get_seq = False
                 #Get annotation next
                 get_annotation = True
@@ -76,7 +83,7 @@ def parse_and_format(filename):
                     new_annotation[len(current_annotation):]=current_annotation[-1]
                     current_annotation = new_annotation
                 #Save
-                Annotations.append(np.eye(6)[current_annotation])
+                Annotations.append(current_annotation)
                 get_annotation = False
 
 
@@ -85,7 +92,7 @@ def parse_and_format(filename):
     data['Kingdom']=Kingdoms
     data['Type']=Types
     data['Partition']=Partitions
-    data['Sequence']=Seqs
-
+    Seqs = np.array(Seqs)
     Annotations = np.array(Annotations)
-    return data, Annotations
+
+    return data, Seqs, Annotations
