@@ -7,8 +7,8 @@ import sys
 import numpy as np
 import pandas as pd
 import time
-#Preprocessing
-from process_data import parse_and_format
+#Preprocessing and evaluation
+from process_data import parse_and_format, eval_cs
 
 
 #Keras
@@ -126,6 +126,8 @@ preds = layers.Dense(70*6, activation="softmax")(x)
 outputs = layers.Reshape((-1,70,6))(preds)
 
 model = keras.Model(inputs=inputs, outputs=outputs)
+
+
 model.compile("adam", "sparse_categorical_crossentropy", metrics=["accuracy"])
 
 
@@ -133,8 +135,9 @@ model.compile("adam", "sparse_categorical_crossentropy", metrics=["accuracy"])
 print(model.summary())
 
 history = model.fit(
-    x_train, y_train, batch_size=32, epochs=20, validation_data=(x_valid, y_valid)
+    x_train, y_train, batch_size=32, epochs=1, validation_data=(x_valid, y_valid)
 )
 
-pdb.set_trace()
+
 evals = np.argmax(model.predict(x_valid),axis=3)[:,0,:]
+eval_cs(evals,y_valid)

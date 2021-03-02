@@ -7,7 +7,6 @@ import glob
 import pandas as pd
 import numpy as np
 
-
 import pdb
 
 
@@ -101,4 +100,35 @@ def parse_and_format(filename):
 
 def eval_cs(preds,true):
     '''Evaluate the capacity to predict the clevage site
+    annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
+    S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide |
     '''
+
+    true_s = []
+    pred_s = []
+    true_t = []
+    pred_t = []
+    true_l = []
+    pred_l = []
+
+    for i in range(len(preds)):
+
+        if 0 in true[i]:
+            true_s.append(np.argwhere(true[i]==0)[-1,0])
+            if 0 in preds[i]:
+                pred_s.append(np.argwhere(preds[i]==0)[-1,0])
+            else:
+                pred_s.append(0)
+        if 1 in true[i]:
+            true_t.append(np.argwhere(true[i]==1)[-1,0])
+            if 1 in preds[i]:
+                pred_t.append(np.argwhere(preds[i]==1)[-1,0])
+            else:
+                pred_t.append(0)
+
+        if 2 in true[i]:
+            true_l.append(np.argwhere(true[i]==2)[-1,0])
+            if 2 in preds[i]:
+                pred_l.append(np.argwhere(preds[i]==2)[-1,0])
+            else:
+                pred_l.append(0)
