@@ -93,24 +93,23 @@ except:
 #params_file = args.params_file[0]
 outdir = args.outdir[0]
 
+train_CS = train_meta.CS.values
 #Get data
 partition=0
 valid_i = train_meta[train_meta.Partition==str(partition)].index
 train_i = np.setdiff1d(np.arange(len(train_meta)),valid_i)
 x_train = train_seqs[train_i]
-y_train = train_annotations[train_i]
+y_train = [train_annotations[train_i],train_CS[train_i]]
 
 x_valid = train_seqs[valid_i]
-y_valid = train_annotations[valid_i]
+y_valid = [train_annotations[valid_i],train_CS[valid_i]]
 
 #Construct weights
-signal_pos = np.where(train_annotations<3)[1]
-counts = Counter(signal_pos)
-class_weights = np.ones(70)
+y_flat = y_train[0].flatten()
+counts = Counter(y_flat)
+class_weights = {}
 for key in counts:
-    class_weights[key] = counts[key]/signal_pos.shape[0]
-class_weights = 1/class_weights
-
+    class_weights[key] = counts[key]/len(y_flat)
 
 #Model
 #https://keras.io/examples/nlp/text_classification_with_transformer/
@@ -129,28 +128,34 @@ embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
 x = embedding_layer(inputs)
 transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
 x = transformer_block(x)
+x = layers.Dropout(0.1)(x)
+x = transformer_block(x)
 x = layers.GlobalAveragePooling1D()(x)
 x = layers.Dropout(0.1)(x)
 x = layers.Dense(20, activation="relu")(x)
 x = layers.Dropout(0.1)(x)
 preds = layers.Dense(70*6, activation="softmax")(x)
-outputs = layers.Reshape((-1,70,6))(preds)
+preds = layers.Reshape((-1,70,6), name='preds')(preds)
+pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
 
+def custom_loss(y_true,y_pred):
+    SparseCategoricalFocalLoss(y_true,y_pred,gamma=5)
 
-model = keras.Model(inputs=inputs, outputs=outputs)
-model.compile("adam", loss=SparseCategoricalFocalLoss(gamma=5), metrics=["accuracy"])
-
+model = keras.Model(inputs=inputs, outputs=[preds,pred_cs])
+model.compile("adam", loss={'preds':SparseCategoricalFocalLoss(gamma=5),'pred_cs':"mean_absolute_percentage_error"}, metrics=["accuracy"])
+#'sparse_categorical_crossentropy'
 
 #Summary of model
 print(model.summary())
 
 history = model.fit(
     x_train, y_train, batch_size=batch_size, epochs=10,
-    class_weight = class_weights,
+    #class_weight = class_weights,
     validation_data=(x_valid, y_valid)
 )
 
-
-evals = np.argmax(model.predict(x_valid),axis=3)[:,0,:]
-eval_cs(evals,y_valid)
+pdb.set_trace()
+preds = model.predict(x_valid)
+evals = np.argmax(preds[0],axis=3)[:,0,:]
+eval_cs(evals,y_valid[0])

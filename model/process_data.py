@@ -96,6 +96,16 @@ def parse_and_format(filename):
     data['Partition']=Partitions
     Seqs = np.array(Seqs)
     Annotations = np.array(Annotations)
+    #Get clevage sites
+    CSs = []
+    for i in range(len(Annotations)):
+
+        if min(Annotations[i])<3:
+            CSs.append(np.where(Annotations[i]<3)[0][-1])
+        else:
+            CSs.append(0)
+
+    data['CS']=CSs
 
     return data, Seqs, Annotations
 
