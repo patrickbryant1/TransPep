@@ -71,14 +71,21 @@ def parse_and_format(filename):
 
                 #Check that the length is at least 70
                 if len(current_annotation)<70:
-                    new_annotation = np.zeros(70)
+                    new_annotation = np.zeros(70,dtype='int')
                     new_annotation[:len(current_annotation)]=current_annotation
+                    new_annotation[len(current_annotation):]=current_annotation[-1]
                     current_annotation = new_annotation
-                    
+                #Save
                 Annotations.append(np.eye(6)[current_annotation])
                 get_annotation = False
 
-        pdb.set_trace()
 
+    data = pd.DataFrame()
+    data['ID']=IDs
+    data['Kingdom']=Kingdoms
+    data['Type']=Types
+    data['Partition']=Partitions
+    data['Sequence']=Seqs
 
-    return data
+    Annotations = np.array(Annotations)
+    return data, Annotations

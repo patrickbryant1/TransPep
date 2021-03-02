@@ -51,10 +51,26 @@ parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'P
 ######################MAIN######################
 args = parser.parse_args()
 
-data = parse_and_format(args.train_data[0])
+try:
+    train_data = pd.read_csv('../data/train_data.csv')
+    train_annotations = np.load('../data/annotations.npy',allow_pickle=True)
+except:
+    train_data, train_annotations = parse_and_format(args.train_data[0])
+    #Save
+    train_data.to_csv('../data/train_data.csv')
+    np.save('../data/annotations.npy',train_annotations)
 #params_file = args.params_file[0]
 outdir = args.outdir[0]
 
+valid_i = train_data[train_data.Partition==0].index
+train_i = np.setdiff1d(np.arange(len(train_data)),valid_i)
+
+X_train = train_data.loc[train_i,'Sequence'].values
+y_train = train_annotations[train_i]
+
+X_valid = train_data.loc[valid_i,'Sequence'].values
+y_valid = train_annotations[valid_i]
+pdb.set_trace()
 
 #Summary of model
 #print(model.summary())
