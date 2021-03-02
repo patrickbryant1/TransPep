@@ -155,9 +155,9 @@ def eval_cs(preds,true):
                 missing_l +=1
 
 
-    sns.distplot(np.array(pred_s)-np.array(true_s), label='Sec/SPI signal peptide:'+str(np.round(missing_s/total_s,2)))
-    sns.distplot(np.array(pred_t)-np.array(true_t),label='Tat/SPI signal peptide'+str(np.round(missing_t/total_t,2)))
-    sns.distplot(np.array(pred_l)-np.array(true_l),label='Sec/SPII signal peptide'+str(np.round(missing_l/total_l,2)))
+    sns.distplot(np.array(pred_s)-np.array(true_s), label='Sec/SPI signal peptide: '+str(np.round(missing_s/total_s,2)))
+    sns.distplot(np.array(pred_t)-np.array(true_t),label='Tat/SPI signal peptide: '+str(np.round(missing_t/total_t,2)))
+    sns.distplot(np.array(pred_l)-np.array(true_l),label='Sec/SPII signal peptide: '+str(np.round(missing_l/total_l,2)))
     plt.legend()
     plt.show()
     pdb.set_trace()

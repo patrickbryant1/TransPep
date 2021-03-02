@@ -150,7 +150,7 @@ model.compile("adam", loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accur
 print(model.summary())
 
 history = model.fit(
-    x_train, y_train, batch_size=batch_size, epochs=10,
+    x_train, y_train, batch_size=batch_size, epochs=50,
     #class_weight = class_weights,
     validation_data=(x_valid, y_valid)
 )
