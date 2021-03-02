@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import time
 #Preprocessing
-from collections import Counter
-from processing import one_hot, group_by_hgroup
+from process_data import parse_and_format
+
 
 #Keras
 import tensorflow as tf
@@ -23,13 +23,13 @@ from tensorflow.keras.losses import mean_absolute_error, mean_squared_error, mea
 from tensorflow.keras.callbacks import TensorBoard
 
 #from lr_finder import LRFinder
-from process_data import parse_and_format
+
 
 import pdb
 #Arguments for argparse module:
 parser = argparse.ArgumentParser(description = '''A Transformer Neural Network for analyzing signal peptides.''')
 
-parser.add_argument('--training_data', nargs=1, type= str, default=sys.stdin, help = 'Path to training data in fasta format.')
+parser.add_argument('--train_data', nargs=1, type= str, default=sys.stdin, help = 'Path to training data in fasta format.')
 
 #parser.add_argument('--params_file', nargs=1, type= str, default=sys.stdin, help = 'Path to file with net parameters')
 
@@ -51,7 +51,7 @@ parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'P
 ######################MAIN######################
 args = parser.parse_args()
 
-data = parse_and_format(args.training_data[0])
+data = parse_and_format(args.train_data[0])
 #params_file = args.params_file[0]
 outdir = args.outdir[0]
 

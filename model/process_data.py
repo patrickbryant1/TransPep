@@ -49,20 +49,33 @@ def parse_and_format(filename):
                 Partitions.append(line[3])
                 #Get sequence next
                 get_seq = True
+                continue
 
             if get_seq == True:
                 #Get sequence
-                Seqs.append(line.rstrip())
+                line = line.rstrip()
+                if len(line)<70: #Add X if shorter than 70
+                    line = line+'X'*(70-len(line))
+                Seqs.append(line)
                 get_seq = False
                 #Get annotation next
                 get_annotation = True
+                continue
 
             if get_annotation == True:
                 #Get annotation
                 line = line.rstrip()
-                current_annotation = ''
+                current_annotation = []
                 for char in line:
-                    current_annotation += annotation_conversion[char]
+                    current_annotation.append(annotation_conversion[char])
+
+                #Check that the length is at least 70
+                if len(current_annotation)<70:
+                    new_annotation = np.zeros(70)
+                    new_annotation[:len(current_annotation)]=current_annotation
+                    current_annotation = new_annotation
+                    
+                Annotations.append(np.eye(6)[current_annotation])
                 get_annotation = False
 
         pdb.set_trace()
