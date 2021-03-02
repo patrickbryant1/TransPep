@@ -51,15 +51,21 @@ def parse_and_format(filename):
                 get_seq = True
 
             if get_seq == True:
-                Seqs.appendd(line.rstrip())
+                #Get sequence
+                Seqs.append(line.rstrip())
                 get_seq = False
                 #Get annotation next
                 get_annotation = True
 
             if get_annotation == True:
-
-
+                #Get annotation
+                line = line.rstrip()
+                current_annotation = ''
+                for char in line:
+                    current_annotation += annotation_conversion[char]
                 get_annotation = False
+
+        pdb.set_trace()
 
 
     return data
