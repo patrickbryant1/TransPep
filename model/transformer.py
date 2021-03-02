@@ -11,7 +11,6 @@ from collections import Counter
 #Preprocessing and evaluation
 from process_data import parse_and_format, eval_cs
 
-
 #Keras
 import tensorflow as tf
 from tensorflow import keras
@@ -99,10 +98,10 @@ partition=0
 valid_i = train_meta[train_meta.Partition==str(partition)].index
 train_i = np.setdiff1d(np.arange(len(train_meta)),valid_i)
 x_train = train_seqs[train_i]
-y_train = [train_annotations[train_i],train_CS[train_i]]
+y_train = train_annotations[train_i]
 
 x_valid = train_seqs[valid_i]
-y_valid = [train_annotations[valid_i],train_CS[valid_i]]
+y_valid = train_annotations[valid_i]
 
 #Construct weights
 y_flat = y_train[0].flatten()
@@ -128,8 +127,6 @@ embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
 x = embedding_layer(inputs)
 transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
 x = transformer_block(x)
-x = layers.Dropout(0.1)(x)
-x = transformer_block(x)
 x = layers.GlobalAveragePooling1D()(x)
 x = layers.Dropout(0.1)(x)
 x = layers.Dense(20, activation="relu")(x)
@@ -142,8 +139,11 @@ pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 def custom_loss(y_true,y_pred):
     SparseCategoricalFocalLoss(y_true,y_pred,gamma=5)
 
-model = keras.Model(inputs=inputs, outputs=[preds,pred_cs])
-model.compile("adam", loss={'preds':SparseCategoricalFocalLoss(gamma=5),'pred_cs':"mean_absolute_percentage_error"}, metrics=["accuracy"])
+def custom_loss2(y_true,y_pred):
+    return 10*tf.keras.losses.MeanAbsoluteError(y_true,y_pred)
+
+model = keras.Model(inputs=inputs, outputs=preds)
+model.compile("adam", loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
 #'sparse_categorical_crossentropy'
 
 #Summary of model
@@ -155,7 +155,7 @@ history = model.fit(
     validation_data=(x_valid, y_valid)
 )
 
-pdb.set_trace()
+
 preds = model.predict(x_valid)
-evals = np.argmax(preds[0],axis=3)[:,0,:]
-eval_cs(evals,y_valid[0])
+evals = np.argmax(preds,axis=3)[:,0,:]
+eval_cs(evals,y_valid)

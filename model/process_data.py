@@ -6,6 +6,7 @@ import os
 import glob
 import pandas as pd
 import numpy as np
+from collections import Counter
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -124,35 +125,39 @@ def eval_cs(preds,true):
     true_l = []
     pred_l = []
 
-    missing = 0
-    total = 0
+    missing_s = 0
+    total_s = 0
+    missing_t = 0
+    total_t = 0
+    missing_l = 0
+    total_l = 0
     for i in range(len(preds)):
-
         if 0 in true[i]:
-            total+=1
+            total_s+=1
             if 0 in preds[i]:
                 true_s.append(np.argwhere(true[i]==0)[-1,0])
                 pred_s.append(np.argwhere(preds[i]==0)[-1,0])
             else:
-                missing+=1
+                missing_s+=1
         if 1 in true[i]:
-            total+=1
+            total_t+=1
             if 1 in preds[i]:
                 true_t.append(np.argwhere(true[i]==1)[-1,0])
                 pred_t.append(np.argwhere(preds[i]==1)[-1,0])
             else:
-                missing+=1
+                missing_t+=1
         if 2 in true[i]:
-            total+=1
+            total_l+=1
             if 2 in preds[i]:
                 true_l.append(np.argwhere(true[i]==2)[-1,0])
                 pred_l.append(np.argwhere(preds[i]==2)[-1,0])
             else:
-                missing +=1
+                missing_l +=1
 
-    sns.distplot(np.array(pred_s)-np.array(true_s), label='Sec/SPI signal peptide')
-    sns.distplot(np.array(pred_t)-np.array(true_t),label='Tat/SPI signal peptide')
-    sns.distplot(np.array(pred_l)-np.array(true_l),label='Sec/SPII signal peptide')
+
+    sns.distplot(np.array(pred_s)-np.array(true_s), label='Sec/SPI signal peptide:'+str(np.round(missing_s/total_s,2)))
+    sns.distplot(np.array(pred_t)-np.array(true_t),label='Tat/SPI signal peptide'+str(np.round(missing_t/total_t,2)))
+    sns.distplot(np.array(pred_l)-np.array(true_l),label='Sec/SPII signal peptide'+str(np.round(missing_l/total_l,2)))
     plt.legend()
     plt.show()
     pdb.set_trace()
