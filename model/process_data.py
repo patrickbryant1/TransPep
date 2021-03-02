@@ -7,6 +7,8 @@ import glob
 import pandas as pd
 import numpy as np
 
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 import pdb
 
@@ -138,5 +140,9 @@ def eval_cs(preds,true):
             else:
                 missing +=1
 
-
+    sns.distplot(np.array(pred_s)-np.array(true_s), label='Sec/SPI signal peptide')
+    sns.distplot(np.array(pred_t)-np.array(true_t),label='Tat/SPI signal peptide')
+    sns.distplot(np.array(pred_l)-np.array(true_l),label='Sec/SPII signal peptide')
+    plt.legend()
+    plt.show()
     pdb.set_trace()

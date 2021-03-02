@@ -16,7 +16,7 @@ from process_data import parse_and_format, eval_cs
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from focal_loss import sparse_categorical_focal_loss
+from focal_loss import SparseCategoricalFocalLoss
 
 #visualization
 from tensorflow.keras.callbacks import TensorBoard
@@ -97,7 +97,6 @@ outdir = args.outdir[0]
 partition=0
 valid_i = train_meta[train_meta.Partition==str(partition)].index
 train_i = np.setdiff1d(np.arange(len(train_meta)),valid_i)
-
 x_train = train_seqs[train_i]
 y_train = train_annotations[train_i]
 
@@ -105,11 +104,13 @@ x_valid = train_seqs[valid_i]
 y_valid = train_annotations[valid_i]
 
 #Construct weights
-y_flat = y_train.flatten()
-counts = Counter(y_flat)
-weights = []
-for i in range(6):
-    weights.append(len(y_flat)/counts[i])
+signal_pos = np.where(train_annotations<3)[1]
+counts = Counter(signal_pos)
+class_weights = np.ones(70)
+for key in counts:
+    class_weights[key] = counts[key]/signal_pos.shape[0]
+class_weights = 1/class_weights
+
 
 #Model
 #https://keras.io/examples/nlp/text_classification_with_transformer/
@@ -118,13 +119,11 @@ for i in range(6):
 vocab_size = 21  # Only consider the top 20k words
 maxlen = 70  # Only consider the first 70 amino acids
 embed_dim = 32  # Embedding size for each token
-num_heads = 4  # Number of attention heads
+num_heads = 1  # Number of attention heads
 ff_dim = 32  # Hidden layer size in feed forward network inside transformer
 batch_size=32
-class_weights = []
-for i in range(batch_size):
-    class_weights.append(weights)
-pdb.set_trace()
+
+
 inputs = layers.Input(shape=(maxlen,))
 embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
 x = embedding_layer(inputs)
@@ -137,20 +136,19 @@ x = layers.Dropout(0.1)(x)
 preds = layers.Dense(70*6, activation="softmax")(x)
 outputs = layers.Reshape((-1,70,6))(preds)
 
-scce = tf.keras.losses.SparseCategoricalCrossentropy()
+
+
 model = keras.Model(inputs=inputs, outputs=outputs)
-
-def custom_loss(y_true,y_pred):
-    return scce(y_true,y_pred,sample_weight=tf.constant(class_weights))
-
-model.compile("adam", loss=custom_loss, metrics=["accuracy"])
+model.compile("adam", loss=SparseCategoricalFocalLoss(gamma=5), metrics=["accuracy"])
 
 
 #Summary of model
 print(model.summary())
 
 history = model.fit(
-    x_train, y_train, batch_size=32, epochs=10, validation_data=(x_valid, y_valid)
+    x_train, y_train, batch_size=batch_size, epochs=10,
+    class_weight = class_weights,
+    validation_data=(x_valid, y_valid)
 )
 
 
