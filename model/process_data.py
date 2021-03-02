@@ -7,6 +7,7 @@ import glob
 import pandas as pd
 import numpy as np
 
+
 import pdb
 
 
@@ -111,24 +112,31 @@ def eval_cs(preds,true):
     true_l = []
     pred_l = []
 
+    missing = 0
+    total = 0
     for i in range(len(preds)):
 
         if 0 in true[i]:
-            true_s.append(np.argwhere(true[i]==0)[-1,0])
+            total+=1
             if 0 in preds[i]:
+                true_s.append(np.argwhere(true[i]==0)[-1,0])
                 pred_s.append(np.argwhere(preds[i]==0)[-1,0])
             else:
-                pred_s.append(0)
+                missing+=1
         if 1 in true[i]:
-            true_t.append(np.argwhere(true[i]==1)[-1,0])
+            total+=1
             if 1 in preds[i]:
+                true_t.append(np.argwhere(true[i]==1)[-1,0])
                 pred_t.append(np.argwhere(preds[i]==1)[-1,0])
             else:
-                pred_t.append(0)
-
+                missing+=1
         if 2 in true[i]:
-            true_l.append(np.argwhere(true[i]==2)[-1,0])
+            total+=1
             if 2 in preds[i]:
+                true_l.append(np.argwhere(true[i]==2)[-1,0])
                 pred_l.append(np.argwhere(preds[i]==2)[-1,0])
             else:
-                pred_l.append(0)
+                missing +=1
+
+
+    pdb.set_trace()

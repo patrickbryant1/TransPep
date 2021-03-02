@@ -7,6 +7,7 @@ import sys
 import numpy as np
 import pandas as pd
 import time
+from collections import Counter
 #Preprocessing and evaluation
 from process_data import parse_and_format, eval_cs
 
@@ -15,6 +16,7 @@ from process_data import parse_and_format, eval_cs
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from focal_loss import sparse_categorical_focal_loss
 
 #visualization
 from tensorflow.keras.callbacks import TensorBoard
@@ -102,6 +104,12 @@ y_train = train_annotations[train_i]
 x_valid = train_seqs[valid_i]
 y_valid = train_annotations[valid_i]
 
+#Construct weights
+y_flat = y_train.flatten()
+counts = Counter(y_flat)
+weights = []
+for i in range(6):
+    weights.append(len(y_flat)/counts[i])
 
 #Model
 #https://keras.io/examples/nlp/text_classification_with_transformer/
@@ -110,8 +118,12 @@ y_valid = train_annotations[valid_i]
 vocab_size = 21  # Only consider the top 20k words
 maxlen = 70  # Only consider the first 70 amino acids
 embed_dim = 32  # Embedding size for each token
-num_heads = 2  # Number of attention heads
+num_heads = 4  # Number of attention heads
 ff_dim = 32  # Hidden layer size in feed forward network inside transformer
+batch_size=32
+class_weights = []
+for i in range(batch_size):
+    class_weights.append(weights)
 
 inputs = layers.Input(shape=(maxlen,))
 embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
@@ -128,14 +140,14 @@ outputs = layers.Reshape((-1,70,6))(preds)
 model = keras.Model(inputs=inputs, outputs=outputs)
 
 
-model.compile("adam", "sparse_categorical_crossentropy", metrics=["accuracy"])
+model.compile("adam", loss=tf.keras.losses.SparseCategoricalCrossentropy(sample_weight=tf.constant(class_weights)), metrics=["accuracy"])
 
 
 #Summary of model
 print(model.summary())
 
 history = model.fit(
-    x_train, y_train, batch_size=32, epochs=1, validation_data=(x_valid, y_valid)
+    x_train, y_train, batch_size=32, epochs=10, validation_data=(x_valid, y_valid)
 )
 
 
