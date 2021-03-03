@@ -89,7 +89,11 @@ except:
     train_meta.to_csv('../data/train_meta.csv')
     np.save('../data/seqs.npy',train_seqs)
     np.save('../data/annotations.npy',train_annotations)
-#params_file = args.params_file[0]
+
+#Get parameters
+variable_params=pd.read_csv(args.variable_params[0])
+param_combo=args.param_combo[0]
+
 outdir = args.outdir[0]
 
 train_CS = train_meta.CS.values
@@ -120,15 +124,18 @@ for key in counts:
     class_weights[key] = counts[key]/len(y_flat)
 
 #Model
-#https://keras.io/examples/nlp/text_classification_with_transformer/
-
-
+#Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
+#Params
+net_params = variable_params.loc[param_combo-1]
+#Fixed params
 vocab_size = 21  # Only consider the top 20k words
 maxlen = 70  # Only consider the first 70 amino acids
-embed_dim = 32  # Embedding size for each token
-num_heads = 1  # Number of attention heads
-ff_dim = 32  # Hidden layer size in feed forward network inside transformer
-batch_size=32
+#Variable params
+embed_dim = net_params['embed_dim'] #32  # Embedding size for each token
+num_heads = net_params['num_heads'] #1  # Number of attention heads
+ff_dim = net_params['ff_dim'] #32  # Hidden layer size in feed forward network inside transformer
+num_layers = net_params['num_layers'] #1  # Number of attention heads
+batch_size = net_params['batch_size'] #32
 
 
 seq_input = layers.Input(shape=(maxlen,))
@@ -136,7 +143,11 @@ kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, 
 embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
 x = embedding_layer(seq_input)
 transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
-x = transformer_block(x) #Can add more transformer blocks here
+
+#Stacking transformer blocks
+for ti in range(num_layers):
+    x = transformer_block(x) #Can add more transformer blocks here
+
 x = layers.GlobalAveragePooling1D()(x)
 x = layers.Dropout(0.1)(x)
 x = layers.Dense(20, activation="relu")(x)
@@ -145,25 +156,25 @@ x = layers.Dropout(0.1)(x)
 x = layers.Concatenate()([x,kingdom_input])
 preds = layers.Dense(70*6, activation="softmax")(x)
 preds = layers.Reshape((-1,70,6), name='preds')(preds)
-pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
-
+#pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
 
 model = keras.Model(inputs=[seq_input,kingdom_input], outputs=preds)
-opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=False)
+#Optimizer
+opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
+#Compile
 model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
-#'sparse_categorical_crossentropy'
 
 #Summary of model
 print(model.summary())
 
 history = model.fit(
-    x_train, y_train, batch_size=batch_size, epochs=100,
-    #class_weight = class_weights,
+    x_train, y_train, batch_size=batch_size, epochs=300,
     validation_data=(x_valid, y_valid)
 )
 
 
-preds = model.predict(x_valid)
-evals = np.argmax(preds,axis=3)[:,0,:]
-eval_cs(evals,y_valid)
+#Predict and save validation
+#preds = model.predict(x_valid)
+#evals = np.argmax(preds,axis=3)[:,0,:]
+#eval_cs(evals,y_valid)
