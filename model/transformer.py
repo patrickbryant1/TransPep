@@ -96,10 +96,10 @@ train_CS = train_meta.CS.values
 train_kingdoms = train_meta.Kingdom.values
 #Onehot conversion
 train_kingdoms = np.eye(4)[train_kingdoms]
-pdb.set_trace()
+
 #Get data
 partition=0 #Run through all by taking as input
-valid_i = train_meta[train_meta.Partition==str(partition)].index
+valid_i = train_meta[train_meta.Partition==partition].index
 train_i = np.setdiff1d(np.arange(len(train_meta)),valid_i)
 #train
 x_train_seqs = train_seqs[train_i]
@@ -131,28 +131,26 @@ ff_dim = 32  # Hidden layer size in feed forward network inside transformer
 batch_size=32
 
 
-inputs = layers.Input(shape=(maxlen,))
+seq_input = layers.Input(shape=(maxlen,))
+kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
 embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-x = embedding_layer(inputs)
+x = embedding_layer(seq_input)
 transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
-x = transformer_block(x)
+x = transformer_block(x) #Can add more transformer blocks here
 x = layers.GlobalAveragePooling1D()(x)
 x = layers.Dropout(0.1)(x)
 x = layers.Dense(20, activation="relu")(x)
 x = layers.Dropout(0.1)(x)
+#Concat
+x = layers.Concatenate()([x,kingdom_input])
 preds = layers.Dense(70*6, activation="softmax")(x)
 preds = layers.Reshape((-1,70,6), name='preds')(preds)
 pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
 
-def custom_loss(y_true,y_pred):
-    SparseCategoricalFocalLoss(y_true,y_pred,gamma=5)
 
-def custom_loss2(y_true,y_pred):
-    return 10*tf.keras.losses.MeanAbsoluteError(y_true,y_pred)
-
-model = keras.Model(inputs=inputs, outputs=preds)
-opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
+model = keras.Model(inputs=[seq_input,kingdom_input], outputs=preds)
+opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=False)
 model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
 #'sparse_categorical_crossentropy'
 
