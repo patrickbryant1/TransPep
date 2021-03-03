@@ -107,6 +107,8 @@ train_kingdoms = np.eye(4)[train_kingdoms]
 #Get data
 #Run through all by taking as input
 test_i = train_meta[train_meta.Partition==test_partition].index
+train_losses = []
+valid_losses = []
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     valid_i = train_meta[train_meta.Partition==valid_partition].index
     train_i = np.setdiff1d(np.arange(len(train_meta)),np.concatenate([test_i,valid_i]))
@@ -177,7 +179,15 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
         validation_data=(x_valid, y_valid)
     )
 
-    pdb.set_trace()
+    #Save loss
+    train_losses.append(history.history['loss'])
+    valid_losses.append(history.history['val_loss'])
+
+#Save array of losses
+outid = str(test_partition)+'_'+str(param_combo)
+np.save(outdir+'train_losses_'+outid+'.npy',np.array(train_losses))
+np.save(outdir+'valid_losses_'+outid+'.npy',np.array(valid_losses))
+pdb.set_trace()
 
 
 #Predict and save validation
