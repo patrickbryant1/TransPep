@@ -172,10 +172,10 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
 
     #Summary of model
-    print(model.summary())
+    #print(model.summary())
 
     history = model.fit(
-        x_train, y_train, batch_size=batch_size, epochs=1, #300,
+        x_train, y_train, batch_size=batch_size, epochs=300,
         validation_data=(x_valid, y_valid)
     )
 
@@ -187,7 +187,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 outid = str(test_partition)+'_'+str(param_combo)
 np.save(outdir+'train_losses_'+outid+'.npy',np.array(train_losses))
 np.save(outdir+'valid_losses_'+outid+'.npy',np.array(valid_losses))
-pdb.set_trace()
+print('Done')
 
 
 #Predict and save validation
