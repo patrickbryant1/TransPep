@@ -28,7 +28,7 @@ import pdb
 parser = argparse.ArgumentParser(description = '''A Transformer Neural Network for analyzing signal peptides.''')
 
 parser.add_argument('--train_data', nargs=1, type= str, default=sys.stdin, help = 'Path to training data in fasta format.')
-parser.add_argument('--partition', nargs=1, type= int, default=sys.stdin, help = 'CV fold.')
+parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test on.')
 parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with variable params.')
 parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'Path to output directory. Include /in end')
@@ -75,6 +75,9 @@ class TokenAndPositionEmbedding(layers.Layer):
         x = self.token_emb(x)
         return x + positions
 
+def construct_train_valid_data():
+    '''Construct the train and validation data
+    '''
 
 ######################MAIN######################
 args = parser.parse_args()
@@ -93,7 +96,7 @@ except:
 #Get parameters
 variable_params=pd.read_csv(args.variable_params[0])
 param_combo=args.param_combo[0]
-partition = args.partition[0]
+test_partition = args.test_partition[0]
 outdir = args.outdir[0]
 
 train_CS = train_meta.CS.values
@@ -103,75 +106,78 @@ train_kingdoms = np.eye(4)[train_kingdoms]
 
 #Get data
 #Run through all by taking as input
-valid_i = train_meta[train_meta.Partition==partition].index
-train_i = np.setdiff1d(np.arange(len(train_meta)),valid_i)
-#train
-x_train_seqs = train_seqs[train_i]
-x_train_kingdoms = train_kingdoms[train_i]
-x_train = [x_train_seqs,x_train_kingdoms]
-y_train = train_annotations[train_i]
-#valid
-x_valid_seqs = train_seqs[valid_i]
-x_valid_kingdoms = train_kingdoms[valid_i]
-x_valid = [x_valid_seqs,x_valid_kingdoms]
-y_valid = train_annotations[valid_i]
+test_i = train_meta[train_meta.Partition==test_partition].index
+for valid_partition in np.setdiff1d(np.arange(5),test_partition):
+    valid_i = train_meta[train_meta.Partition==valid_partition].index
+    train_i = np.setdiff1d(np.arange(len(train_meta)),np.concatenate([test_i,valid_i]))
+    #train
+    x_train_seqs = train_seqs[train_i]
+    x_train_kingdoms = train_kingdoms[train_i]
+    x_train = [x_train_seqs,x_train_kingdoms]
+    y_train = train_annotations[train_i]
+    #valid
+    x_valid_seqs = train_seqs[valid_i]
+    x_valid_kingdoms = train_kingdoms[valid_i]
+    x_valid = [x_valid_seqs,x_valid_kingdoms]
+    y_valid = train_annotations[valid_i]
 
-#Construct weights
-y_flat = y_train[0].flatten()
-counts = Counter(y_flat)
-class_weights = {}
-for key in counts:
-    class_weights[key] = counts[key]/len(y_flat)
+    #Construct weights
+    y_flat = y_train[0].flatten()
+    counts = Counter(y_flat)
+    class_weights = {}
+    for key in counts:
+        class_weights[key] = counts[key]/len(y_flat)
 
-#Model
-#Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
-#Params
-net_params = variable_params.loc[param_combo-1]
-#Fixed params
-vocab_size = 21  # Only consider the top 20k words
-maxlen = 70  # Only consider the first 70 amino acids
-#Variable params
-embed_dim = net_params['embed_dim'] #32  # Embedding size for each token
-num_heads = net_params['num_heads'] #1  # Number of attention heads
-ff_dim = net_params['ff_dim'] #32  # Hidden layer size in feed forward network inside transformer
-num_layers = net_params['num_layers'] #1  # Number of attention heads
-batch_size = net_params['batch_size'] #32
+    #Model
+    #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
+    #Params
+    net_params = variable_params.loc[param_combo-1]
+    #Fixed params
+    vocab_size = 21  # Only consider the top 20k words
+    maxlen = 70  # Only consider the first 70 amino acids
+    #Variable params
+    embed_dim = int(net_params['embed_dim']) #32  # Embedding size for each token
+    num_heads = int(net_params['num_heads']) #1  # Number of attention heads
+    ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
+    num_layers = int(net_params['num_layers']) #1  # Number of attention heads
+    batch_size = int(net_params['batch_size']) #32
+
+    seq_input = layers.Input(shape=(maxlen,))
+    kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
+    embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
+    x = embedding_layer(seq_input)
+    transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
+
+    #Stacking transformer blocks
+    for ti in range(num_layers):
+        x = transformer_block(x) #Can add more transformer blocks here
+
+    x = layers.GlobalAveragePooling1D()(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.Dense(20, activation="relu")(x)
+    x = layers.Dropout(0.1)(x)
+    #Concat
+    x = layers.Concatenate()([x,kingdom_input])
+    preds = layers.Dense(70*6, activation="softmax")(x)
+    preds = layers.Reshape((-1,70,6), name='preds')(preds)
+    #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
 
-seq_input = layers.Input(shape=(maxlen,))
-kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
-embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-x = embedding_layer(seq_input)
-transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
+    model = keras.Model(inputs=[seq_input,kingdom_input], outputs=preds)
+    #Optimizer
+    opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
+    #Compile
+    model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
 
-#Stacking transformer blocks
-for ti in range(num_layers):
-    x = transformer_block(x) #Can add more transformer blocks here
+    #Summary of model
+    print(model.summary())
 
-x = layers.GlobalAveragePooling1D()(x)
-x = layers.Dropout(0.1)(x)
-x = layers.Dense(20, activation="relu")(x)
-x = layers.Dropout(0.1)(x)
-#Concat
-x = layers.Concatenate()([x,kingdom_input])
-preds = layers.Dense(70*6, activation="softmax")(x)
-preds = layers.Reshape((-1,70,6), name='preds')(preds)
-#pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
+    history = model.fit(
+        x_train, y_train, batch_size=batch_size, epochs=1, #300,
+        validation_data=(x_valid, y_valid)
+    )
 
-
-model = keras.Model(inputs=[seq_input,kingdom_input], outputs=preds)
-#Optimizer
-opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
-#Compile
-model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
-
-#Summary of model
-print(model.summary())
-
-history = model.fit(
-    x_train, y_train, batch_size=batch_size, epochs=300,
-    validation_data=(x_valid, y_valid)
-)
+    pdb.set_trace()
 
 
 #Predict and save validation

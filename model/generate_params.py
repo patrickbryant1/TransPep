@@ -13,13 +13,13 @@ num_layers = [1,2,3]
 batch_sizes = [16,32,64]
 
 
-combos = np.zeros((len(embed_dim)*len(num_heads)*len(ff_dim)*len(num_layers)*len(batch_sizes)),5))
+combos = np.zeros((len(embed_dim)*len(num_heads)*len(ff_dim)*len(num_layers)*len(batch_sizes),5))
 i=0
 for e in embed_dim:
     for n in num_heads:
         for f in ff_dim:
             for nl in num_layers:
-                for s in batch_size:
+                for s in batch_sizes:
                     combos[i]=[e,n,f,nl,s]
                     i+=1
 
