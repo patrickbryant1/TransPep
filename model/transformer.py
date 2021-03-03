@@ -86,21 +86,30 @@ try:
 except:
     train_meta, train_seqs, train_annotations = parse_and_format(args.train_data[0])
     #Save
-    train_meta.to_csv('../data/train_metata.csv')
+    train_meta.to_csv('../data/train_meta.csv')
     np.save('../data/seqs.npy',train_seqs)
     np.save('../data/annotations.npy',train_annotations)
 #params_file = args.params_file[0]
 outdir = args.outdir[0]
 
 train_CS = train_meta.CS.values
+train_kingdoms = train_meta.Kingdom.values
+#Onehot conversion
+train_kingdoms = np.eye(4)[train_kingdoms]
+pdb.set_trace()
 #Get data
-partition=0
+partition=0 #Run through all by taking as input
 valid_i = train_meta[train_meta.Partition==str(partition)].index
 train_i = np.setdiff1d(np.arange(len(train_meta)),valid_i)
-x_train = train_seqs[train_i]
+#train
+x_train_seqs = train_seqs[train_i]
+x_train_kingdoms = train_kingdoms[train_i]
+x_train = [x_train_seqs,x_train_kingdoms]
 y_train = train_annotations[train_i]
-
-x_valid = train_seqs[valid_i]
+#valid
+x_valid_seqs = train_seqs[valid_i]
+x_valid_kingdoms = train_kingdoms[valid_i]
+x_valid = [x_valid_seqs,x_valid_kingdoms]
 y_valid = train_annotations[valid_i]
 
 #Construct weights
@@ -143,14 +152,15 @@ def custom_loss2(y_true,y_pred):
     return 10*tf.keras.losses.MeanAbsoluteError(y_true,y_pred)
 
 model = keras.Model(inputs=inputs, outputs=preds)
-model.compile("adam", loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
+opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
+model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
 #'sparse_categorical_crossentropy'
 
 #Summary of model
 print(model.summary())
 
 history = model.fit(
-    x_train, y_train, batch_size=batch_size, epochs=50,
+    x_train, y_train, batch_size=batch_size, epochs=100,
     #class_weight = class_weights,
     validation_data=(x_valid, y_valid)
 )
