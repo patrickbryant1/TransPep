@@ -28,9 +28,9 @@ import pdb
 parser = argparse.ArgumentParser(description = '''A Transformer Neural Network for analyzing signal peptides.''')
 
 parser.add_argument('--train_data', nargs=1, type= str, default=sys.stdin, help = 'Path to training data in fasta format.')
-
-#parser.add_argument('--params_file', nargs=1, type= str, default=sys.stdin, help = 'Path to file with net parameters')
-
+parser.add_argument('--partition', nargs=1, type= int, default=sys.stdin, help = 'CV fold.')
+parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with variable params.')
+parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'Path to output directory. Include /in end')
 
 #from tensorflow.keras.backend import set_session
@@ -93,7 +93,7 @@ except:
 #Get parameters
 variable_params=pd.read_csv(args.variable_params[0])
 param_combo=args.param_combo[0]
-
+partition = args.partition[0]
 outdir = args.outdir[0]
 
 train_CS = train_meta.CS.values
@@ -102,7 +102,7 @@ train_kingdoms = train_meta.Kingdom.values
 train_kingdoms = np.eye(4)[train_kingdoms]
 
 #Get data
-partition=0 #Run through all by taking as input
+#Run through all by taking as input
 valid_i = train_meta[train_meta.Partition==partition].index
 train_i = np.setdiff1d(np.arange(len(train_meta)),valid_i)
 #train
