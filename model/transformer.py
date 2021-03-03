@@ -122,13 +122,13 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_valid_kingdoms = train_kingdoms[valid_i]
     x_valid = [x_valid_seqs,x_valid_kingdoms]
     y_valid = train_annotations[valid_i]
-
+    pdb.set_trace()
     #Construct weights
-    y_flat = y_train[0].flatten()
-    counts = Counter(y_flat)
-    class_weights = {}
-    for key in counts:
-        class_weights[key] = counts[key]/len(y_flat)
+    #y_flat = y_train[0].flatten()
+    #counts = Counter(y_flat)
+    #class_weights = {}
+    #for key in counts:
+    #    class_weights[key] = counts[key]/len(y_flat)
 
     #Model
     #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/

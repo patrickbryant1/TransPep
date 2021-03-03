@@ -2,7 +2,7 @@ TRAIN_DATA=../data/train_set.fasta
 VARIABLE_PARAMS=./param_combos.csv
 OUTDIR=../results/
 
-for PARAM_COMB in {1..243}
+for PARAM_COMBO in {1..243}
 do
   for TEST_PARTITION in {0..4}
     do
