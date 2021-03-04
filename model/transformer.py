@@ -15,11 +15,12 @@ from process_data import parse_and_format, eval_cs
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from focal_loss import SparseCategoricalFocalLoss
+from categorical_focal_loss import SparseCategoricalFocalLoss
 
 #visualization
 from tensorflow.keras.callbacks import TensorBoard
 
+from multi_head_attention import MultiHeadAttention
 #from lr_finder import LRFinder
 
 
@@ -45,7 +46,7 @@ parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'P
 class TransformerBlock(layers.Layer):
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
         super(TransformerBlock, self).__init__()
-        self.att = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
+        self.att = MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
         self.ffn = keras.Sequential(
             [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
         )
@@ -122,7 +123,6 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_valid_kingdoms = train_kingdoms[valid_i]
     x_valid = [x_valid_seqs,x_valid_kingdoms]
     y_valid = train_annotations[valid_i]
-    pdb.set_trace()
     #Construct weights
     #y_flat = y_train[0].flatten()
     #counts = Counter(y_flat)
