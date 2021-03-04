@@ -100,6 +100,8 @@ outdir = args.outdir[0]
 
 train_CS = train_meta.CS.values
 train_kingdoms = train_meta.Kingdom.values
+train_meta['Type'] = train_meta['Type'].replace({'NO_SP':0,'SP':1,'TAT':2,'LIPO':3})
+train_types = train_meta.Type.values
 #Onehot conversion
 train_kingdoms = np.eye(4)[train_kingdoms]
 
@@ -115,12 +117,12 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_train_seqs = train_seqs[train_i]
     x_train_kingdoms = train_kingdoms[train_i]
     x_train = [x_train_seqs,x_train_kingdoms]
-    y_train = train_annotations[train_i]
+    y_train = [train_annotations[train_i],train_types[train_i]]
     #valid
     x_valid_seqs = train_seqs[valid_i]
     x_valid_kingdoms = train_kingdoms[valid_i]
     x_valid = [x_valid_seqs,x_valid_kingdoms]
-    y_valid = train_annotations[valid_i]
+    y_valid = [train_annotations[valid_i],train_types[valid_i]]
     #Construct weights
     #y_flat = y_train[0].flatten()
     #counts = Counter(y_flat)
@@ -159,15 +161,16 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Concat
     x = layers.Concatenate()([x,kingdom_input])
     preds = layers.Dense(70*6, activation="softmax")(x)
-    preds = layers.Reshape((-1,70,6), name='preds')(preds)
+    pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
+    preds = layers.Reshape((-1,70,6), name='annotation')(preds)
     #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
 
-    model = keras.Model(inputs=[seq_input,kingdom_input], outputs=preds)
+    model = keras.Model(inputs=[seq_input,kingdom_input], outputs=[preds,pred_type])
     #Optimizer
     opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
     #Compile
-    model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
+    model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
 
     #Summary of model
     #print(model.summary())
