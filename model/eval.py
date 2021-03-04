@@ -84,12 +84,15 @@ def eval_loss(resultsdir,variable_params):
         plt.savefig(resultsdir+'loss_tp_'+tp+'.png',format='png',dpi=300)
         plt.close()
         #Min valid loss vs parameters
-        min_valid_losses = np.min(np.average(sel_train_losses,axis=1),axis=1)
+        min_valid_losses = np.min(np.average(sel_valid_losses,axis=1),axis=1)
         valid_sel = sel.copy()
         valid_sel['min_valid_loss'] = min_valid_losses
+        #Get min combo
+        min_combo = valid_sel[valid_sel.min_valid_loss==valid_sel.min_valid_loss.min()]
+
         fig,ax = plt.subplots(figsize=(10/2.54,10/2.54))
-        sns.pairplot(valid_sel,x_vars=['embed_dim', 'num_heads', 'ff_dim', 'num_layers', 'batch_size'],y_vars='min_loss')
-        plt.title('Test partition '+tp)
+        sns.pairplot(valid_sel,x_vars=['embed_dim', 'num_heads', 'ff_dim', 'num_layers', 'batch_size'],y_vars='min_valid_loss')
+        plt.title('Test partition '+tp+'\n'+min_combo[['embed_dim', 'num_heads', 'ff_dim', 'num_layers', 'batch_size']])
         plt.tight_layout()
         plt.savefig(resultsdir+'pairplot_tp_'+tp+'.png',format='png',dpi=300)
         plt.close()
