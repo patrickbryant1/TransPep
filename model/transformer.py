@@ -14,7 +14,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from categorical_focal_loss import SparseCategoricalFocalLoss
-
+from tensorflow.keras.callbacks import ModelCheckpoint
 #visualization
 from tensorflow.keras.callbacks import TensorBoard
 
@@ -31,6 +31,7 @@ parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = '
 parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test on.')
 parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with variable params.')
 parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
+parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = 'Path to checpoint directory. Include /in end')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'Path to output directory. Include /in end')
 
 #from tensorflow.keras.backend import set_session
@@ -97,6 +98,7 @@ except:
 variable_params=pd.read_csv(args.variable_params[0])
 param_combo=args.param_combo[0]
 test_partition = args.test_partition[0]
+checkpointdir = args.checkpointdir[0]
 outdir = args.outdir[0]
 
 train_CS = train_meta.CS.values
@@ -175,10 +177,15 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
     #Summary of model
     #print(model.summary())
-
+    #Checkpoint
+    checkpoint_path=checkpointdir+"weights-{epoch:02d}-.hdf5"
+    checkpoint = ModelCheckpoint(checkpoint_path, verbose=1, monitor="val_loss",save_best_only=True, mode='max')
+    #Callbacks
+    callbacks=[checkpoint]
     history = model.fit(
         x_train, y_train, batch_size=batch_size, epochs=300,
-        validation_data=(x_valid, y_valid)
+        validation_data=(x_valid, y_valid),
+        callbacks=callbacks
     )
 
     #Save loss

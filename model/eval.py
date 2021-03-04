@@ -23,13 +23,7 @@ parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, 
 
 ###########FUNTIONS###########
 def eval_loss(resultsdir,variable_params):
-    '''Parse and format the data:
-    >Uniprot_AC|Kingdom|Type|Partition No
-    amino-acid sequence
-    annotation [S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide | I: cytoplasm | M: transmembrane | O: extracellular]
-
-    >P36001|EUKARYA|NO_SP|1
-    MDDISGRQTLPRINRLLEHVGNPQDSLSILHIAGTNGKETVSKFLTSILQHPGQQRQRVLIGRYTTSSLL
+    '''Evaluate the loss
     IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
     '''
 
@@ -89,10 +83,9 @@ def eval_loss(resultsdir,variable_params):
         valid_sel['min_valid_loss'] = min_valid_losses
         #Get min combo
         min_combo = valid_sel[valid_sel.min_valid_loss==valid_sel.min_valid_loss.min()]
-
         fig,ax = plt.subplots(figsize=(10/2.54,10/2.54))
         sns.pairplot(valid_sel,x_vars=['embed_dim', 'num_heads', 'ff_dim', 'num_layers', 'batch_size'],y_vars='min_valid_loss')
-        plt.title('Test partition '+tp+'\n'+min_combo[['embed_dim', 'num_heads', 'ff_dim', 'num_layers', 'batch_size']])
+        plt.title('Test partition '+tp)
         plt.tight_layout()
         plt.savefig(resultsdir+'pairplot_tp_'+tp+'.png',format='png',dpi=300)
         plt.close()
