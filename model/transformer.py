@@ -27,6 +27,7 @@ import pdb
 parser = argparse.ArgumentParser(description = '''A Transformer Neural Network for analyzing signal peptides.''')
 
 parser.add_argument('--train_data', nargs=1, type= str, default=sys.stdin, help = 'Path to training data in fasta format.')
+parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = 'Path to data directory.')
 parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test on.')
 parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with variable params.')
 parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
@@ -80,17 +81,17 @@ def construct_train_valid_data():
 
 ######################MAIN######################
 args = parser.parse_args()
-
+datadir = args.datadir[0]
 try:
-    train_meta = pd.read_csv('../data/train_meta.csv')
-    train_seqs = np.load('../data/seqs.npy',allow_pickle=True)
-    train_annotations = np.load('../data/annotations.npy',allow_pickle=True)
+    train_meta = pd.read_csv(datadir+'train_meta.csv')
+    train_seqs = np.load(datadir+'seqs.npy',allow_pickle=True)
+    train_annotations = np.load(datadir+'annotations.npy',allow_pickle=True)
 except:
     train_meta, train_seqs, train_annotations = parse_and_format(args.train_data[0])
     #Save
-    train_meta.to_csv('../data/train_meta.csv')
-    np.save('../data/seqs.npy',train_seqs)
-    np.save('../data/annotations.npy',train_annotations)
+    train_meta.to_csv(datadir+'train_meta.csv')
+    np.save(datadir+'seqs.npy',train_seqs)
+    np.save(datadir+'annotations.npy',train_annotations)
 
 #Get parameters
 variable_params=pd.read_csv(args.variable_params[0])
