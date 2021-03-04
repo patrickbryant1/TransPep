@@ -15,6 +15,8 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from categorical_focal_loss import SparseCategoricalFocalLoss
 from tensorflow.keras.callbacks import ModelCheckpoint
+
+
 #visualization
 from tensorflow.keras.callbacks import TensorBoard
 
@@ -32,6 +34,7 @@ parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, h
 parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with variable params.')
 parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
 parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = 'Path to checpoint directory. Include /in end')
+parser.add_argument('--save_model', nargs=1, type= int, default=sys.stdin, help = 'If to save model or not: 1= True, 0 = False')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'Path to output directory. Include /in end')
 
 #from tensorflow.keras.backend import set_session
@@ -63,6 +66,15 @@ class TransformerBlock(layers.Layer):
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out1 + ffn_output)
 
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'embed_dim': embed_dim,
+            'num_heads': num_heads,
+            'ff_dim': ff_dim
+        })
+        return config
+
 class TokenAndPositionEmbedding(layers.Layer):
     def __init__(self, maxlen, vocab_size, embed_dim):
         super(TokenAndPositionEmbedding, self).__init__()
@@ -75,6 +87,15 @@ class TokenAndPositionEmbedding(layers.Layer):
         positions = self.pos_emb(positions)
         x = self.token_emb(x)
         return x + positions
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'maxlen': maxlen,
+            'vocab_size': vocab_size,
+            'embed_dim': embed_dim
+        })
+        return config
 
 def construct_train_valid_data():
     '''Construct the train and validation data
@@ -175,13 +196,20 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Compile
     model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
 
+    #Save model
+    if save_model == True:
+        model_json = model.to_json()
+        with open(checkpointdir+"model.json", "w") as json_file:
+      	     json_file.write(model_json)
+
     #Summary of model
     #print(model.summary())
     #Checkpoint
     checkpoint_path=checkpointdir+"weights-{epoch:02d}-.hdf5"
-    checkpoint = ModelCheckpoint(checkpoint_path, verbose=1, monitor="val_loss",save_best_only=True, mode='max')
+    checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, monitor="val_loss",save_best_only=True, mode='min',overwrite=False)
     #Callbacks
     callbacks=[checkpoint]
+
     history = model.fit(
         x_train, y_train, batch_size=batch_size, epochs=300,
         validation_data=(x_valid, y_valid),
@@ -197,9 +225,3 @@ outid = str(test_partition)+'_'+str(param_combo)
 np.save(outdir+'train_losses_'+outid+'.npy',np.array(train_losses))
 np.save(outdir+'valid_losses_'+outid+'.npy',np.array(valid_losses))
 print('Done')
-
-
-#Predict and save validation
-#preds = model.predict(x_valid)
-#evals = np.argmax(preds,axis=3)[:,0,:]
-#eval_cs(evals,y_valid)

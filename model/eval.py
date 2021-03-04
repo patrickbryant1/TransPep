@@ -60,6 +60,7 @@ def eval_loss(resultsdir,variable_params):
     train_losses = np.array(train_losses)
     valid_losses = np.array(valid_losses)
     #Vis
+    best_params = []
     for tp in loss_df['test_partition'].unique():
         sel = loss_df[loss_df.test_partition==tp]
 
@@ -83,13 +84,17 @@ def eval_loss(resultsdir,variable_params):
         valid_sel['min_valid_loss'] = min_valid_losses
         #Get min combo
         min_combo = valid_sel[valid_sel.min_valid_loss==valid_sel.min_valid_loss.min()]
+        best_params.append(min_combo)
         fig,ax = plt.subplots(figsize=(10/2.54,10/2.54))
         sns.pairplot(valid_sel,x_vars=['embed_dim', 'num_heads', 'ff_dim', 'num_layers', 'batch_size'],y_vars='min_valid_loss')
         plt.title('Test partition '+tp)
         plt.tight_layout()
         plt.savefig(resultsdir+'pairplot_tp_'+tp+'.png',format='png',dpi=300)
         plt.close()
-    pdb.set_trace()
+
+    #Save best params
+    best_params = pd.concat(best_params)
+    best_params.to_csv(resultsdir+'best_params.csv')
 
 
 def eval_cs(preds,true):
