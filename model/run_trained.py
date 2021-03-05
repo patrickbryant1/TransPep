@@ -127,6 +127,9 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
     annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
     S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide |
     'NO_SP':0,'SP':1,'TAT':2,'LIPO':3
+    SP = Sec/SPI
+    TAT = Tat/SPI
+    LIPO = Sec/SPII
 
     Reported for CS:
     Recall, TPR = TP/P
@@ -136,31 +139,45 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
     MCC = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
     '''
 
-    Types = {'NO_SP':0,'SP':1,'TAT':2,'LIPO':3}
+    Types = {'SP':1,'TAT':2,'LIPO':3}
+    Signal_type_annotations = {'SP':0,'TAT':1,'LIPO':2} #S,T,L
     #Save
-    for type in [*Types.keys()]:
+    types = []
+    MCC = []
+    Recall = []
+    Precision = []
 
-        P = np.argwhere(true_types==type)[:,0]
-        N = np.argwhere(true_types!=type)[:,0]
+    for type_name in Types:
+        type_enc = Types[type_name]
+        P = np.argwhere(true_types==type_enc)[:,0]
+        N = np.argwhere(true_types!=type_enc)[:,0]
         #Calc TP and FP
         #Get the pred pos and neg
-        pred_P = np.argwhere(pred_types==type)[:,0]
-        pred_N = np.argwhere(pred_types!=type)[:,0]
+        pred_P = np.argwhere(pred_types==type_enc)[:,0]
+        pred_N = np.argwhere(pred_types!=type_enc)[:,0]
         #TP and TN
         TP = np.intersect1d(P,pred_P).shape[0]
         FP = len(pred_P)-TP
         TN = np.intersect1d(N,pred_N).shape[0]
         FN= len(pred_N)-TN
+        #MCC
+        MCC = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+
+        #Get the CS
+        type_annotation = Signal_type_annotations[type_name]
+        #Get all true positive CSs
+        P_annotations = true_annotations[np.intersect1d(P,pred_P)]
+        P_CS = []
+        for i in range(len(P_annotations)):
+            P_CS.append(np.argwhere(P_annotations[i]==type_annotation)[-1,0])
+
+        #Get all pred positive CSs from the true positives (all the other will be wrong)
+        P_CS_pred = []
+        P_annotations_pred = true_annotations[np.intersect1d(P,pred_P)]
+        for i in range(len(P_annotations_pred)):
+            P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
 
         pdb.set_trace()
-
-        type_indices = np.argwhere(true_types==type)
-        #Get types
-        sel_true_type = true_types[type_indices]
-        sel_pred_type = pred_types[type_indices]
-        #Get annotations
-        sel_true_annotations = true_annotations[type_indices]
-        sel_pred_annotations = true_annotations[pred_indices]
 
 ######################MAIN######################
 args = parser.parse_args()
