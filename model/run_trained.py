@@ -150,11 +150,11 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     for key in kingdom_conversion:
         kingdom_indices = np.argwhere(kingdoms==kingdom_conversion[key])
         #Get pred
-        kingdom_pred_annotations = pred_annotations[kingdom_indices]
-        kingdom_pred_types = pred_types[kingdom_indices]
+        kingdom_pred_annotations = np.argmax(pred_annotations[kingdom_indices][:,0,0,:],axis=1)
+        kingdom_pred_types = np.argmax(pred_types[kingdom_indices][:,0,:],axis=1)
         #Get true
-        kingdom_true_annotations = true_annotations[kingdom_indices]
-        kingdom_true_types = true_types[kingdom_indices]
+        kingdom_true_annotations = true_annotations[kingdom_indices][:,0,:]
+        kingdom_true_types = true_types[kingdom_indices][:,0]
         pdb.set_trace()
 
 
