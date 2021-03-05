@@ -90,18 +90,9 @@ def load_model(json_file, weights):
 
     json_file = open(json_file, 'r')
     model_json = json_file.read()
-    pdb.set_trace()
-    model = model_from_json(model_json,custom_objects = {"TokenAndPositionEmbedding": TokenAndPositionEmbedding(), "TransformerBlock": TransformerBlock()})
-
-    # Retrieve the config
-    config = model.get_config()
-    # At loading time, register the custom objects with a `custom_object_scope`:
-    with keras.utils.custom_object_scope(custom_objects):
-        new_model = keras.Model.from_config(config)
-
+    model = model_from_json(model_json,custom_objects = {"TokenAndPositionEmbedding": TokenAndPositionEmbedding, "TransformerBlock": TransformerBlock})
     model.load_weights(weights)
-    model._make_predict_function()
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+    print(model.summary())
     return model
 
 ######################MAIN######################
@@ -114,6 +105,5 @@ outdir = args.outdir[0]
 
 #Load and run model
 model = load_model(json_file, weights)
-pred = model.predict(X_valid)
-
 pdb.set_trace()
+pred = model.predict(X_valid)
