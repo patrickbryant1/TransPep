@@ -9,7 +9,6 @@ import time
 from collections import Counter
 #Preprocessing and evaluation
 from process_data import parse_and_format
-from eval import eval_type_cs
 #Keras
 import tensorflow as tf
 from tensorflow import keras
@@ -122,6 +121,46 @@ def get_data(datadir, valid_partition):
     y_valid = [train_annotations[valid_i],train_types[valid_i]]
 
     return x_valid, y_valid
+
+def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom):
+    '''Evaluate the capacity to predict the clevage site
+    annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
+    S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide |
+    'NO_SP':0,'SP':1,'TAT':2,'LIPO':3
+
+    Reported for CS:
+    Recall, TPR = TP/P
+    Precision, PPV = TP/(TP+FP)
+
+    Reported for detection
+    MCC = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+    '''
+
+    Types = {'NO_SP':0,'SP':1,'TAT':2,'LIPO':3}
+    #Save
+    for type in [*Types.keys()]:
+
+        P = np.argwhere(true_types==type)[:,0]
+        N = np.argwhere(true_types!=type)[:,0]
+        #Calc TP and FP
+        #Get the pred pos and neg
+        pred_P = np.argwhere(pred_types==type)[:,0]
+        pred_N = np.argwhere(pred_types!=type)[:,0]
+        #TP and TN
+        TP = np.intersect1d(P,pred_P).shape[0]
+        FP = len(pred_P)-TP
+        TN = np.intersect1d(N,pred_N).shape[0]
+        FN= len(pred_N)-TN
+
+        pdb.set_trace()
+
+        type_indices = np.argwhere(true_types==type)
+        #Get types
+        sel_true_type = true_types[type_indices]
+        sel_pred_type = pred_types[type_indices]
+        #Get annotations
+        sel_true_annotations = true_annotations[type_indices]
+        sel_pred_annotations = true_annotations[pred_indices]
 
 ######################MAIN######################
 args = parser.parse_args()
