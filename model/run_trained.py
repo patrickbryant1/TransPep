@@ -139,13 +139,13 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
     MCC = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
     '''
 
-    Types = {'SP':1,'TAT':2,'LIPO':3}
+    Types = {'SP':1,'LIPO':3,'TAT':2}
     Signal_type_annotations = {'SP':0,'TAT':1,'LIPO':2} #S,T,L
     #Save
-    types = []
-    MCC = []
-    Recall = []
-    Precision = []
+    fetched_types = []
+    MCCs = []
+    Recalls = []
+    Precisions = []
 
     for type_name in Types:
         type_enc = Types[type_name]
@@ -177,7 +177,29 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
         for i in range(len(P_annotations_pred)):
             P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
 
-        pdb.set_trace()
+        #Get the TP and FP CS
+        TP_CS = 0
+        FP_CS = 0
+        for i in range(len(P_CS)):
+            CS_diff = P_CS[i]-P_CS_pred[i]
+            if CS_diff<3 and CS_diff>-3:
+                TP_CS+=1
+            else:
+                FP_CS+=1
+
+        #Add the FPs from the wrong detection
+        FP_CS += FP
+        #Calculate CS precision and recall
+        CS_precision = TP_CS/(TP_CS+FP_CS)
+        CS_recall = TP_CS/P.shape[0]
+        #Save
+        fetched_types.append(type_name)
+        MCCs.append(MCC)
+        Precisions.append(CS_precision)
+        Recalls.append(CS_recall)
+
+
+    return fetched_types, MCCs, Precisions, Recalls
 
 ######################MAIN######################
 args = parser.parse_args()
@@ -233,7 +255,7 @@ for key in kingdom_conversion:
     kingdom_true_annotations = all_true_annotations[kingdom_indices]
     kingdom_true_types = all_true_types[kingdom_indices]
     #Eval
-    eval_type_cs(kingdom_pred_annotations,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
+    fetched_types, MCCs, Precisions, Recalls = eval_type_cs(kingdom_pred_annotations,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
     pdb.set_trace()
 
 
