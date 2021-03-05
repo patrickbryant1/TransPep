@@ -97,55 +97,16 @@ def eval_loss(resultsdir,variable_params):
     best_params.to_csv(resultsdir+'best_params.csv')
 
 
-def eval_cs(preds,true):
+def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types):
     '''Evaluate the capacity to predict the clevage site
     annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
     S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide |
+    'NO_SP':0,'SP':1,'TAT':2,'LIPO':3
     '''
 
-    true_s = []
-    pred_s = []
-    true_t = []
-    pred_t = []
-    true_l = []
-    pred_l = []
+    {'NO_SP':0,'SP':1,'TAT':2,'LIPO':3}
+    for i in range(len(pred_types)):
 
-    missing_s = 0
-    total_s = 0
-    missing_t = 0
-    total_t = 0
-    missing_l = 0
-    total_l = 0
-    for i in range(len(preds)):
-        if 0 in true[i]:
-            total_s+=1
-            if 0 in preds[i]:
-                true_s.append(np.argwhere(true[i]==0)[-1,0])
-                pred_s.append(np.argwhere(preds[i]==0)[-1,0])
-            else:
-                missing_s+=1
-        if 1 in true[i]:
-            total_t+=1
-            if 1 in preds[i]:
-                true_t.append(np.argwhere(true[i]==1)[-1,0])
-                pred_t.append(np.argwhere(preds[i]==1)[-1,0])
-            else:
-                missing_t+=1
-        if 2 in true[i]:
-            total_l+=1
-            if 2 in preds[i]:
-                true_l.append(np.argwhere(true[i]==2)[-1,0])
-                pred_l.append(np.argwhere(preds[i]==2)[-1,0])
-            else:
-                missing_l +=1
-
-
-    sns.distplot(np.array(pred_s)-np.array(true_s), label='Sec/SPI signal peptide: '+str(np.round(missing_s/total_s,2)))
-    sns.distplot(np.array(pred_t)-np.array(true_t),label='Tat/SPI signal peptide: '+str(np.round(missing_t/total_t,2)))
-    sns.distplot(np.array(pred_l)-np.array(true_l),label='Sec/SPII signal peptide: '+str(np.round(missing_l/total_l,2)))
-    plt.legend()
-    plt.show()
-    pdb.set_trace()
 
 
 ###########MAIN###########

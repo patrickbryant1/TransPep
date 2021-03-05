@@ -21,6 +21,7 @@ from multi_head_attention import MultiHeadSelfAttention
 from tensorflow.keras.models import model_from_json
 import glob
 
+
 import pdb
 
 #Arguments for argparse module:
@@ -132,30 +133,43 @@ datadir = args.datadir[0]
 test_partition = args.test_partition[0]
 outdir = args.outdir[0]
 
-kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1,}
+kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1}
 #Load and run model
+all_pred_annotations = []
+all_pred_types = []
+all_true_annotations = []
+all_true_types = []
+all_kingdoms = []
+
+#Get data for each valid partition
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
-    weights=glob.glob(checkpointdir+'*vp'+str(valid_partition)+'*')
+    #weights
+    weights=glob.glob(checkpointdir+'vp'+str(valid_partition)+'/*.hdf5')
+    #model
     model = load_model(json_file, weights[0])
 
     #Get data
     x_valid, y_valid = get_data(datadir, valid_partition)
     pred = model.predict(x_valid)
-    pred_annotations = pred[0]
-    pred_types = pred[1]
-
+    pred_annotations = np.argmax(pred[0][:,0,:,:],axis=2)
+    pred_types = np.argmax(pred[1],axis=1)
     true_annotations = y_valid[0]
     true_types = y_valid[1]
     kingdoms = np.argmax(x_valid[1],axis=1)
-    for key in kingdom_conversion:
-        kingdom_indices = np.argwhere(kingdoms==kingdom_conversion[key])
-        #Get pred
-        kingdom_pred_annotations = np.argmax(pred_annotations[kingdom_indices][:,0,0,:],axis=1)
-        kingdom_pred_types = np.argmax(pred_types[kingdom_indices][:,0,:],axis=1)
-        #Get true
-        kingdom_true_annotations = true_annotations[kingdom_indices][:,0,:]
-        kingdom_true_types = true_types[kingdom_indices][:,0]
-        pdb.set_trace()
+
+
+#Evaluate per kingdom
+for key in kingdom_conversion:
+    kingdom_indices = np.argwhere(kingdoms==kingdom_conversion[key])
+    #Get pred
+    kingdom_pred_annotations = np.argmax(pred_annotations[kingdom_indices][:,0,0,:],axis=1)
+    kingdom_pred_types = np.argmax(pred_types[kingdom_indices][:,0,:],axis=1)
+    #Get true
+    kingdom_true_annotations = true_annotations[kingdom_indices][:,0,:]
+    kingdom_true_types = true_types[kingdom_indices][:,0]
+    #Eval
+    eval_type_cs(pred_annotations,pred_types,true_annotations,true_types)
+    pdb.set_trace()
 
 
     pdb.set_trace()

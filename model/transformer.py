@@ -210,8 +210,13 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #print(model.summary())
     #Checkpoint
     if checkpoint == True:
-        checkpoint_path=checkpointdir+"weights_{epoch:02d}_vp"+str(valid_partition)+"_.hdf5"
-        checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, monitor="val_loss",save_best_only=False, mode='min',overwrite=False)
+        #Make dir
+        try:
+            os.mkdir(checkpointdir+'vp'+str(valid_partition))
+        except:
+            print('Checkpoint directory exists...')
+        checkpoint_path=checkpointdir+'vp'+str(valid_partition)+"/weights_{epoch:02d}.hdf5"
+        checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, monitor="val_loss",save_best_only=True, mode='min',overwrite=False)
         #Callbacks
         callbacks=[checkpoint]
     else:
