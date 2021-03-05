@@ -8,8 +8,8 @@ import pandas as pd
 import time
 from collections import Counter
 #Preprocessing and evaluation
-from process_data import parse_and_format, eval_cs
-
+from process_data import parse_and_format
+from eval import eval_type_cs
 #Keras
 import tensorflow as tf
 from tensorflow import keras
@@ -86,8 +86,6 @@ class TokenAndPositionEmbedding(layers.Layer):
         return config
 
 def load_model(json_file, weights):
-
-    global model
 
     json_file = open(json_file, 'r')
     model_json = json_file.read()
@@ -179,8 +177,7 @@ for key in kingdom_conversion:
     kingdom_true_annotations = all_true_annotations[kingdom_indices]
     kingdom_true_types = all_true_types[kingdom_indices]
     #Eval
-    pdb.set_trace()
-    eval_type_cs(pred_annotations,pred_types,true_annotations,true_types)
+    eval_type_cs(kingdom_pred_annotations,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
     pdb.set_trace()
 
 
