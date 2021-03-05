@@ -126,7 +126,6 @@ save_model = bool(args.save_model[0])
 checkpoint = bool(args.checkpoint[0])
 num_epochs = args.num_epochs[0]
 outdir = args.outdir[0]
-pdb.set_trace()
 train_CS = train_meta.CS.values
 train_kingdoms = train_meta.Kingdom.values
 train_meta['Type'] = train_meta['Type'].replace({'NO_SP':0,'SP':1,'TAT':2,'LIPO':3})
@@ -212,7 +211,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Checkpoint
     if checkpoint == True:
         checkpoint_path=checkpointdir+"weights_{epoch:02d}_vp"+str(valid_partition)+"_.hdf5"
-        checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, monitor="val_loss",save_best_only=True, mode='min',overwrite=False)
+        checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, monitor="val_loss",save_best_only=False, mode='min',overwrite=False)
         #Callbacks
         callbacks=[checkpoint]
     else:

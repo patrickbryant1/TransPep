@@ -134,10 +134,12 @@ outdir = args.outdir[0]
 
 #Load and run model
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
-    weights=glob.glob(checkpointdir+'*vp'+str(valid_partition))
-    model = load_model(json_file, weights)
+    weights=glob.glob(checkpointdir+'*vp'+str(valid_partition)+'*')
+    model = load_model(json_file, weights[0])
 
     #Get data
     x_valid, y_valid = get_data(datadir, valid_partition)
-    pred = model.predict(X_valid)
+    pred = model.predict(x_valid)
+    pred_annotations = pred[0]
+    pred_type = pred[1]
     pdb.set_trace()
