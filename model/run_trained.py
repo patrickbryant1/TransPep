@@ -132,6 +132,7 @@ datadir = args.datadir[0]
 test_partition = args.test_partition[0]
 outdir = args.outdir[0]
 
+kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1,}
 #Load and run model
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     weights=glob.glob(checkpointdir+'*vp'+str(valid_partition)+'*')
@@ -141,5 +142,20 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_valid, y_valid = get_data(datadir, valid_partition)
     pred = model.predict(x_valid)
     pred_annotations = pred[0]
-    pred_type = pred[1]
+    pred_types = pred[1]
+
+    true_annotations = y_valid[0]
+    true_types = y_valid[1]
+    kingdoms = np.argmax(x_valid[1],axis=1)
+    for key in kingdom_conversion:
+        kingdom_indices = np.argwhere(kingdoms==kingdom_conversion[key])
+        #Get pred
+        kingdom_pred_annotations = pred_annotations[kingdom_indices]
+        kingdom_pred_types = pred_types[kingdom_indices]
+        #Get true
+        kingdom_true_annotations = true_annotations[kingdom_indices]
+        kingdom_true_types = true_types[kingdom_indices]
+        pdb.set_trace()
+
+
     pdb.set_trace()
