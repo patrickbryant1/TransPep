@@ -93,7 +93,7 @@ def load_model(json_file, weights):
     model_json = json_file.read()
     model = model_from_json(model_json,custom_objects = {"TokenAndPositionEmbedding": TokenAndPositionEmbedding, "TransformerBlock": TransformerBlock})
     model.load_weights(weights)
-    print(model.summary())
+    #print(model.summary())
     return model
 
 def get_data(datadir, valid_partition):
@@ -147,7 +147,6 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     weights=glob.glob(checkpointdir+'vp'+str(valid_partition)+'/*.hdf5')
     #model
     model = load_model(json_file, weights[0])
-
     #Get data
     x_valid, y_valid = get_data(datadir, valid_partition)
     pred = model.predict(x_valid)
@@ -156,18 +155,31 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     true_annotations = y_valid[0]
     true_types = y_valid[1]
     kingdoms = np.argmax(x_valid[1],axis=1)
+    #Save
+    all_pred_types.extend([*pred_types])
+    all_pred_annotations.extend([*pred_annotations])
+    all_true_types.extend([*true_types])
+    all_true_annotations.extend([*true_annotations])
+    all_kingdoms.extend([*kingdoms])
 
+#Array conversions
+all_pred_annotations = np.array(all_pred_annotations)
+all_pred_types = np.array(all_pred_types)
+all_true_annotations = np.array(all_true_annotations)
+all_true_types = np.array(all_true_types)
+all_kingdoms = np.array(all_kingdoms)
 
 #Evaluate per kingdom
 for key in kingdom_conversion:
-    kingdom_indices = np.argwhere(kingdoms==kingdom_conversion[key])
+    kingdom_indices = np.argwhere(all_kingdoms==kingdom_conversion[key])[:,0]
     #Get pred
-    kingdom_pred_annotations = np.argmax(pred_annotations[kingdom_indices][:,0,0,:],axis=1)
-    kingdom_pred_types = np.argmax(pred_types[kingdom_indices][:,0,:],axis=1)
+    kingdom_pred_annotations = all_pred_annotations[kingdom_indices]
+    kingdom_pred_types = all_pred_types[kingdom_indices]
     #Get true
-    kingdom_true_annotations = true_annotations[kingdom_indices][:,0,:]
-    kingdom_true_types = true_types[kingdom_indices][:,0]
+    kingdom_true_annotations = all_true_annotations[kingdom_indices]
+    kingdom_true_types = all_true_types[kingdom_indices]
     #Eval
+    pdb.set_trace()
     eval_type_cs(pred_annotations,pred_types,true_annotations,true_types)
     pdb.set_trace()
 

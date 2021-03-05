@@ -139,6 +139,7 @@ test_i = train_meta[train_meta.Partition==test_partition].index
 train_losses = []
 valid_losses = []
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
+    print('Validation partition',valid_partition)
     valid_i = train_meta[train_meta.Partition==valid_partition].index
     train_i = np.setdiff1d(np.arange(len(train_meta)),np.concatenate([test_i,valid_i]))
     #train
@@ -216,9 +217,9 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
         except:
             print('Checkpoint directory exists...')
         checkpoint_path=checkpointdir+'vp'+str(valid_partition)+"/weights_{epoch:02d}.hdf5"
-        checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, monitor="val_loss",save_best_only=True, mode='min',overwrite=False)
+        model_checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, monitor="val_loss",save_best_only=True, mode='min',overwrite=False)
         #Callbacks
-        callbacks=[checkpoint]
+        callbacks=[model_checkpoint]
     else:
         callbacks = []
 
