@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
-JSONFILE='/home/patrick/results/protein_translation/model_checkpoints/model.json'
-WEIGHTS=/home/patrick/results/protein_translation/model_checkpoints/weights-03-.hdf5
+
+CHECKPOINTDIR=/home/patrick/results/protein_translation/model_checkpoints/
 DATADIR=../data/
 OUTDIR=../results/
 
 for TEST_PARTITION in {0..4}
   do
-    ./run_trained.py --json_file $JSONFILE --weights $WEIGHTS --datadir $DATADIR --test_partition $TEST_PARTITION --outdir $OUTDIR
+    JSONFILE=$CHECKPOINTDIR'TP'$TEST_PARTITION'/model.json'
+    ./run_trained.py --json_file $JSONFILE --checkpointdir $CHECKPOINTDIR'TP'$TEST_PARTITION'/' --datadir $DATADIR --test_partition $TEST_PARTITION --outdir $OUTDIR
   done

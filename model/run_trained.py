@@ -19,14 +19,14 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from multi_head_attention import MultiHeadSelfAttention
 
 from tensorflow.keras.models import model_from_json
-
+import glob
 
 import pdb
 
 #Arguments for argparse module:
 parser = argparse.ArgumentParser(description = '''A program that reads a keras model from a .json and a .h5 file''')
 parser.add_argument('--json_file', nargs=1, type= str,default=sys.stdin, help = 'path to .json file with keras model to be opened')
-parser.add_argument('--weights', nargs=1, type= str, default=sys.stdin, help = '''path to .h5 file containing weights for net.''')
+parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = '''path checkpoints with .h5 files containing weights for net.''')
 parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = 'Path to data directory.')
 parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test on.')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = '''path to output dir.''')
@@ -95,7 +95,7 @@ def load_model(json_file, weights):
     print(model.summary())
     return model
 
-def get_data(datadir, test_partition, valid_partition):
+def get_data(datadir, valid_partition):
     '''Get the validation data
     '''
 
@@ -114,24 +114,30 @@ def get_data(datadir, test_partition, valid_partition):
     #Run through all by taking as input
     test_i = train_meta[train_meta.Partition==test_partition].index
     valid_data = []
-    for valid_partition in np.setdiff1d(np.arange(5),test_partition):
-        valid_i = train_meta[train_meta.Partition==valid_partition].index
-        #valid
-        x_valid_seqs = train_seqs[valid_i]
-        x_valid_kingdoms = train_kingdoms[valid_i]
-        x_valid = [x_valid_seqs,x_valid_kingdoms]
-        y_valid = [train_annotations[valid_i],train_types[valid_i]]
 
+    valid_i = train_meta[train_meta.Partition==valid_partition].index
+    #valid
+    x_valid_seqs = train_seqs[valid_i]
+    x_valid_kingdoms = train_kingdoms[valid_i]
+    x_valid = [x_valid_seqs,x_valid_kingdoms]
+    y_valid = [train_annotations[valid_i],train_types[valid_i]]
+
+    return x_valid, y_valid
 
 ######################MAIN######################
 args = parser.parse_args()
 json_file = args.json_file[0]
-weights = args.weights[0]
+checkpointdir=args.checkpointdir[0]
 datadir = args.datadir[0]
 test_partition = args.test_partition[0]
 outdir = args.outdir[0]
 
 #Load and run model
-model = load_model(json_file, weights)
-pdb.set_trace()
-pred = model.predict(X_valid)
+for valid_partition in np.setdiff1d(np.arange(5),test_partition):
+    weights=glob.glob(checkpointdir+'*vp'+str(valid_partition))
+    model = load_model(json_file, weights)
+
+    #Get data
+    x_valid, y_valid = get_data(datadir, valid_partition)
+    pred = model.predict(X_valid)
+    pdb.set_trace()
