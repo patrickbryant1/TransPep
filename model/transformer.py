@@ -35,6 +35,8 @@ parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, 
 parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
 parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = 'Path to checpoint directory. Include /in end')
 parser.add_argument('--save_model', nargs=1, type= int, default=sys.stdin, help = 'If to save model or not: 1= True, 0 = False')
+parser.add_argument('--checkpoint', nargs=1, type= int, default=sys.stdin, help = 'If to checkpoint or not: 1= True, 0 = False')
+parser.add_argument('--num_epochs', nargs=1, type= int, default=sys.stdin, help = 'Num epochs (int)')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'Path to output directory. Include /in end')
 
 #from tensorflow.keras.backend import set_session
@@ -120,8 +122,11 @@ variable_params=pd.read_csv(args.variable_params[0])
 param_combo=args.param_combo[0]
 test_partition = args.test_partition[0]
 checkpointdir = args.checkpointdir[0]
+save_model = bool(args.save_model[0])
+checkpoint = bool(args.checkpoint[0])
+num_epochs = args.num_epochs[0]
 outdir = args.outdir[0]
-
+pdb.set_trace()
 train_CS = train_meta.CS.values
 train_kingdoms = train_meta.Kingdom.values
 train_meta['Type'] = train_meta['Type'].replace({'NO_SP':0,'SP':1,'TAT':2,'LIPO':3})
@@ -205,13 +210,16 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Summary of model
     #print(model.summary())
     #Checkpoint
-    checkpoint_path=checkpointdir+"weights-{epoch:02d}-.hdf5"
-    checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, monitor="val_loss",save_best_only=True, mode='min',overwrite=False)
-    #Callbacks
-    callbacks=[checkpoint]
+    if checkpoint == True:
+        checkpoint_path=checkpointdir+"weights_{epoch:02d}_"+str(valid_partition)+"_.hdf5"
+        checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, monitor="val_loss",save_best_only=True, mode='min',overwrite=False)
+        #Callbacks
+        callbacks=[checkpoint]
+    else:
+        callbacks = []
 
     history = model.fit(
-        x_train, y_train, batch_size=batch_size, epochs=300,
+        x_train, y_train, batch_size=batch_size, epochs=num_epochs,
         validation_data=(x_valid, y_valid),
         callbacks=callbacks
     )

@@ -95,6 +95,34 @@ def load_model(json_file, weights):
     print(model.summary())
     return model
 
+def get_data(datadir, test_partition, valid_partition):
+    '''Get the validation data
+    '''
+
+    train_meta = pd.read_csv(datadir+'train_meta.csv')
+    train_seqs = np.load(datadir+'seqs.npy',allow_pickle=True)
+    train_annotations = np.load(datadir+'annotations.npy',allow_pickle=True)
+
+    train_CS = train_meta.CS.values
+    train_kingdoms = train_meta.Kingdom.values
+    train_meta['Type'] = train_meta['Type'].replace({'NO_SP':0,'SP':1,'TAT':2,'LIPO':3})
+    train_types = train_meta.Type.values
+    #Onehot conversion
+    train_kingdoms = np.eye(4)[train_kingdoms]
+
+    #Get data
+    #Run through all by taking as input
+    test_i = train_meta[train_meta.Partition==test_partition].index
+    valid_data = []
+    for valid_partition in np.setdiff1d(np.arange(5),test_partition):
+        valid_i = train_meta[train_meta.Partition==valid_partition].index
+        #valid
+        x_valid_seqs = train_seqs[valid_i]
+        x_valid_kingdoms = train_kingdoms[valid_i]
+        x_valid = [x_valid_seqs,x_valid_kingdoms]
+        y_valid = [train_annotations[valid_i],train_types[valid_i]]
+
+
 ######################MAIN######################
 args = parser.parse_args()
 json_file = args.json_file[0]
