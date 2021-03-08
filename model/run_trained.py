@@ -280,3 +280,4 @@ eval_df['MCC']=all_MCCs
 eval_df['Precision']=all_precisions
 eval_df['Recall']=all_recalls
 eval_df.to_csv(outdir+'eval_df'+str(test_partition)+'.csv')
+print(eval_df)
