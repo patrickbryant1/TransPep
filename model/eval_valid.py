@@ -19,7 +19,7 @@ parser.add_argument('--resultsdir', nargs=1, type= str, default=sys.stdin, help 
 
 
 ###########FUNTIONS###########
-def average_validation(valid_df):
+def average_validation(valid_df,resultsdir):
     '''Average the MCC, Recall and Precision
     '''
     type_conversion = {'SP':'Sec/SPI','LIPO':'Sec/SPII','TAT':'Tat/SPI'}
@@ -50,11 +50,14 @@ def average_validation(valid_df):
     av_std_df['Type']=Types
     av_std_df['MCC average']=av_MCC
     av_std_df['MCC std'] = std_MCC
-    av_std_df['Precision average'] = av_prec
-    av_std_df['Precision std'] = std_prec
     av_std_df['Recall average'] = av_recall
     av_std_df['Recall std'] = std_recall
-    pdb.set_trace()
+    av_std_df['Precision average'] = av_prec
+    av_std_df['Precision std'] = std_prec
+    #Save
+    av_std_df.to_csv(resultsdir+'valid_results.csv')
+
+    return None
 
 ###########MAIN###########
 args = parser.parse_args()
@@ -71,4 +74,4 @@ for name in eval_dfs:
 valid_df = pd.concat(valid_df)
 
 #Get average scores
-average_validation(valid_df)
+average_validation(valid_df,resultsdir)
