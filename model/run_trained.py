@@ -147,6 +147,9 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
     Recalls = []
     Precisions = []
 
+    if kingdom == 'EUKARYA':
+        Types = {'SP':1} #Only one type in Eukarya
+    #Go through all types
     for type_name in Types:
         type_enc = Types[type_name]
         P = np.argwhere(true_types==type_enc)[:,0]
@@ -246,6 +249,11 @@ all_true_types = np.array(all_true_types)
 all_kingdoms = np.array(all_kingdoms)
 
 #Evaluate per kingdom
+evaluated_kingdoms = []
+all_types = []
+all_MCCs = []
+all_precisions = []
+all_recalls = []
 for key in kingdom_conversion:
     kingdom_indices = np.argwhere(all_kingdoms==kingdom_conversion[key])[:,0]
     #Get pred
@@ -256,7 +264,19 @@ for key in kingdom_conversion:
     kingdom_true_types = all_true_types[kingdom_indices]
     #Eval
     fetched_types, MCCs, Precisions, Recalls = eval_type_cs(kingdom_pred_annotations,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
-    pdb.set_trace()
 
+    #Save
+    evaluated_kingdoms.extend([key]*len(fetched_types))
+    all_types.extend(fetched_types)
+    all_MCCs.extend(MCCs)
+    all_precisions.extend(Precisions)
+    all_recalls.extend(Recalls)
 
-    pdb.set_trace()
+#Create df
+eval_df = pd.DataFrame()
+eval_df['Kingdom']=evaluated_kingdoms
+eval_df['Type']=all_types
+eval_df['MCC']=all_MCCs
+eval_df['Precision']=all_precisions
+eval_df['Recall']=all_recalls
+eval_df.to_csv(outdir+'eval_df'+str(test_partition)+'.csv')

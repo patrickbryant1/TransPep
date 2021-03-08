@@ -99,9 +99,6 @@ def eval_loss(resultsdir,variable_params):
 
 
 
-
-
-
 ###########MAIN###########
 args = parser.parse_args()
 resultsdir = args.resultsdir[0]
