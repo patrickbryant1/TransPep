@@ -200,12 +200,12 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
             CS_precision[d]=TP_CS[d]/(TP_CS[d]+FP_CS[d])
             CS_recall[d] = TP_CS[d]/P.shape[0]
 
-        pdb.set_trace()
+
         #Save
         fetched_types.append(type_name)
         MCCs.append(MCC)
-        Precisions.append(CS_precision)
-        Recalls.append(CS_recall)
+        Precisions.append([*CS_precision.values()])
+        Recalls.append([*CS_recall.values()])
 
 
     return fetched_types, MCCs, Precisions, Recalls
@@ -283,7 +283,7 @@ eval_df = pd.DataFrame()
 eval_df['Kingdom']=evaluated_kingdoms
 eval_df['Type']=all_types
 eval_df['MCC']=all_MCCs
-eval_df['Recall']=all_recalls
-eval_df['Precision']=all_precisions
-eval_df.to_csv(outdir+'test_eval_df'+str(test_partition)+'.csv')
+eval_df['Recall [0,1,2,3]']=all_recalls
+eval_df['Precision [0,1,2,3]']=all_precisions
+eval_df.to_csv(outdir+'test_eval_df.csv')
 print(eval_df)
