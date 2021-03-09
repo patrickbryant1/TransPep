@@ -281,7 +281,7 @@ def eval_preds(all_pred_annotations, all_pred_types,all_true_annotations,all_tru
     eval_df['Recall [0,1,2,3]']=all_recalls
     eval_df['Precision [0,1,2,3]']=all_precisions
     #Rename
-    eval_df.rename(columns = {'SP':'Sec/SPI','LIPO':'Sec/SPII','TAT':'Tat/SPI'})
+    eval_df = eval_df.replace({'Type': {'SP':'Sec/SPI','LIPO':'Sec/SPII','TAT':'Tat/SPI'}})
     eval_df.to_csv(outdir+'nested_'+mode+'_eval_df.csv')
     print(eval_df)
 
