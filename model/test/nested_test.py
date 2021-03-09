@@ -3,6 +3,7 @@
 
 import argparse
 import sys
+sys.path.insert(0, "../")
 import numpy as np
 import pandas as pd
 import time
@@ -25,10 +26,9 @@ import pdb
 
 #Arguments for argparse module:
 parser = argparse.ArgumentParser(description = '''A program that reads a keras model from a .json and a .h5 file''')
-parser.add_argument('--json_file', nargs=1, type= str,default=sys.stdin, help = 'path to .json file with keras model to be opened')
 parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = '''path checkpoints with .h5 files containing weights for net.''')
 parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = 'Path to data directory.')
-parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test on.')
+parser.add_argument('--bench_set', nargs=1, type= str, default=sys.stdin, help = 'Path to benchmark dataset.')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = '''path to output dir.''')
 
 
@@ -93,8 +93,17 @@ def load_model(json_file, weights):
     #print(model.summary())
     return model
 
-def get_data(datadir, valid_partition):
-    '''Get the validation data
+
+def process_bench_set():
+    bench_meta, bench_seqs, bench_annotations = parse_and_format(args.train_data[0])
+    #Save
+    train_meta.to_csv(datadir+'train_meta.csv')
+    np.save(datadir+'seqs.npy',train_seqs)
+    np.save(datadir+'annotations.npy',train_annotations)
+
+
+def get_data(datadir, test_partition):
+    '''Get the test data
     '''
 
     train_meta = pd.read_csv(datadir+'train_meta.csv')
@@ -111,16 +120,14 @@ def get_data(datadir, valid_partition):
     #Get data
     #Run through all by taking as input
     test_i = train_meta[train_meta.Partition==test_partition].index
-    valid_data = []
 
-    valid_i = train_meta[train_meta.Partition==valid_partition].index
     #valid
-    x_valid_seqs = train_seqs[valid_i]
-    x_valid_kingdoms = train_kingdoms[valid_i]
-    x_valid = [x_valid_seqs,x_valid_kingdoms]
-    y_valid = [train_annotations[valid_i],train_types[valid_i]]
+    x_test_seqs = train_seqs[test_i]
+    x_test_kingdoms = train_kingdoms[test_i]
+    x_test = [x_test_seqs,x_test_kingdoms]
+    y_test = [train_annotations[test_i],train_types[test_i]]
 
-    return x_valid, y_valid
+    return x_test, y_test
 
 def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom):
     '''Evaluate the capacity to predict the clevage site
@@ -181,35 +188,41 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
             P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
 
         #Get the TP and FP CS
-        TP_CS = 0
-        FP_CS = 0
+        TP_CS = {0:0,1:0,2:0,3:0} #exact CS, +/-1 error, +/-2 error, +/-3 error
+        FP_CS = {0:0,1:0,2:0,3:0}
         for i in range(len(P_CS)):
             CS_diff = P_CS[i]-P_CS_pred[i]
-            if CS_diff<3 and CS_diff>-3:
-                TP_CS+=1
-            else:
-                FP_CS+=1
+            for d in range(0,4):
+                if CS_diff<=d and CS_diff>=-d:
+                    TP_CS[d]+=1
+                else:
+                    FP_CS[d]+=1
 
         #Add the FPs from the wrong detection
-        FP_CS += FP
+        for d in range(0,4):
+            FP_CS[d] += FP
+
         #Calculate CS precision and recall
-        CS_precision = TP_CS/(TP_CS+FP_CS)
-        CS_recall = TP_CS/P.shape[0]
+        CS_precision = {}
+        CS_recall = {}
+        for d in range(0,4):
+            CS_precision[d]=TP_CS[d]/(TP_CS[d]+FP_CS[d])
+            CS_recall[d] = TP_CS[d]/P.shape[0]
+
+
         #Save
         fetched_types.append(type_name)
         MCCs.append(MCC)
-        Precisions.append(CS_precision)
-        Recalls.append(CS_recall)
+        Precisions.append([*CS_precision.values()])
+        Recalls.append([*CS_recall.values()])
 
 
     return fetched_types, MCCs, Precisions, Recalls
 
 ######################MAIN######################
 args = parser.parse_args()
-json_file = args.json_file[0]
 checkpointdir=args.checkpointdir[0]
 datadir = args.datadir[0]
-test_partition = args.test_partition[0]
 outdir = args.outdir[0]
 
 kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1}
@@ -220,26 +233,43 @@ all_true_annotations = []
 all_true_types = []
 all_kingdoms = []
 
-#Get data for each valid partition
-for valid_partition in np.setdiff1d(np.arange(5),test_partition):
-    #weights
-    weights=glob.glob(checkpointdir+'vp'+str(valid_partition)+'/*.hdf5')
-    #model
-    model = load_model(json_file, weights[0])
-    #Get data
-    x_valid, y_valid = get_data(datadir, valid_partition)
-    pred = model.predict(x_valid)
-    pred_annotations = np.argmax(pred[0][:,0,:,:],axis=2)
-    pred_types = np.argmax(pred[1],axis=1)
-    true_annotations = y_valid[0]
-    true_types = y_valid[1]
-    kingdoms = np.argmax(x_valid[1],axis=1)
+#Get data for each test partition
+for test_partition in np.arange(5):
+    #json file with model description
+    json_file = checkpointdir+'TP'+str(test_partition)+'/model.json'
+    pred_annotations = []
+    pred_types = []
+    for valid_partition in  np.setdiff1d(np.arange(5),test_partition):
+        #weights
+        weights=glob.glob(checkpointdir+'TP'+str(test_partition)+'/vp'+str(valid_partition)+'/*.hdf5')
+        #model
+        model = load_model(json_file, weights[0])
+        #Get data
+        x_test, y_test = get_data(datadir, test_partition)
+        pred = model.predict(x_test)
+        #Save
+        pred_annotations.append(pred[0][:,0,:,:])
+        pred_types.append(pred[1])
+
+    #Join all nested preds
+    #Annotations
+    pred_annotations = np.array(pred_annotations)
+    pred_annotations = np.average(pred_annotations,axis=0)
+    pred_annotations = np.argmax(pred_annotations,axis=2)
+    #Types
+    pred_types = np.array(pred_types)
+    pred_types = np.average(pred_types,axis=0)
+    pred_types = np.argmax(pred_types,axis=1)
+    true_annotations = y_test[0]
+    true_types = y_test[1]
+    kingdoms = np.argmax(x_test[1],axis=1)
     #Save
     all_pred_types.extend([*pred_types])
     all_pred_annotations.extend([*pred_annotations])
     all_true_types.extend([*true_types])
     all_true_annotations.extend([*true_annotations])
     all_kingdoms.extend([*kingdoms])
+
 
 #Array conversions
 all_pred_annotations = np.array(all_pred_annotations)
@@ -262,9 +292,9 @@ for key in kingdom_conversion:
     #Get true
     kingdom_true_annotations = all_true_annotations[kingdom_indices]
     kingdom_true_types = all_true_types[kingdom_indices]
+
     #Eval
     fetched_types, MCCs, Precisions, Recalls = eval_type_cs(kingdom_pred_annotations,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
-
     #Save
     evaluated_kingdoms.extend([key]*len(fetched_types))
     all_types.extend(fetched_types)
@@ -277,7 +307,7 @@ eval_df = pd.DataFrame()
 eval_df['Kingdom']=evaluated_kingdoms
 eval_df['Type']=all_types
 eval_df['MCC']=all_MCCs
-eval_df['Precision']=all_precisions
-eval_df['Recall']=all_recalls
-eval_df.to_csv(outdir+'eval_df'+str(test_partition)+'.csv')
+eval_df['Recall [0,1,2,3]']=all_recalls
+eval_df['Precision [0,1,2,3]']=all_precisions
+eval_df.to_csv(outdir+'median_nested_test_eval_df.csv')
 print(eval_df)

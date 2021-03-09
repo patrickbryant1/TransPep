@@ -92,7 +92,7 @@ def load_model(json_file, weights):
     return model
 
 def get_data(datadir, test_partition):
-    '''Get the validation data
+    '''Get the test data
     '''
 
     train_meta = pd.read_csv(datadir+'train_meta.csv')
@@ -109,9 +109,7 @@ def get_data(datadir, test_partition):
     #Get data
     #Run through all by taking as input
     test_i = train_meta[train_meta.Partition==test_partition].index
-    test_data = []
 
-    test_i = train_meta[train_meta.Partition==test_partition].index
     #valid
     x_test_seqs = train_seqs[test_i]
     x_test_kingdoms = train_kingdoms[test_i]
@@ -224,7 +222,7 @@ all_true_annotations = []
 all_true_types = []
 all_kingdoms = []
 
-#Get data for each valid partition
+#Get data for each test partition
 for test_partition in np.arange(5):
     #json file with model description
     json_file = checkpointdir+'TP'+str(test_partition)+'/model.json'
