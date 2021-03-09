@@ -244,7 +244,7 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
     return fetched_types, MCCs, Precisions, Recalls
 
 
-def eval_preds(all_pred_annotations, all_pred_types,all_true_annotations,all_true_types,all_kingdoms,mode):
+def eval_preds(all_pred_annotations, all_pred_types,all_true_annotations,all_true_types,all_kingdoms,mode, outdir):
     '''Evaluate the predictions per kingdom and signal peptide
     '''
     kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1}
@@ -280,7 +280,9 @@ def eval_preds(all_pred_annotations, all_pred_types,all_true_annotations,all_tru
     eval_df['MCC']=all_MCCs
     eval_df['Recall [0,1,2,3]']=all_recalls
     eval_df['Precision [0,1,2,3]']=all_precisions
-    eval_df.to_csv(outdir+'nested'+mode+'_eval_df.csv')
+    #Rename
+    eval_df.rename(columns = {'SP':'Sec/SPI','LIPO':'Sec/SPII','TAT':'Tat/SPI'})
+    eval_df.to_csv(outdir+'nested_'+mode+'_eval_df.csv')
     print(eval_df)
 
 
@@ -388,5 +390,5 @@ bench_all_true_types = np.array(bench_all_true_types)
 bench_all_kingdoms = np.array(bench_all_kingdoms)
 
 #Eval
-eval_preds(test_all_pred_annotations, test_all_pred_types,test_all_true_annotations,test_all_true_types,test_all_kingdoms,'test')
-eval_preds(bench_all_pred_annotations, bench_all_pred_types,bench_all_true_annotations,bench_all_true_types,bench_all_kingdoms,'bench')
+eval_preds(test_all_pred_annotations, test_all_pred_types,test_all_true_annotations,test_all_true_types,test_all_kingdoms,'test', outdir)
+eval_preds(bench_all_pred_annotations, bench_all_pred_types,bench_all_true_annotations,bench_all_true_types,bench_all_kingdoms,'bench', outdir)
