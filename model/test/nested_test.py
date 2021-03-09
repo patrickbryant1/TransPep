@@ -243,6 +243,47 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
 
     return fetched_types, MCCs, Precisions, Recalls
 
+
+def eval_preds(all_pred_annotations, all_pred_types,all_true_annotations,all_true_types,all_kingdoms,mode):
+    '''Evaluate the predictions per kingdom and signal peptide
+    '''
+    kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1}
+
+    #Evaluate per kingdom
+    evaluated_kingdoms = []
+    all_types = []
+    all_MCCs = []
+    all_precisions = []
+    all_recalls = []
+    for key in kingdom_conversion:
+        kingdom_indices = np.argwhere(all_kingdoms==kingdom_conversion[key])[:,0]
+        #Get pred
+        kingdom_pred_annotations = all_pred_annotations[kingdom_indices]
+        kingdom_pred_types = all_pred_types[kingdom_indices]
+        #Get true
+        kingdom_true_annotations = all_true_annotations[kingdom_indices]
+        kingdom_true_types = all_true_types[kingdom_indices]
+
+        #Eval
+        fetched_types, MCCs, Precisions, Recalls = eval_type_cs(kingdom_pred_annotations,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
+        #Save
+        evaluated_kingdoms.extend([key]*len(fetched_types))
+        all_types.extend(fetched_types)
+        all_MCCs.extend(MCCs)
+        all_precisions.extend(Precisions)
+        all_recalls.extend(Recalls)
+
+    #Create df
+    eval_df = pd.DataFrame()
+    eval_df['Kingdom']=evaluated_kingdoms
+    eval_df['Type']=all_types
+    eval_df['MCC']=all_MCCs
+    eval_df['Recall [0,1,2,3]']=all_recalls
+    eval_df['Precision [0,1,2,3]']=all_precisions
+    eval_df.to_csv(outdir+'nested'+mode+'_eval_df.csv')
+    print(eval_df)
+
+
 ######################MAIN######################
 args = parser.parse_args()
 checkpointdir=args.checkpointdir[0]
@@ -253,7 +294,6 @@ outdir = args.outdir[0]
 #Preprocess the bench set
 process_bench_set(bench_set,datadir)
 
-kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1}
 #Load and run model
 #test
 test_all_pred_annotations = []
@@ -285,7 +325,7 @@ for test_partition in np.arange(5):
         #Get data
         x_test, y_test, x_bench, y_bench = get_data(datadir, test_partition)
         test_pred = model.predict(x_test)
-        test_bench = model.predict(x_bench)
+        bench_pred = model.predict(x_bench)
         #Save
         #test
         test_pred_annotations.append(test_pred[0][:,0,:,:])
@@ -346,37 +386,7 @@ bench_all_pred_types = np.array(bench_all_pred_types)
 bench_all_true_annotations = np.array(bench_all_true_annotations)
 bench_all_true_types = np.array(bench_all_true_types)
 bench_all_kingdoms = np.array(bench_all_kingdoms)
-pdb.set_trace()
-#Evaluate per kingdom
-evaluated_kingdoms = []
-all_types = []
-all_MCCs = []
-all_precisions = []
-all_recalls = []
-for key in kingdom_conversion:
-    kingdom_indices = np.argwhere(all_kingdoms==kingdom_conversion[key])[:,0]
-    #Get pred
-    kingdom_pred_annotations = all_pred_annotations[kingdom_indices]
-    kingdom_pred_types = all_pred_types[kingdom_indices]
-    #Get true
-    kingdom_true_annotations = all_true_annotations[kingdom_indices]
-    kingdom_true_types = all_true_types[kingdom_indices]
 
-    #Eval
-    fetched_types, MCCs, Precisions, Recalls = eval_type_cs(kingdom_pred_annotations,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
-    #Save
-    evaluated_kingdoms.extend([key]*len(fetched_types))
-    all_types.extend(fetched_types)
-    all_MCCs.extend(MCCs)
-    all_precisions.extend(Precisions)
-    all_recalls.extend(Recalls)
-
-#Create df
-eval_df = pd.DataFrame()
-eval_df['Kingdom']=evaluated_kingdoms
-eval_df['Type']=all_types
-eval_df['MCC']=all_MCCs
-eval_df['Recall [0,1,2,3]']=all_recalls
-eval_df['Precision [0,1,2,3]']=all_precisions
-eval_df.to_csv(outdir+'median_nested_test_eval_df.csv')
-print(eval_df)
+#Eval
+eval_preds(test_all_pred_annotations, test_all_pred_types,test_all_true_annotations,test_all_true_types,test_all_kingdoms,'test')
+eval_preds(bench_all_pred_annotations, bench_all_pred_types,bench_all_true_annotations,bench_all_true_types,bench_all_kingdoms,'bench')
