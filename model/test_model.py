@@ -25,10 +25,8 @@ import pdb
 
 #Arguments for argparse module:
 parser = argparse.ArgumentParser(description = '''A program that reads a keras model from a .json and a .h5 file''')
-parser.add_argument('--json_file', nargs=1, type= str,default=sys.stdin, help = 'path to .json file with keras model to be opened')
 parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = '''path checkpoints with .h5 files containing weights for net.''')
 parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = 'Path to data directory.')
-parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test on.')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = '''path to output dir.''')
 
 
@@ -181,20 +179,28 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
             P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
 
         #Get the TP and FP CS
-        TP_CS = 0
-        FP_CS = 0
+        TP_CS = {0:0,1:0,2:0,3:0} #exact CS, +/-1 error, +/-2 error, +/-3 error
+        FP_CS = {0:0,1:0,2:0,3:0}
         for i in range(len(P_CS)):
             CS_diff = P_CS[i]-P_CS_pred[i]
-            if CS_diff<3 and CS_diff>-3:
-                TP_CS+=1
-            else:
-                FP_CS+=1
+            for d in range(0,4):
+                if CS_diff<=d and CS_diff>=-d:
+                    TP_CS[d]+=1
+                else:
+                    FP_CS[d]+=1
 
         #Add the FPs from the wrong detection
-        FP_CS += FP
+        for d in range(0,4):
+            FP_CS[d] += FP
+
         #Calculate CS precision and recall
-        CS_precision = TP_CS/(TP_CS+FP_CS)
-        CS_recall = TP_CS/P.shape[0]
+        CS_precision = {}
+        CS_recall = {}
+        for d in range(0,4):
+            CS_precision[d]=TP_CS[d]/(TP_CS[d]+FP_CS[d])
+            CS_recall[d] = TP_CS[d]/P.shape[0]
+
+        pdb.set_trace()
         #Save
         fetched_types.append(type_name)
         MCCs.append(MCC)
@@ -206,10 +212,8 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
 
 ######################MAIN######################
 args = parser.parse_args()
-json_file = args.json_file[0]
 checkpointdir=args.checkpointdir[0]
 datadir = args.datadir[0]
-test_partition = args.test_partition[0]
 outdir = args.outdir[0]
 
 kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1}
@@ -222,10 +226,12 @@ all_kingdoms = []
 
 #Get data for each valid partition
 for test_partition in np.arange(5):
+    #json file with model description
+    json_file = checkpointdir+'TP'+str(test_partition)+'/model.json'
     #weights
-    weights=glob.glob(checkpointdir+str(test_partition)+'/*.hdf5')
+    weights=checkpointdir+'TP'+str(test_partition)+'/weights_50.hdf5'
     #model
-    model = load_model(json_file, weights[0])
+    model = load_model(json_file, weights)
     #Get data
     x_test, y_test = get_data(datadir, test_partition)
     pred = model.predict(x_test)
@@ -263,23 +269,21 @@ for key in kingdom_conversion:
     kingdom_true_annotations = all_true_annotations[kingdom_indices]
     kingdom_true_types = all_true_types[kingdom_indices]
 
-
-#Eval
-fetched_types, MCCs, Precisions, Recalls = eval_type_cs(kingdom_pred_annotations,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
-
-#Save
-evaluated_kingdoms.extend([key]*len(fetched_types))
-all_types.extend(fetched_types)
-all_MCCs.extend(MCCs)
-all_precisions.extend(Precisions)
-all_recalls.extend(Recalls)
+    #Eval
+    fetched_types, MCCs, Precisions, Recalls = eval_type_cs(kingdom_pred_annotations,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
+    #Save
+    evaluated_kingdoms.extend([key]*len(fetched_types))
+    all_types.extend(fetched_types)
+    all_MCCs.extend(MCCs)
+    all_precisions.extend(Precisions)
+    all_recalls.extend(Recalls)
 
 #Create df
 eval_df = pd.DataFrame()
 eval_df['Kingdom']=evaluated_kingdoms
 eval_df['Type']=all_types
 eval_df['MCC']=all_MCCs
-eval_df['Precision']=all_precisions
 eval_df['Recall']=all_recalls
-eval_df.to_csv(outdir+'eval_df'+str(test_partition)+'.csv')
+eval_df['Precision']=all_precisions
+eval_df.to_csv(outdir+'test_eval_df'+str(test_partition)+'.csv')
 print(eval_df)

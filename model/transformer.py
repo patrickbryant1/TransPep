@@ -198,7 +198,6 @@ if train_test == True:
     model_checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, save_best_only=False,overwrite=True)
     #Callbacks
     callbacks=[model_checkpoint]
-    pdb.set_trace()
 
     history = model.fit(
         x_train, y_train, batch_size=batch_size, epochs=num_epochs,
