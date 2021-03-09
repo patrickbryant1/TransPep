@@ -210,7 +210,7 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
         P_annotations_pred = true_annotations[np.intersect1d(P,pred_P)]
         for i in range(len(P_annotations_pred)):
             P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
-
+            pdb.set_trace()
         #Get the TP and FP CS
         TP_CS = {0:0,1:0,2:0,3:0} #exact CS, +/-1 error, +/-2 error, +/-3 error
         FP_CS = {0:0,1:0,2:0,3:0}
