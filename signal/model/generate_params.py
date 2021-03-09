@@ -7,7 +7,7 @@ import pandas as pd
 import pdb
 
 embed_dim = [16,32,64]
-num_heads = [1,2,3]
+num_heads = [1,2]
 ff_dim = [16,32,64]
 num_layers = [1,2,3]
 batch_sizes = [16,32,64]
