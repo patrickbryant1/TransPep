@@ -399,15 +399,18 @@ for test_partition in np.arange(5):
     bench_token_pos_emb = np.average(bench_token_pos_emb,axis=0)
     #Save
     bench_all_pred_types.extend([*bench_pred_types])
+    np.save(checkpointdir+'TP'+str(test_partition)+'/bench_pred_types.npy',bench_pred_types)
     bench_all_pred_annotations.extend([*bench_pred_annotations])
     bench_all_true_types.extend([*bench_true_types])
+    np.save(checkpointdir+'TP'+str(test_partition)+'/bench_true_types.npy',bench_true_types)
     bench_all_true_annotations.extend([*bench_true_annotations])
     bench_all_kingdoms.extend([*bench_kingdoms])
+
     #TokenAndPositionEmbedding
-    np.save(checkpointdir+'TP'+str(test_partition)+'/token_position_emb.npy',bench_token_pos_emb)
+    np.save(checkpointdir+'TP'+str(test_partition)+'/bench_token_position_emb.npy',bench_token_pos_emb)
     #Save the input sequences
     np.save(checkpointdir+'TP'+str(test_partition)+'/bench_seqs',x_bench[0])
-    pdb.set_trace()
+
 #Array conversions
 #test
 test_all_pred_annotations = np.array(test_all_pred_annotations)
@@ -421,9 +424,8 @@ bench_all_pred_types = np.array(bench_all_pred_types)
 bench_all_true_annotations = np.array(bench_all_true_annotations)
 bench_all_true_types = np.array(bench_all_true_types)
 bench_all_kingdoms = np.array(bench_all_kingdoms)
-
-#Save the bench predictions
 pdb.set_trace()
+
 #Eval
 eval_preds(test_all_pred_annotations, test_all_pred_types,test_all_true_annotations,test_all_true_types,test_all_kingdoms,'test', outdir)
 eval_preds(bench_all_pred_annotations, bench_all_pred_types,bench_all_true_annotations,bench_all_true_types,bench_all_kingdoms,'bench', outdir)
