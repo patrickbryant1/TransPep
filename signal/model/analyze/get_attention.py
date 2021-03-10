@@ -25,7 +25,7 @@ import glob
 import pdb
 
 #Arguments for argparse module:
-parser = argparse.ArgumentParser(description = '''A program that reads a keras model from a .json and a .h5 file''')
+parser = argparse.ArgumentParser(description = '''Obtain attention activations.''')
 parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = '''path checkpoints with .h5 files containing weights for net.''')
 parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = 'Path to data directory.')
 parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test/bench on.')

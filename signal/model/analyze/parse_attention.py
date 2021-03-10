@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import pdb
 
 #Arguments for argparse module:
-parser = argparse.ArgumentParser(description = '''A program that reads a keras model from a .json and a .h5 file''')
+parser = argparse.ArgumentParser(description = '''Parse attention.''')
 parser.add_argument('--attention_dir', nargs=1, type= str, default=sys.stdin, help = '''path to attention.''')
 parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test/bench on.')
 
