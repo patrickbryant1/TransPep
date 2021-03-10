@@ -8,7 +8,7 @@ import pandas as pd
 import time
 from collections import Counter
 
-
+import matplotlib.pytplot as plt
 import pdb
 
 #Arguments for argparse module:
@@ -23,27 +23,68 @@ parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, h
 def parse_attention(attention_file):
     activations1 = []
     activations2 = []
+    ln=0
+    new_ar = []
+    fetch=False
     with open(attention_file, 'r') as file:
         for line in file:
-            if line[0:2]=='[[': #Befinning of array
-                line = line.strip()
-                line = line.strip('[')
-                line = line.strip(']')
-                line = line.split()
-                activations1.append(np.array(line,dtype='float'))
-                print('1')
-                pdb.set_trace()
+            ln+=1
+            print(ln)
+            line = line.strip()
+            if '[[[' in line:
+                fetch = True
 
-            if line[-3:-1]==']]': #End of array
-                line = line.strip()
-                line = line.strip('[')
-                line = line.strip(']]')
-                line = line.split()
-                activations2.append(np.array(line,dtype='float'))
-                print('2')
-                pdb.set_trace()
+            if fetch==False:
+                continue
 
-    activations = np.array(activations)
+            ##Get end
+            if ']]]]' in line:
+                line = line.strip('[')
+                line = line.strip(']]]]')
+                line = line.split()
+                new_ar.append(np.array(line,dtype='float'))
+                activations2.append(np.array(new_ar))
+                new_ar = [] #reset
+                continue
+
+
+            line = line.strip('[')
+            line = line.strip(']')
+
+
+
+            if ']]' in line: #Two ars in line
+                line = line.split()
+                split_ar = []
+                for item in line:
+                    if ']]]' in item:
+                        item = item[:-3]
+                        split_ar.append(item)
+                        new_ar.append(np.array(split_ar,dtype='float'))
+                        continue
+
+                    if '[[[[' in item:
+                        split_ar = []
+                        item = item[4:]
+
+                    split_ar.append(item)
+
+                activations1.append(np.array(new_ar))
+                #Create a new array
+                new_ar = []
+                new_ar.append(np.array(split_ar,dtype='float'))
+
+            else:
+                line = line.split()
+                new_ar.append(np.array(line,dtype='float'))
+
+
+
+
+
+
+    activations1 = np.array(activations1)
+    activations2 = np.array(activations2)
     pdb.set_trace()
 
 

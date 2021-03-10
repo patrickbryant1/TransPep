@@ -146,4 +146,5 @@ weights=glob.glob(checkpointdir+'TP'+str(test_partition)+'/vp'+str(valid_partiti
 #model
 model = load_model(json_file, weights[0])
 #Predict
-bench_pred = model.predict(x_bench)
+for i in range(len(x_bench[0])):
+    bench_pred = model.predict([np.array([x_bench[0][i]]),np.array([x_bench[1][i]])])
