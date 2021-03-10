@@ -102,9 +102,10 @@ def get_activations(seq_inp):
     token_position_emb = get_token_position_emb(seq_inp)[0]
 
     #attention
-    get_attention = keras.backend.function([model.layers[0].input],[model.layers[1].output])
-    token_position_emb = get_token_position_emb(seq_inp)[0]
+    #get_attention = keras.backend.function([model.layers[0].input],[model.layers[1].output])
+    #token_position_emb = get_token_position_emb(seq_inp)[0]
 
+    return token_position_emb
 
 def process_bench_set(bench_set,datadir):
     bench_meta, bench_seqs, bench_annotations = parse_and_format(bench_set)
@@ -321,6 +322,8 @@ bench_all_pred_types = []
 bench_all_true_annotations = []
 bench_all_true_types = []
 bench_all_kingdoms = []
+bench_all_seqs = []
+bench_all_token_pos_emb = []
 #Get data for each test partition
 for test_partition in np.arange(5):
     #json file with model description
@@ -331,16 +334,24 @@ for test_partition in np.arange(5):
     #bench
     bench_pred_annotations = []
     bench_pred_types = []
+    bench_token_pos_emb = []
+
+
+    #Get data
+    x_test, y_test, x_bench, y_bench = get_data(datadir, test_partition)
+    bench_all_seqs.extend([*x_bench[0]])
     for valid_partition in  np.setdiff1d(np.arange(5),test_partition):
         #weights
         weights=glob.glob(checkpointdir+'TP'+str(test_partition)+'/vp'+str(valid_partition)+'/*.hdf5')
         #model
         model = load_model(json_file, weights[0])
 
-        #Get data
-        x_test, y_test, x_bench, y_bench = get_data(datadir, test_partition)
+        #Predict
         test_pred = model.predict(x_test)
         bench_pred = model.predict(x_bench)
+
+        #Get token_position_emb
+        bench_token_pos_emb.append(get_activations(x_bench[0]))
 
         #Save
         #test
@@ -349,6 +360,7 @@ for test_partition in np.arange(5):
         #bench
         bench_pred_annotations.append(bench_pred[0][:,0,:,:])
         bench_pred_types.append(bench_pred[1])
+
 
     #Join all nested preds
     #TEST
@@ -382,12 +394,16 @@ for test_partition in np.arange(5):
     bench_true_annotations = y_bench[0]
     bench_true_types = y_bench[1]
     bench_kingdoms = np.argmax(x_bench[1],axis=1)
+    #TokenAndPositionEmbedding
+    bench_token_pos_emb = np.array(bench_token_pos_emb)
+    bench_token_pos_emb = np.average(bench_token_pos_emb,axis=0)
     #Save
     bench_all_pred_types.extend([*bench_pred_types])
     bench_all_pred_annotations.extend([*bench_pred_annotations])
     bench_all_true_types.extend([*bench_true_types])
     bench_all_true_annotations.extend([*bench_true_annotations])
     bench_all_kingdoms.extend([*bench_kingdoms])
+    bench_all_token_pos_emb.extend([*bench_token_pos_emb])
 
 #Array conversions
 #test
@@ -402,7 +418,10 @@ bench_all_pred_types = np.array(bench_all_pred_types)
 bench_all_true_annotations = np.array(bench_all_true_annotations)
 bench_all_true_types = np.array(bench_all_true_types)
 bench_all_kingdoms = np.array(bench_all_kingdoms)
-
+bench_all_token_pos_emb = np.array(bench_all_token_pos_emb)
+bench_all_seqs = np.array(bench_all_seqs)
+#Save the bench predictions
+pdb.set_trace()
 #Eval
 eval_preds(test_all_pred_annotations, test_all_pred_types,test_all_true_annotations,test_all_true_types,test_all_kingdoms,'test', outdir)
 eval_preds(bench_all_pred_annotations, bench_all_pred_types,bench_all_true_annotations,bench_all_true_types,bench_all_kingdoms,'bench', outdir)
