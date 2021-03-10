@@ -8,7 +8,7 @@ import pandas as pd
 import time
 from collections import Counter
 
-import matplotlib.pytplot as plt
+import matplotlib.pyplot as plt
 import pdb
 
 #Arguments for argparse module:
@@ -85,7 +85,8 @@ def parse_attention(attention_file):
 
     activations1 = np.array(activations1)
     activations2 = np.array(activations2)
-    pdb.set_trace()
+
+    return activations1, activations2
 
 
 ######################MAIN######################
@@ -94,5 +95,9 @@ attention_dir = args.attention_dir[0]
 test_partition = args.test_partition[0]
 
 #Parse
-for valid_partition in  np.setdiff1d(np.arange(5),test_partition):
-    parse_attention(attention_dir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+'/activations.txt')
+for valid_partition in np.setdiff1d(np.arange(5),test_partition):
+    activations1, activations2 = parse_attention(attention_dir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+'/activations.txt')
+    print(valid_partition)
+    #Save
+    np.save(attention_dir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+'/activations1.npy',activations1)
+    np.save(attention_dir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+'/activations2.npy',activations2)
