@@ -9,6 +9,7 @@ import time
 from collections import Counter
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import pdb
 
 #Arguments for argparse module:
@@ -21,7 +22,7 @@ parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, h
 
 
 #FUNCTIONS
-def analyze_type_attention(activations, bench_pred_types, bench_true_types):
+def analyze_type_attention(activations, bench_pred_types, bench_true_types, bench_seqs, test_partition, attention_dir):
     '''Analyze the activations per type
     {'NO_SP':0,'SP':1,'TAT':2,'LIPO':3}
     SP: Sec substrates cleaved by SPase I (Sec/SPI),
@@ -29,28 +30,48 @@ def analyze_type_attention(activations, bench_pred_types, bench_true_types):
     TAT: Tat substrates cleaved by SPase I (Tat/SPI).
     '''
 
-    types = {'NO_SP':0,'Sec/SPI':1,'Tat/SPI':2,'Sec/SPII':3}
+    types = {'No SP':0,'Sec/SPI':1,'Tat/SPI':2,'Sec/SPII':3}
+    amino_acids = np.arange(21)
 
     all_type_activations = []
+    all_type_seqs = []
     for type in types:
         type_P = np.argwhere(bench_true_types==types[type])
         type_pred_P = np.argwhere(bench_pred_types==types[type])
         type_TP = np.intersect1d(type_P,type_pred_P)
         #type_FP =
         type_activations = activations[type_TP]
-        av_type_activation = np.average(type_activations,axis=0)
-        all_type_activations.append(av_type_activation)
+        type_seqs = bench_seqs[type_TP]
 
-    all_type_activations = np.array(all_type_activations)
+        #Go through all positions
+        for i in range(70):
+            col = type_seqs[:,i]
+            #Go through all amino acids
+            for aa in np.unique(col):
+                col_pos = np.argwhere(col==aa)
+                aa_activations = type_activations[col_pos,i]
+                pdb.set_trace()
+
+
+
+    #Array conversion
+    #all_type_activations = np.array(all_type_activations)
+    #all_type_seqs = np.array(all_type_seqs)
+    pdb.set_trace()
     fig,ax = plt.subplots(figsize=(18/2.54,9/2.54))
-    plt.imshow(all_type_activations)
+    im = plt.imshow(all_type_activations)
     plt.yticks(ticks=[0,1,2,3],labels=[*types.keys()])
-    plt.colorbar(orientation='horizontal')
+    plt.xlabel('Sequence position')
     plt.tight_layout()
-    plt.show()
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+    plt.tight_layout()
+    plt.savefig(attention_dir+'type_attention_'+str(test_partition)+'.png',format='png',dpi=300)
     pdb.set_trace()
 
 ######################MAIN######################
+plt.rcParams.update({'font.size': 7})
 args = parser.parse_args()
 attention_dir = args.attention_dir[0]
 checkpointdir=args.checkpointdir[0]
@@ -77,6 +98,8 @@ activations = (activations1+activations2)/2
 #Get predicted types and true types
 bench_pred_types = np.load(checkpointdir+'bench_pred_types.npy',allow_pickle=True)
 bench_true_types = np.load(checkpointdir+'bench_true_types.npy',allow_pickle=True)
+#Get seqs
+bench_seqs = np.load(checkpointdir+'bench_seqs.npy',allow_pickle=True)
 #Analyze the activations for different types
-analyze_type_attention(activations, bench_pred_types, bench_true_types)
+analyze_type_attention(activations, bench_pred_types, bench_true_types,bench_seqs,test_partition, attention_dir)
 pdb.set_trace()
