@@ -21,9 +21,14 @@ parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, h
 
 #FUNCTIONS
 def parse_attention(attention_file):
+    activations = []
     with open(attention_file, 'r') as file:
         for line in file:
-            if line[0:4]=='[[[[': #Befinning of array
+            if line[0:2]=='[[': #Befinning of array
+                line = line.strip('[')
+                line = line.strip(']\n')
+                line = line.split()
+                activations.append(np.array(line,dtype='float'))
                 pdb.set_trace()
 
 
