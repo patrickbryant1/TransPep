@@ -21,15 +21,30 @@ parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, h
 
 #FUNCTIONS
 def parse_attention(attention_file):
-    activations = []
+    activations1 = []
+    activations2 = []
     with open(attention_file, 'r') as file:
         for line in file:
             if line[0:2]=='[[': #Befinning of array
+                line = line.strip()
                 line = line.strip('[')
-                line = line.strip(']\n')
+                line = line.strip(']')
                 line = line.split()
-                activations.append(np.array(line,dtype='float'))
+                activations1.append(np.array(line,dtype='float'))
+                print('1')
                 pdb.set_trace()
+
+            if line[-3:-1]==']]': #End of array
+                line = line.strip()
+                line = line.strip('[')
+                line = line.strip(']]')
+                line = line.split()
+                activations2.append(np.array(line,dtype='float'))
+                print('2')
+                pdb.set_trace()
+
+    activations = np.array(activations)
+    pdb.set_trace()
 
 
 ######################MAIN######################
