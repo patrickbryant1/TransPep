@@ -36,7 +36,6 @@ parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help
 parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = 'Path to checpoint directory. Include /in end')
 parser.add_argument('--save_model', nargs=1, type= int, default=sys.stdin, help = 'If to save model or not: 1= True, 0 = False')
 parser.add_argument('--checkpoint', nargs=1, type= int, default=sys.stdin, help = 'If to checkpoint or not: 1= True, 0 = False')
-parser.add_argument('--train_test', nargs=1, type= int, default=sys.stdin, help = 'If train for test or not: 1= True, 0 = False')
 parser.add_argument('--num_epochs', nargs=1, type= int, default=sys.stdin, help = 'Num epochs (int)')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'Path to output directory. Include /in end')
 
@@ -121,7 +120,6 @@ test_partition = args.test_partition[0]
 checkpointdir = args.checkpointdir[0]
 save_model = bool(args.save_model[0])
 checkpoint = bool(args.checkpoint[0])
-train_test = bool(args.train_test[0])
 num_epochs = args.num_epochs[0]
 outdir = args.outdir[0]
 train_CS = train_meta.CS.values
@@ -135,14 +133,22 @@ train_kingdoms = np.eye(4)[train_kingdoms]
 #Run through all by taking as input
 test_i = train_meta[train_meta.Partition==test_partition].index
 
-if train_test == True:
-
-    train_i = np.setdiff1d(np.arange(len(train_meta)),test_i)
+train_losses = []
+valid_losses = []
+for valid_partition in np.setdiff1d(np.arange(5),test_partition):
+    print('Validation partition',valid_partition)
+    valid_i = train_meta[train_meta.Partition==valid_partition].index
+    train_i = np.setdiff1d(np.arange(len(train_meta)),np.concatenate([test_i,valid_i]))
     #train
     x_train_seqs = train_seqs[train_i]
     x_train_kingdoms = train_kingdoms[train_i]
     x_train = [x_train_seqs,x_train_kingdoms]
     y_train = [train_annotations[train_i],train_types[train_i]]
+    #valid
+    x_valid_seqs = train_seqs[valid_i]
+    x_valid_kingdoms = train_kingdoms[valid_i]
+    x_valid = [x_valid_seqs,x_valid_kingdoms]
+    y_valid = [train_annotations[valid_i],train_types[valid_i]]
 
     #Model
     #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
@@ -177,6 +183,7 @@ if train_test == True:
     preds = layers.Dense(70*6, activation="softmax")(x)
     pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
     preds = layers.Reshape((-1,70,6), name='annotation')(preds)
+    #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
 
     model = keras.Model(inputs=[seq_input,kingdom_input], outputs=[preds,pred_type])
@@ -192,118 +199,33 @@ if train_test == True:
       	     json_file.write(model_json)
 
     #Summary of model
-    print(model.summary())
+    #print(model.summary())
     #Checkpoint
-    checkpoint_path=checkpointdir+"/weights_{epoch:02d}.hdf5"
-    model_checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, save_best_only=False,overwrite=True)
-    #Callbacks
-    callbacks=[model_checkpoint]
+    if checkpoint == True:
+        #Make dir
+        try:
+            os.mkdir(checkpointdir+'vp'+str(valid_partition))
+        except:
+            print('Checkpoint directory exists...')
+        checkpoint_path=checkpointdir+'vp'+str(valid_partition)+"/weights_{epoch:02d}.hdf5"
+        model_checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, monitor="val_loss",save_best_only=True, mode='min',overwrite=False)
+        #Callbacks
+        callbacks=[model_checkpoint]
+    else:
+        callbacks = []
 
     history = model.fit(
         x_train, y_train, batch_size=batch_size, epochs=num_epochs,
+        validation_data=(x_valid, y_valid),
         callbacks=callbacks
     )
 
-else:
-    train_losses = []
-    valid_losses = []
-    for valid_partition in np.setdiff1d(np.arange(5),test_partition):
-        print('Validation partition',valid_partition)
-        valid_i = train_meta[train_meta.Partition==valid_partition].index
-        train_i = np.setdiff1d(np.arange(len(train_meta)),np.concatenate([test_i,valid_i]))
-        #train
-        x_train_seqs = train_seqs[train_i]
-        x_train_kingdoms = train_kingdoms[train_i]
-        x_train = [x_train_seqs,x_train_kingdoms]
-        y_train = [train_annotations[train_i],train_types[train_i]]
-        #valid
-        x_valid_seqs = train_seqs[valid_i]
-        x_valid_kingdoms = train_kingdoms[valid_i]
-        x_valid = [x_valid_seqs,x_valid_kingdoms]
-        y_valid = [train_annotations[valid_i],train_types[valid_i]]
-        #Construct weights
-        #y_flat = y_train[0].flatten()
-        #counts = Counter(y_flat)
-        #class_weights = {}
-        #for key in counts:
-        #    class_weights[key] = counts[key]/len(y_flat)
+    #Save loss
+    train_losses.append(history.history['loss'])
+    valid_losses.append(history.history['val_loss'])
 
-        #Model
-        #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
-        #Params
-        net_params = variable_params.loc[param_combo-1]
-        #Fixed params
-        vocab_size = 21  # Only consider the top 20k words
-        maxlen = 70  # Only consider the first 70 amino acids
-        #Variable params
-        embed_dim = int(net_params['embed_dim']) #32  # Embedding size for each token
-        num_heads = int(net_params['num_heads']) #1  # Number of attention heads
-        ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
-        num_layers = int(net_params['num_layers']) #1  # Number of attention heads
-        batch_size = int(net_params['batch_size']) #32
-
-        seq_input = layers.Input(shape=(maxlen,))
-        kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
-        embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-        x = embedding_layer(seq_input)
-        transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
-
-        #Stacking transformer blocks
-        for ti in range(num_layers):
-            x = transformer_block(x) #Can add more transformer blocks here
-
-        x = layers.GlobalAveragePooling1D()(x)
-        x = layers.Dropout(0.1)(x)
-        x = layers.Dense(20, activation="relu")(x)
-        x = layers.Dropout(0.1)(x)
-        #Concat
-        x = layers.Concatenate()([x,kingdom_input])
-        preds = layers.Dense(70*6, activation="softmax")(x)
-        pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
-        preds = layers.Reshape((-1,70,6), name='annotation')(preds)
-        #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
-
-
-        model = keras.Model(inputs=[seq_input,kingdom_input], outputs=[preds,pred_type])
-        #Optimizer
-        opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
-        #Compile
-        model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
-
-        #Save model
-        if save_model == True:
-            model_json = model.to_json()
-            with open(checkpointdir+"model.json", "w") as json_file:
-          	     json_file.write(model_json)
-
-        #Summary of model
-        #print(model.summary())
-        #Checkpoint
-        if checkpoint == True:
-            #Make dir
-            try:
-                os.mkdir(checkpointdir+'vp'+str(valid_partition))
-            except:
-                print('Checkpoint directory exists...')
-            checkpoint_path=checkpointdir+'vp'+str(valid_partition)+"/weights_{epoch:02d}.hdf5"
-            model_checkpoint = ModelCheckpoint(checkpoint_path, verbose=0, monitor="val_loss",save_best_only=True, mode='min',overwrite=False)
-            #Callbacks
-            callbacks=[model_checkpoint]
-        else:
-            callbacks = []
-
-        history = model.fit(
-            x_train, y_train, batch_size=batch_size, epochs=num_epochs,
-            validation_data=(x_valid, y_valid),
-            callbacks=callbacks
-        )
-
-        #Save loss
-        train_losses.append(history.history['loss'])
-        valid_losses.append(history.history['val_loss'])
-
-    #Save array of losses
-    outid = str(test_partition)+'_'+str(param_combo)
-    np.save(outdir+'train_losses_'+outid+'.npy',np.array(train_losses))
-    np.save(outdir+'valid_losses_'+outid+'.npy',np.array(valid_losses))
-    print('Done')
+#Save array of losses
+outid = str(test_partition)+'_'+str(param_combo)
+np.save(outdir+'train_losses_'+outid+'.npy',np.array(train_losses))
+np.save(outdir+'valid_losses_'+outid+'.npy',np.array(valid_losses))
+print('Done')

@@ -102,8 +102,8 @@ def get_activations(seq_inp):
     token_position_emb = get_token_position_emb(seq_inp)[0]
 
     #attention
-    #get_attention = keras.backend.function([model.layers[0].input],[model.layers[1].output])
-    #token_position_emb = get_token_position_emb(seq_inp)[0]
+    # get_attention = keras.backend.function([model.layers[0].input],[model.layers[3].output])
+    # get_attention = get_attention(seq_inp)[0]
 
     return token_position_emb
 

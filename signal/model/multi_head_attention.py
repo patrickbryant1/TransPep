@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
+import pdb
 class MultiHeadSelfAttention(keras.layers.Layer):
     def __init__(self, embed_dim, num_heads=8):
         super(MultiHeadSelfAttention, self).__init__()
@@ -51,4 +52,6 @@ class MultiHeadSelfAttention(keras.layers.Layer):
         output = self.combine_heads(
             concat_attention
         )  # (batch_size, seq_len, embed_dim)
+
+
         return output
