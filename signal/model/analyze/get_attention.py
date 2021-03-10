@@ -30,7 +30,7 @@ parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, he
 parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = 'Path to data directory.')
 parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test/bench on.')
 parser.add_argument('--valid_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to get the valid model from.')
-parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = '''path to output dir.''')
+
 
 
 #FUNCTIONS
@@ -130,7 +130,7 @@ checkpointdir=args.checkpointdir[0]
 datadir = args.datadir[0]
 test_partition = args.test_partition[0]
 valid_partition = args.valid_partition[0]
-outdir = args.outdir[0]
+
 
 #Load and run model
 
