@@ -16,4 +16,9 @@ OUTDIR=/home/patrick/results/protein_translation/attention/
 #Parse attention
 TP=0
 ATTENTIONDIR=$OUTDIR
-python3 parse_attention.py --attention_dir $ATTENTIONDIR --test_partition $TP
+#python3 parse_attention.py --attention_dir $ATTENTIONDIR --test_partition $TP
+
+#Analyze attention
+TP=0
+ATTENTIONDIR=$OUTDIR
+python3 analyze_attention.py --attention_dir $ATTENTIONDIR --checkpointdir $CHECKPOINTDIR'TP'$TP'/' --test_partition $TP
