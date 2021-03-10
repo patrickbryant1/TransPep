@@ -94,6 +94,18 @@ def load_model(json_file, weights):
     return model
 
 
+def get_activations(seq_inp):
+    '''Get token and position embedding and attention activations
+    '''
+    #token and position
+    get_token_position_emb = keras.backend.function([model.layers[0].input],[model.layers[1].output])
+    token_position_emb = get_token_position_emb(seq_inp)[0]
+
+    #attention
+    get_attention = keras.backend.function([model.layers[0].input],[model.layers[1].output])
+    token_position_emb = get_token_position_emb(seq_inp)[0]
+
+
 def process_bench_set(bench_set,datadir):
     bench_meta, bench_seqs, bench_annotations = parse_and_format(bench_set)
     #Save
@@ -294,7 +306,7 @@ bench_set = args.bench_set[0]
 outdir = args.outdir[0]
 
 #Preprocess the bench set
-process_bench_set(bench_set,datadir)
+#process_bench_set(bench_set,datadir)
 
 #Load and run model
 #test
@@ -324,10 +336,12 @@ for test_partition in np.arange(5):
         weights=glob.glob(checkpointdir+'TP'+str(test_partition)+'/vp'+str(valid_partition)+'/*.hdf5')
         #model
         model = load_model(json_file, weights[0])
+
         #Get data
         x_test, y_test, x_bench, y_bench = get_data(datadir, test_partition)
         test_pred = model.predict(x_test)
         bench_pred = model.predict(x_bench)
+
         #Save
         #test
         test_pred_annotations.append(test_pred[0][:,0,:,:])
