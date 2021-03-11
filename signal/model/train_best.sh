@@ -1,9 +1,9 @@
 TRAIN_DATA=../data/train_set.fasta
 DATADIR=../data/
 VARIABLE_PARAMS=./param_combos.csv
-CHECKPOINTDIR=../checkpoint/
-SAVE_MODEL=0
-CHECKPOINT=0
+CHECKPOINTDIR=/home/patrick/results/protein_translation/model_checkpoints/
+SAVE_MODEL=1
+CHECKPOINT=1
 NUM_EPOCHS=50
 OUTDIR=../results/
 
