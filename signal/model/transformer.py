@@ -20,7 +20,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 #visualization
 from tensorflow.keras.callbacks import TensorBoard
 
-from transformer_classes import MultiHeadAttention, EncoderLayer, DecoderLayer
+from transformer_classes import MultiHeadAttention, Encoder, Decoder
 #from lr_finder import LRFinder
 
 
@@ -48,73 +48,76 @@ parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'P
 #set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 #####FUNCTIONS and CLASSES#####
+class Transformer(tf.keras.Model):
+  def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
+               target_vocab_size, pe_input, pe_target, rate=0.1):
+    super(Transformer, self).__init__()
 
+    self.tokenizer = Encoder(num_layers, d_model, num_heads, dff,
+                           input_vocab_size, pe_input, rate)
 
+    self.decoder = Decoder(num_layers, d_model, num_heads, dff,
+                           target_vocab_size, pe_target, rate)
 
-class TransformerBlock(layers.Layer):
-    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
-        super(TransformerBlock, self).__init__()
-        self.att = MultiHeadSelfAttention(embed_dim,num_heads)
-        self.ffn = keras.Sequential(
-            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
-        )
-        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
-        self.dropout1 = layers.Dropout(rate)
-        self.dropout2 = layers.Dropout(rate)
+    self.final_layer = tf.keras.layers.Dense(target_vocab_size)
 
-    def call(self, inputs, training):
-        attn_output = self.att(inputs)
-        attn_output = self.dropout1(attn_output, training=training)
-        out1 = self.layernorm1(inputs + attn_output)
-        ffn_output = self.ffn(out1)
-        ffn_output = self.dropout2(ffn_output, training=training)
-        return self.layernorm2(out1 + ffn_output)
+  def call(self, inp, tar, training, enc_padding_mask,
+           look_ahead_mask, dec_padding_mask):
 
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({
-            'embed_dim': embed_dim,
-            'num_heads': num_heads,
-            'ff_dim': ff_dim
-        })
-        return config
+    enc_output = self.tokenizer(inp, training, enc_padding_mask)  # (batch_size, inp_seq_len, d_model)
 
-class TokenAndPositionEmbedding(layers.Layer):
-    def __init__(self, maxlen, vocab_size, embed_dim):
-        super(TokenAndPositionEmbedding, self).__init__()
-        self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
-        self.pos_emb = layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
+    # dec_output.shape == (batch_size, tar_seq_len, d_model)
+    dec_output, attention_weights = self.decoder(
+        tar, enc_output, training, look_ahead_mask, dec_padding_mask)
 
-    def call(self, x):
-        maxlen = tf.shape(x)[-1]
-        positions = tf.range(start=0, limit=maxlen, delta=1)
-        positions = self.pos_emb(positions)
-        x = self.token_emb(x)
-        return x + positions
+    final_output = self.final_layer(dec_output)  # (batch_size, tar_seq_len, target_vocab_size)
 
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({
-            'maxlen': maxlen,
-            'vocab_size': vocab_size,
-            'embed_dim': embed_dim
-        })
-        return config
+    return final_output, attention_weights
+
+###MASKING
+def create_padding_mask(seq):
+  seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
+
+  # add extra dimensions to add the padding
+  # to the attention logits.
+  return seq[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1, 1, seq_len)
+
+def create_look_ahead_mask(size):
+  mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
+  return mask  # (seq_len, seq_len)
+
+def create_masks(inp, tar):
+  # Encoder padding mask
+  enc_padding_mask = create_padding_mask(inp)
+
+  # Used in the 2nd attention block in the decoder.
+  # This padding mask is used to mask the encoder outputs.
+  dec_padding_mask = create_padding_mask(inp)
+
+  # Used in the 1st attention block in the decoder.
+  # It is used to pad and mask future tokens in the input received by
+  # the decoder.
+  look_ahead_mask = create_look_ahead_mask(tf.shape(tar)[1])
+  dec_target_padding_mask = create_padding_mask(tar)
+  combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
+
+  return enc_padding_mask, combined_mask, dec_padding_mask
 
 def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     '''Create the transformer model
     '''
 
-    seq_input = layers.Input(shape=(maxlen,))
+    seq_input = layers.Input(shape=(maxlen,)) #Input aa sequences
+    seq_target = layers.Input(shape=(maxlen,)) #Targets - annotations
     kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
-    embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    x = embedding_layer(seq_input)
-    transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
 
-    #Stacking transformer blocks
-    for ti in range(num_layers):
-        x = transformer_block(x) #Can add more transformer blocks here
+    #Define the transformer
+    transformer = Transformer(num_layers, embed_dim, num_heads, ff_dim, 21, 6, 70,70)
+    enc_padding_mask, combined_mask, dec_padding_mask = create_masks(inp, tar_inp)
+    x = tranformer(seq_input,seq_target,
+                    True,
+                    enc_padding_mask, combined_mask, dec_padding_mask)
+
 
     x = layers.GlobalAveragePooling1D()(x)
     x = layers.Dropout(0.1)(x)
@@ -128,7 +131,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
 
-    model = keras.Model(inputs=[seq_input,kingdom_input], outputs=[preds,pred_type])
+    model = keras.Model(inputs=[seq_input,seq_target,kingdom_input], outputs=[preds,pred_type])
     #Optimizer
     opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
     #Compile
@@ -203,7 +206,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
     #Create model
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
-
+    pdb.set_trace()
     #Save model
     if save_model == True:
         model_json = model.to_json()
