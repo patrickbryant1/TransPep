@@ -54,7 +54,7 @@ class MultiHeadSelfAttention(keras.layers.Layer):
             attention, (batch_size, -1, self.embed_dim)
         )  # (batch_size, seq_len, embed_dim)
         #Print tensor
-        layer = keras.layers.Lambda((lambda x: tf.print(x, [x], summarize=70)))(concat_attention)
+        #layer = keras.layers.Lambda((lambda x: tf.print(x, [x], summarize=70)))(concat_attention)
         output = self.combine_heads(
             concat_attention
         )  # (batch_size, seq_len, embed_dim)

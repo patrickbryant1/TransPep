@@ -169,6 +169,7 @@ def get_data(datadir, test_partition):
 def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom):
     '''Evaluate the capacity to predict the clevage site
     annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
+    annotation [S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide | I: cytoplasm | M: transmembrane | O: extracellular]
     S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide |
     'NO_SP':0,'SP':1,'TAT':2,'LIPO':3
     SP = Sec/SPI
@@ -220,10 +221,14 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
 
         #Get all pred positive CSs from the true positives (all the other will be wrong)
         P_CS_pred = []
-        P_annotations_pred = true_annotations[np.intersect1d(P,pred_P)]
+        P_annotations_pred = pred_annotations[np.intersect1d(P,pred_P)]
         for i in range(len(P_annotations_pred)):
-            P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
-            pdb.set_trace()
+            try:
+                P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
+            except:
+                P_CS_pred.append(0)
+
+
         #Get the TP and FP CS
         TP_CS = {0:0,1:0,2:0,3:0} #exact CS, +/-1 error, +/-2 error, +/-3 error
         FP_CS = {0:0,1:0,2:0,3:0}
@@ -424,8 +429,9 @@ bench_all_pred_types = np.array(bench_all_pred_types)
 bench_all_true_annotations = np.array(bench_all_true_annotations)
 bench_all_true_types = np.array(bench_all_true_types)
 bench_all_kingdoms = np.array(bench_all_kingdoms)
-pdb.set_trace()
+
 
 #Eval
 eval_preds(test_all_pred_annotations, test_all_pred_types,test_all_true_annotations,test_all_true_types,test_all_kingdoms,'test', outdir)
 eval_preds(bench_all_pred_annotations, bench_all_pred_types,bench_all_true_annotations,bench_all_true_types,bench_all_kingdoms,'bench', outdir)
+pdb.set_trace()
