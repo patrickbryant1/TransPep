@@ -3,6 +3,7 @@
 
 import argparse
 import sys
+sys.path.insert(0, "../")
 import numpy as np
 import pandas as pd
 import time
@@ -13,19 +14,18 @@ from process_data import parse_and_format
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from categorical_focal_loss import SparseCategoricalFocalLoss
-from tensorflow.keras.callbacks import ModelCheckpoint
-from multi_head_attention import MultiHeadSelfAttention
 
-from tensorflow.keras.models import model_from_json
+
 import glob
-
+from categorical_focal_loss import SparseCategoricalFocalLoss
+from transformer_classes import MultiHeadAttention, Encoder, Decoder
 
 import pdb
 
 #Arguments for argparse module:
 parser = argparse.ArgumentParser(description = '''A program that reads a keras model from a .json and a .h5 file''')
-parser.add_argument('--json_file', nargs=1, type= str,default=sys.stdin, help = 'path to .json file with keras model to be opened')
+parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with variable params.')
+parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
 parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = '''path checkpoints with .h5 files containing weights for net.''')
 parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = 'Path to data directory.')
 parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test on.')
@@ -33,62 +33,112 @@ parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = ''
 
 
 #FUNCTIONS
-class TransformerBlock(layers.Layer):
-    def __init__(self, name, dtype,trainable,embed_dim, num_heads, ff_dim, rate=0.1):
-        super(TransformerBlock, self).__init__()
-        self.att = MultiHeadSelfAttention(embed_dim,num_heads)
-        self.ffn = keras.Sequential(
-            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
-        )
-        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
-        self.dropout1 = layers.Dropout(rate)
-        self.dropout2 = layers.Dropout(rate)
+class Transformer(tf.keras.Model):
+    def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
+               target_vocab_size, pe_input, pe_target, rate=0.1):
+        super(Transformer, self).__init__()
 
-    def call(self, inputs, training):
-        attn_output = self.att(inputs)
-        attn_output = self.dropout1(attn_output, training=training)
-        out1 = self.layernorm1(inputs + attn_output)
-        ffn_output = self.ffn(out1)
-        ffn_output = self.dropout2(ffn_output, training=training)
-        return self.layernorm2(out1 + ffn_output)
+        self.tokenizer = Encoder(num_layers, d_model, num_heads, dff,
+                               input_vocab_size, pe_input, rate)
 
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({
-            'embed_dim': embed_dim,
-            'num_heads': num_heads,
-            'ff_dim': ff_dim
-        })
-        return config
+        self.decoder = Decoder(num_layers, d_model, num_heads, dff,
+                               target_vocab_size, pe_target, rate)
 
-class TokenAndPositionEmbedding(layers.Layer):
-    def __init__(self, name, dtype,trainable,maxlen, vocab_size, embed_dim):
-        super(TokenAndPositionEmbedding, self).__init__()
-        self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
-        self.pos_emb = layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
+        self.final_layer = tf.keras.layers.Dense(target_vocab_size)
 
-    def call(self, x):
-        maxlen = tf.shape(x)[-1]
-        positions = tf.range(start=0, limit=maxlen, delta=1)
-        positions = self.pos_emb(positions)
-        x = self.token_emb(x)
-        return x + positions
+    def call(self, inp, tar, training, enc_padding_mask,
+           look_ahead_mask, dec_padding_mask):
 
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({
-            'maxlen': maxlen,
-            'vocab_size': vocab_size,
-            'embed_dim': embed_dim
-        })
-        return config
+        enc_output = self.tokenizer(inp, training, enc_padding_mask)  # (batch_size, inp_seq_len, d_model)
 
-def load_model(json_file, weights):
+        # dec_output.shape == (batch_size, tar_seq_len, d_model)
+        dec_output, attention_weights = self.decoder(
+            tar, enc_output, training, look_ahead_mask, dec_padding_mask)
 
-    json_file = open(json_file, 'r')
-    model_json = json_file.read()
-    model = model_from_json(model_json,custom_objects = {"TokenAndPositionEmbedding": TokenAndPositionEmbedding, "TransformerBlock": TransformerBlock})
+        #final_output = self.final_layer(dec_output)  # (batch_size, tar_seq_len, target_vocab_size)
+
+        return dec_output, attention_weights
+
+###MASKING###
+def create_padding_mask(seq):
+  seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
+
+  # add extra dimensions to add the padding
+  # to the attention logits.
+  return seq[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1, 1, seq_len)
+
+def create_look_ahead_mask(size):
+  mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
+  return mask  # (seq_len, seq_len)
+
+def create_masks(inp, tar):
+  # Encoder padding mask
+  enc_padding_mask = create_padding_mask(inp)
+
+  # Used in the 2nd attention block in the decoder.
+  # This padding mask is used to mask the encoder outputs.
+  dec_padding_mask = create_padding_mask(inp)
+
+  # Used in the 1st attention block in the decoder.
+  # It is used to pad and mask future tokens in the input received by
+  # the decoder.
+  look_ahead_mask = create_look_ahead_mask(tf.shape(tar)[1])
+  dec_target_padding_mask = create_padding_mask(tar)
+  combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
+
+  return enc_padding_mask, combined_mask, dec_padding_mask
+
+def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
+    '''Create the transformer model
+    '''
+
+    seq_input = layers.Input(shape=(maxlen,)) #Input aa sequences
+    seq_target = layers.Input(shape=(maxlen,)) #Targets - annotations
+    kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
+
+    #Define the transformer
+    transformer = Transformer(num_layers, embed_dim, num_heads, ff_dim, 21, 7,maxlen,maxlen)
+    enc_padding_mask, combined_mask, dec_padding_mask = create_masks(seq_input,seq_target)
+    x, attention_weights = transformer(seq_input,seq_target,
+                    True,
+                    enc_padding_mask, combined_mask, dec_padding_mask)
+
+    x = layers.GlobalAveragePooling1D()(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.Dense(20, activation="relu")(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.Concatenate()([x,kingdom_input])
+    preds = layers.Dense(maxlen*7, activation="softmax")(x)
+    preds = layers.Reshape((-1,maxlen,7),name='annotation')(preds)
+    pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
+    #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
+
+
+    model = keras.Model(inputs=[seq_input,seq_target,kingdom_input], outputs=[preds,pred_type])
+    #Optimizer
+    opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
+    #Compile
+    model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
+
+    return model
+
+def load_model(variable_params, param_combo, weights):
+    #Params
+    net_params = variable_params.loc[param_combo-1]
+    #Fixed params
+    vocab_size = 21  # Only consider the top 20k words
+    maxlen = 70  # Only consider the first 70 amino acids
+    #Variable params
+    embed_dim = int(net_params['embed_dim']) #32  # Embedding size for each token
+    num_heads = int(net_params['num_heads']) #1  # Number of attention heads
+    ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
+    num_layers = int(net_params['num_layers']) #1  # Number of attention heads
+    batch_size = int(net_params['batch_size']) #32
+
+    #Create model
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
+
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
     model.load_weights(weights)
     #print(model.summary())
     return model
@@ -109,18 +159,27 @@ def get_data(datadir, valid_partition):
     train_kingdoms = np.eye(4)[train_kingdoms]
 
     #Get data
-    #Run through all by taking as input
-    test_i = train_meta[train_meta.Partition==test_partition].index
-    valid_data = []
-
     valid_i = train_meta[train_meta.Partition==valid_partition].index
     #valid
     x_valid_seqs = train_seqs[valid_i]
     x_valid_kingdoms = train_kingdoms[valid_i]
-    x_valid = [x_valid_seqs,x_valid_kingdoms]
+    #The annotation 6 will be added to the train annotations as a start token (the annotations range from 0-5)
+    x_valid_target_inp=np.zeros((len(valid_i),1))
+    x_valid_target_inp[:,0]=6
     y_valid = [train_annotations[valid_i],train_types[valid_i]]
 
-    return x_valid, y_valid
+    return x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid
+
+def run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms):
+
+    #Run predicions for all positions
+    for i in range(70):
+        #Create masks
+        enc_padding_mask, combined_mask, dec_padding_mask = create_masks(seq_input,seq_target)
+        #
+        preds = model.predict()
+    return None
+
 
 def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom):
     '''Evaluate the capacity to predict the clevage site
@@ -176,7 +235,7 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
 
         #Get all pred positive CSs from the true positives (all the other will be wrong)
         P_CS_pred = []
-        P_annotations_pred = true_annotations[np.intersect1d(P,pred_P)]
+        P_annotations_pred = pred_annotations[np.intersect1d(P,pred_P)]
         for i in range(len(P_annotations_pred)):
             P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
 
@@ -206,8 +265,9 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
 
 ######################MAIN######################
 args = parser.parse_args()
-json_file = args.json_file[0]
-checkpointdir=args.checkpointdir[0]
+variable_params=pd.read_csv(args.variable_params[0])
+param_combo=args.param_combo[0]
+checkpointdir = args.checkpointdir[0]
 datadir = args.datadir[0]
 test_partition = args.test_partition[0]
 outdir = args.outdir[0]
@@ -225,9 +285,11 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #weights
     weights=glob.glob(checkpointdir+'vp'+str(valid_partition)+'/*.hdf5')
     #model
-    model = load_model(json_file, weights[0])
+    model = load_model(variable_params, param_combo, weights[0])
+
     #Get data
-    x_valid, y_valid = get_data(datadir, valid_partition)
+    x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid = get_data(datadir, valid_partition)
+    pdb.set_trace()
     pred = model.predict(x_valid)
     pred_annotations = np.argmax(pred[0][:,0,:,:],axis=2)
     pred_types = np.argmax(pred[1],axis=1)

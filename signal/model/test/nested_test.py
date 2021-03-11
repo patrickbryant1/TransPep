@@ -137,9 +137,6 @@ def load_model(variable_params, param_combo, weights):
 
     #Create model
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
-
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
-    pdb.set_trace()
     model.load_weights(weights)
     #print(model.summary())
     return model
