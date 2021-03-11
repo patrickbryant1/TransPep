@@ -83,7 +83,7 @@ class TransformerBlock(layers.Layer):
         return self.layernorm2(out1 + ffn_output)
 
 
-def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
+def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations):
     '''Create the transformer model
     '''
 
@@ -100,7 +100,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     #Define the transformer
     transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
     #Iterate
-    for i in range num_iterations:
+    for i in range(num_iterations):
         transformer_input = layers.Concatenate()([x1,x2])
         x = transformer_block(x)
 
@@ -171,16 +171,16 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_train_kingdoms = train_kingdoms[train_i]
 
     #Random annotations are added as input
-    pdb.set_trace()
     x_train_target_inp = np.zeros(train_annotations[train_i].shape)
-
+    x_train_target_inp[:,:]=np.random.randint(6,size=70)
     x_train = [x_train_seqs,x_train_target_inp,x_train_kingdoms] #inp seq, target annoation, kingdom
     y_train = [train_annotations[train_i],train_types[train_i]]
     #valid
     x_valid_seqs = train_seqs[valid_i]
     x_valid_kingdoms = train_kingdoms[valid_i]
-    #The annotation 6 will be added to the train annotations as a start token (the annotations range from 0-5)
-    x_valid_target_inp = np.copy(x_valid_seqs)
+    #Random annotations
+    x_valid_target_inp = np.zeros(train_annotations[valid_i].shape)
+    x_valid_target_inp[:,:]=np.random.randint(6,size=70)
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_kingdoms]
     y_valid = [train_annotations[valid_i],train_types[valid_i]]
 
@@ -199,7 +199,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     batch_size = int(net_params['batch_size']) #32
 
     #Create model
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,10)
 
     #Save model
     #Instead of using a json file, simply import the model function from here and do
