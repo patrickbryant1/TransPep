@@ -4,62 +4,50 @@ import pdb
 import sys
 
 
-class MultiHeadSelfAttention(keras.layers.Layer):
-    def __init__(self, embed_dim, num_heads=8):
-        super(MultiHeadSelfAttention, self).__init__()
-        self.embed_dim = embed_dim
-        self.num_heads = num_heads
-        assert (
-            embed_dim % num_heads == 0
-        ), "embedding dimension not divisible by num heads"
-        self.projection_dim = embed_dim // num_heads
-        self.wq = keras.layers.Dense(embed_dim)
-        self.wk = keras.layers.Dense(embed_dim)
-        self.wv = keras.layers.Dense(embed_dim)
-        self.combine_heads = keras.layers.Dense(embed_dim)
+class MultiHeadAttention(tf.keras.layers.Layer):
+  def __init__(self, d_model, num_heads):
+    super(MultiHeadAttention, self).__init__()
+    self.num_heads = num_heads
+    self.d_model = d_model
 
-    def attention(self, q, k, v):
-        score = tf.matmul(q, k, transpose_b=True)
-        dk = tf.cast(tf.shape(k)[-1], tf.float32)
-        scaled_score = score / tf.math.sqrt(dk)
-        weights = tf.nn.softmax(scaled_score, axis=-1)
-        output = tf.matmul(weights, v)
-        return output, weights
+    assert d_model % self.num_heads == 0
 
-    def separate_heads(self, x, batch_size):
-        x = tf.reshape(x, (batch_size, -1, self.num_heads, self.projection_dim))
-        return tf.transpose(x, perm=[0, 2, 1, 3])
+    self.depth = d_model // self.num_heads
 
-    def call(self, x):
-        # x.shape = [batch_size, seq_len, embedding_dim]
-        batch_size = tf.shape(x)[0]
-        q = self.wq(x)  # (batch_size, seq_len, embed_dim)
-        k = self.wk(x)  # (batch_size, seq_len, embed_dim)
-        v = self.wv(x)  # (batch_size, seq_len, embed_dim)
-        q = self.separate_heads(
-            q, batch_size
-        )  # (batch_size, num_heads, seq_len, projection_dim)
-        k = self.separate_heads(
-            k, batch_size
-        )  # (batch_size, num_heads, seq_len, projection_dim)
-        v = self.separate_heads(
-            v, batch_size
-        )  # (batch_size, num_heads, seq_len, projection_dim)
-        attention, weights = self.attention(q, k, v)
+    self.wq = tf.keras.layers.Dense(d_model)
+    self.wk = tf.keras.layers.Dense(d_model)
+    self.wv = tf.keras.layers.Dense(d_model)
 
-        attention = tf.transpose(
-            attention, perm=[0, 2, 1, 3]
-        )  # (batch_size, seq_len, num_heads, projection_dim)
-        concat_attention = tf.reshape(
-            attention, (batch_size, -1, self.embed_dim)
-        )  # (batch_size, seq_len, embed_dim)
-        #Print tensor
-        #layer = keras.layers.Lambda((lambda x: tf.print(x, [x], summarize=70)))(concat_attention)
-        output = self.combine_heads(
-            concat_attention
-        )  # (batch_size, seq_len, embed_dim)
+    self.dense = tf.keras.layers.Dense(d_model)
 
+  def split_heads(self, x, batch_size):
+    """Split the last dimension into (num_heads, depth).
+    Transpose the result such that the shape is (batch_size, num_heads, seq_len, depth)
+    """
+    x = tf.reshape(x, (batch_size, -1, self.num_heads, self.depth))
+    return tf.transpose(x, perm=[0, 2, 1, 3])
 
+  def call(self, v, k, q, mask):
+    batch_size = tf.shape(q)[0]
 
+    q = self.wq(q)  # (batch_size, seq_len, d_model)
+    k = self.wk(k)  # (batch_size, seq_len, d_model)
+    v = self.wv(v)  # (batch_size, seq_len, d_model)
 
-        return output
+    q = self.split_heads(q, batch_size)  # (batch_size, num_heads, seq_len_q, depth)
+    k = self.split_heads(k, batch_size)  # (batch_size, num_heads, seq_len_k, depth)
+    v = self.split_heads(v, batch_size)  # (batch_size, num_heads, seq_len_v, depth)
+
+    # scaled_attention.shape == (batch_size, num_heads, seq_len_q, depth)
+    # attention_weights.shape == (batch_size, num_heads, seq_len_q, seq_len_k)
+    scaled_attention, attention_weights = scaled_dot_product_attention(
+        q, k, v, mask)
+
+    scaled_attention = tf.transpose(scaled_attention, perm=[0, 2, 1, 3])  # (batch_size, seq_len_q, num_heads, depth)
+
+    concat_attention = tf.reshape(scaled_attention,
+                                  (batch_size, -1, self.d_model))  # (batch_size, seq_len_q, d_model)
+
+    output = self.dense(concat_attention)  # (batch_size, seq_len_q, d_model)
+
+    return output, attention_weights
