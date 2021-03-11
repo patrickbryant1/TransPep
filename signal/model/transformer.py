@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import os
 import numpy as np
 import pandas as pd
 import time
@@ -61,7 +62,7 @@ class Transformer(tf.keras.Model):
 
         self.final_layer = tf.keras.layers.Dense(target_vocab_size)
 
-    def call(self, inp, tar, kingdom, training, enc_padding_mask,
+    def call(self, inp, tar, training, enc_padding_mask,
            look_ahead_mask, dec_padding_mask):
 
         enc_output = self.tokenizer(inp, training, enc_padding_mask)  # (batch_size, inp_seq_len, d_model)
@@ -70,25 +71,10 @@ class Transformer(tf.keras.Model):
         dec_output, attention_weights = self.decoder(
             tar, enc_output, training, look_ahead_mask, dec_padding_mask)
 
-        kingdom = layers.RepeatVector(70)(kingdom)
-        dec_output = layers.Concatenate()([dec_output,kingdom])
-        final_output = self.final_layer(dec_output)  # (batch_size, tar_seq_len, target_vocab_size)
+        #final_output = self.final_layer(dec_output)  # (batch_size, tar_seq_len, target_vocab_size)
 
-        return final_output, attention_weights
+        return dec_output, attention_weights
 
-    def get_config(self):
-        config = super().get_config().copy()
-        config.update({
-            'num_layers':num_layers,
-            'd_model':d_model,
-            'num_heads':num_heads,
-            'dff':dff,
-            'input_vocab_size':input_vocab_size,
-            'target_vocab_size':target_vocab_size,
-            'pe_input':pe_input,
-            'pe_target':pe_target
-        })
-        return config
 
 ###MASKING
 def create_padding_mask(seq):
@@ -130,13 +116,18 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     #Define the transformer
     transformer = Transformer(num_layers, embed_dim, num_heads, ff_dim, 21, 7,maxlen,maxlen)
     enc_padding_mask, combined_mask, dec_padding_mask = create_masks(seq_input,seq_target)
-    x, attention_weights = transformer(seq_input,seq_target,kingdom_input,
+    x, attention_weights = transformer(seq_input,seq_target,
                     True,
                     enc_padding_mask, combined_mask, dec_padding_mask)
 
-    #Concat
-    preds = x
-    pred_type = layers.Dense(4, activation="softmax",name='type')(layers.Flatten()(x)) #Type of protein
+    x = layers.GlobalAveragePooling1D()(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.Dense(20, activation="relu")(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.Concatenate()([x,kingdom_input])
+    preds = layers.Dense(maxlen*7, activation="softmax")(x)
+    preds = layers.Reshape((-1,maxlen,7),name='annotation')(preds)
+    pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
     #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
 
@@ -146,7 +137,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     #Compile
     model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
 
-    return model,opt
+    return model
 
 ######################MAIN######################
 args = parser.parse_args()
@@ -222,7 +213,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     batch_size = int(net_params['batch_size']) #32
 
     #Create model
-    model,opt = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
 
     #Save model
     #Instead of using a json file, simply import the model function from here and do
@@ -239,13 +230,12 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
             print('Checkpoint directory exists...')
 
         checkpoint_path=checkpointdir+'vp'+str(valid_partition)+"/weights_{epoch:02d}.hdf5"
-        ckpt = tf.train.Checkpoint(transformer=model,
-                           optimizer=opt)
-
-        ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
+        checkpoint = tf.keras.callbacks.ModelCheckpoint(
+        checkpoint_path, monitor='val_loss', verbose=0, save_best_only=True,
+        save_weights_only=True, mode='auto', save_freq='epoch')
 
         #Callbacks
-        callbacks=[]
+        callbacks=[checkpoint]
     else:
         callbacks = []
 
