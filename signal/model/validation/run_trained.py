@@ -93,7 +93,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     '''
 
     seq_input = layers.Input(shape=(maxlen,)) #Input aa sequences
-    seq_target = layers.Input(shape=(maxlen,)) #Targets - annotations
+    seq_target = layers.Input(shape=(None,)) #Targets - annotations
     kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
 
     #Define the transformer
@@ -174,10 +174,15 @@ def run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms):
 
     #Run predicions for all positions
     for i in range(70):
-        #Create masks
-        enc_padding_mask, combined_mask, dec_padding_mask = create_masks(seq_input,seq_target)
-        #
-        preds = model.predict()
+        print(i)
+        #Predict
+        preds = model.predict([x_valid_seqs,x_valid_target_inp,x_valid_kingdoms])
+        #Update x_valid_target_inp
+        x_valid_target_inp = np.zeros((x_valid_target_inp.shape[0],i+2))
+        x_valid_target_inp[:,0]=6
+        #Here beam search can be implemented
+        x_valid_target_inp[:,1:]=np.argmax(preds[0][:,0,:i+1,:],axis=2)
+        pdb.set_trace()
     return None
 
 
@@ -286,11 +291,11 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     weights=glob.glob(checkpointdir+'vp'+str(valid_partition)+'/*.hdf5')
     #model
     model = load_model(variable_params, param_combo, weights[0])
-
     #Get data
     x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid = get_data(datadir, valid_partition)
-    pdb.set_trace()
-    pred = model.predict(x_valid)
+    #Predict
+    run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms)
+    #Fetch
     pred_annotations = np.argmax(pred[0][:,0,:,:],axis=2)
     pred_types = np.argmax(pred[1],axis=1)
     true_annotations = y_valid[0]

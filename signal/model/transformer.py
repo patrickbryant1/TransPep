@@ -110,7 +110,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     '''
 
     seq_input = layers.Input(shape=(maxlen,)) #Input aa sequences
-    seq_target = layers.Input(shape=(maxlen,)) #Targets - annotations
+    seq_target = layers.Input(shape=(None,)) #Targets - annotations
     kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
 
     #Define the transformer
@@ -185,7 +185,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #The annotation 6 will be added to the train annotations as a start token (the annotations range from 0-5)
     x_train_target_inp = np.copy(train_annotations[train_i])
     x_train_target_inp[:,1:]=x_train_target_inp[:,:-1]
-    x_train_target_inp[:,0]=6
+    x_train_target_inp[:,:20]=6 #Make the first 20 start tokens. If the model knows it is a signal peptide it will be easy
     x_train = [x_train_seqs,x_train_target_inp,x_train_kingdoms] #inp seq, target annoation, kingdom
     y_train = [train_annotations[train_i],train_types[train_i]]
     #valid
@@ -194,7 +194,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #The annotation 6 will be added to the train annotations as a start token (the annotations range from 0-5)
     x_valid_target_inp = np.copy(train_annotations[valid_i])
     x_valid_target_inp[:,1:]=x_valid_target_inp[:,:-1]
-    x_valid_target_inp[:,0]=6
+    x_valid_target_inp[:,:20]=6
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_kingdoms]
     y_valid = [train_annotations[valid_i],train_types[valid_i]]
 
