@@ -198,6 +198,8 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
     for type_name in Types:
         type_enc = Types[type_name]
         P = np.argwhere(true_types==type_enc)[:,0]
+        if len(P)<1:
+            continue
         N = np.argwhere(true_types!=type_enc)[:,0]
         #Calc TP and FP
         #Get the pred pos and neg
@@ -226,7 +228,6 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
             try:
                 P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
             except:
-                pdb.set_trace()
                 P_CS_pred.append(0)
 
 
@@ -248,7 +249,7 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
         #Calculate CS precision and recall
         CS_precision = {}
         CS_recall = {}
-        pdb.set_trace()
+
         for d in range(0,4):
             CS_precision[d]=TP_CS[d]/(TP_CS[d]+FP_CS[d])
             CS_recall[d] = TP_CS[d]/P.shape[0]
