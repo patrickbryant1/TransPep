@@ -99,6 +99,40 @@ class TokenAndPositionEmbedding(layers.Layer):
         })
         return config
 
+def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
+    '''Create the transformer model
+    '''
+
+    seq_input = layers.Input(shape=(maxlen,))
+    kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
+    embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
+    x = embedding_layer(seq_input)
+    transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
+
+    #Stacking transformer blocks
+    for ti in range(num_layers):
+        x = transformer_block(x) #Can add more transformer blocks here
+
+    x = layers.GlobalAveragePooling1D()(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.Dense(20, activation="relu")(x)
+    x = layers.Dropout(0.1)(x)
+    #Concat
+    x = layers.Concatenate()([x,kingdom_input])
+    preds = layers.Dense(70*6, activation="softmax")(x)
+    pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
+    preds = layers.Reshape((-1,70,6), name='annotation')(preds)
+    #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
+
+
+    model = keras.Model(inputs=[seq_input,kingdom_input], outputs=[preds,pred_type])
+    #Optimizer
+    opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
+    #Compile
+    model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
+
+    return model
+
 ######################MAIN######################
 args = parser.parse_args()
 datadir = args.datadir[0]
@@ -164,34 +198,9 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
 
-    seq_input = layers.Input(shape=(maxlen,))
-    kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
-    embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    x = embedding_layer(seq_input)
-    transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
-
-    #Stacking transformer blocks
-    for ti in range(num_layers):
-        x = transformer_block(x) #Can add more transformer blocks here
-
-    x = layers.GlobalAveragePooling1D()(x)
-    x = layers.Dropout(0.1)(x)
-    x = layers.Dense(20, activation="relu")(x)
-    x = layers.Dropout(0.1)(x)
-    #Concat
-    x = layers.Concatenate()([x,kingdom_input])
-    preds = layers.Dense(70*6, activation="softmax")(x)
-    pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
-    preds = layers.Reshape((-1,70,6), name='annotation')(preds)
-    #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
-
-
-    model = keras.Model(inputs=[seq_input,kingdom_input], outputs=[preds,pred_type])
-    #Optimizer
-    opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
-    #Compile
-    model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
-
+    #Create model
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
+    
     #Save model
     if save_model == True:
         model_json = model.to_json()
