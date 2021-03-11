@@ -113,13 +113,13 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
 
     #Define the transformer
     transformer = Transformer(num_layers, embed_dim, num_heads, ff_dim, 21, 6, 70,70)
-    enc_padding_mask, combined_mask, dec_padding_mask = create_masks(inp, tar_inp)
-    x = tranformer(seq_input,seq_target,
+    enc_padding_mask, combined_mask, dec_padding_mask = create_masks(seq_input,seq_target)
+    final_output, attention_weights = transformer(seq_input,seq_target,
                     True,
                     enc_padding_mask, combined_mask, dec_padding_mask)
 
 
-    x = layers.GlobalAveragePooling1D()(x)
+    x = layers.GlobalAveragePooling1D()(final_output)
     x = layers.Dropout(0.1)(x)
     x = layers.Dense(20, activation="relu")(x)
     x = layers.Dropout(0.1)(x)
@@ -182,12 +182,12 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #train
     x_train_seqs = train_seqs[train_i]
     x_train_kingdoms = train_kingdoms[train_i]
-    x_train = [x_train_seqs,x_train_kingdoms]
+    x_train = [x_train_seqs,train_annotations[train_i],x_train_kingdoms] #inp seq, target annoation, kingdom
     y_train = [train_annotations[train_i],train_types[train_i]]
     #valid
     x_valid_seqs = train_seqs[valid_i]
     x_valid_kingdoms = train_kingdoms[valid_i]
-    x_valid = [x_valid_seqs,x_valid_kingdoms]
+    x_valid = [x_valid_seqs,train_annotations[valid_i],x_valid_kingdoms]
     y_valid = [train_annotations[valid_i],train_types[valid_i]]
 
     #Model
@@ -206,7 +206,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
     #Create model
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
-    pdb.set_trace()
+
     #Save model
     if save_model == True:
         model_json = model.to_json()
