@@ -21,7 +21,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 #visualization
 from tensorflow.keras.callbacks import TensorBoard
 
-from transformer_classes import MultiHeadAttention, Encoder, Decoder
+from transformer_classes import MultiHeadAttention
 #from lr_finder import LRFinder
 
 
@@ -49,84 +49,71 @@ parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'P
 #set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 #####FUNCTIONS and CLASSES#####
-class Transformer(tf.keras.Model):
-    def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size,
-               target_vocab_size, pe_input, pe_target, rate=0.1):
-        super(Transformer, self).__init__()
+class TokenAndPositionEmbedding(layers.Layer):
+    def __init__(self, maxlen, vocab_size, embed_dim):
+        super(TokenAndPositionEmbedding, self).__init__()
+        self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
+        self.pos_emb = layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
 
-        self.tokenizer = Encoder(num_layers, d_model, num_heads, dff,
-                               input_vocab_size, pe_input, rate)
+    def call(self, x):
+        maxlen = tf.shape(x)[-1]
+        positions = tf.range(start=0, limit=maxlen, delta=1)
+        positions = self.pos_emb(positions)
+        x = self.token_emb(x)
+        return x + positions
 
-        self.decoder = Decoder(num_layers, d_model, num_heads, dff,
-                               target_vocab_size, pe_target, rate)
+class TransformerBlock(layers.Layer):
+    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
+        super(TransformerBlock, self).__init__()
+        self.att = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
+        self.ffn = keras.Sequential(
+            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
+        )
+        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
+        self.dropout1 = layers.Dropout(rate)
+        self.dropout2 = layers.Dropout(rate)
 
-        self.final_layer = tf.keras.layers.Dense(target_vocab_size)
+    def call(self, inputs, training):
+        attn_output = self.att(inputs, inputs)
+        attn_output = self.dropout1(attn_output, training=training)
+        out1 = self.layernorm1(inputs + attn_output)
+        ffn_output = self.ffn(out1)
+        ffn_output = self.dropout2(ffn_output, training=training)
+        return self.layernorm2(out1 + ffn_output)
 
-    def call(self, inp, tar, training, enc_padding_mask,
-           look_ahead_mask, dec_padding_mask):
-
-        enc_output = self.tokenizer(inp, training, enc_padding_mask)  # (batch_size, inp_seq_len, d_model)
-
-        # dec_output.shape == (batch_size, tar_seq_len, d_model)
-        dec_output, attention_weights = self.decoder(
-            tar, enc_output, training, look_ahead_mask, dec_padding_mask)
-
-        #final_output = self.final_layer(dec_output)  # (batch_size, tar_seq_len, target_vocab_size)
-
-        return dec_output, attention_weights
-
-
-###MASKING
-def create_padding_mask(seq):
-  seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
-
-  # add extra dimensions to add the padding
-  # to the attention logits.
-  return seq[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1, 1, seq_len)
-
-def create_look_ahead_mask(size):
-  mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
-  return mask  # (seq_len, seq_len)
-
-def create_masks(inp, tar):
-  # Encoder padding mask
-  enc_padding_mask = create_padding_mask(inp)
-
-  # Used in the 2nd attention block in the decoder.
-  # This padding mask is used to mask the encoder outputs.
-  dec_padding_mask = create_padding_mask(inp)
-
-  # Used in the 1st attention block in the decoder.
-  # It is used to pad and mask future tokens in the input received by
-  # the decoder.
-  look_ahead_mask = create_look_ahead_mask(tf.shape(tar)[1])
-  dec_target_padding_mask = create_padding_mask(tar)
-  combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
-
-  return enc_padding_mask, combined_mask, dec_padding_mask
 
 def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     '''Create the transformer model
     '''
 
     seq_input = layers.Input(shape=(maxlen,)) #Input aa sequences
-    seq_target = layers.Input(shape=(None,)) #Targets - annotations
+    seq_target = layers.Input(shape=(maxlen,)) #Targets - annotations
     kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
 
-    #Define the transformer
-    transformer = Transformer(num_layers, embed_dim, num_heads, ff_dim, 21, 7,maxlen,maxlen)
-    enc_padding_mask, combined_mask, dec_padding_mask = create_masks(seq_input,seq_target)
-    x, attention_weights = transformer(seq_input,seq_target,
-                    True,
-                    enc_padding_mask, combined_mask, dec_padding_mask)
+    ##Embeddings
+    embedding_layer1 = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
+    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 6, embed_dim)
+    x1 = embedding_layer1(seq_input)
+    x2 = embedding_layer2(seq_target)
 
-    x = layers.GlobalAveragePooling1D()(x)
-    x = layers.Dropout(0.1)(x)
-    x = layers.Dense(20, activation="relu")(x)
-    x = layers.Dropout(0.1)(x)
-    x = layers.Concatenate()([x,kingdom_input])
-    preds = layers.Dense(maxlen*7, activation="softmax")(x)
-    preds = layers.Reshape((-1,maxlen,7),name='annotation')(preds)
+    #Define the transformer
+    transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
+    #Iterate
+    for i in range num_iterations:
+        transformer_input = layers.Concatenate()([x1,x2])
+        x = transformer_block(x)
+
+        x = layers.GlobalAveragePooling1D()(x)
+        x = layers.Dropout(0.1)(x)
+        x = layers.Dense(20, activation="relu")(x)
+        x = layers.Dropout(0.1)(x)
+        x = layers.Concatenate()([x,kingdom_input])
+        x = layers.Dense(maxlen*6, activation="softmax")(x)
+        x2 = layers.Reshape((-1,maxlen,6),name='annotation')(preds)
+        x2 = embedding_layer2(x2)
+
+    preds = x2
     pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
     #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
@@ -182,19 +169,18 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #train
     x_train_seqs = train_seqs[train_i]
     x_train_kingdoms = train_kingdoms[train_i]
-    #The annotation 6 will be added to the train annotations as a start token (the annotations range from 0-5)
-    x_train_target_inp = np.copy(train_annotations[train_i])
-    x_train_target_inp[:,1:]=x_train_target_inp[:,:-1]
-    x_train_target_inp[:,:20]=6 #Make the first 20 start tokens. If the model knows it is a signal peptide it will be easy
+
+    #Random annotations are added as input
+    pdb.set_trace()
+    x_train_target_inp = np.zeros(train_annotations[train_i].shape)
+
     x_train = [x_train_seqs,x_train_target_inp,x_train_kingdoms] #inp seq, target annoation, kingdom
     y_train = [train_annotations[train_i],train_types[train_i]]
     #valid
     x_valid_seqs = train_seqs[valid_i]
     x_valid_kingdoms = train_kingdoms[valid_i]
     #The annotation 6 will be added to the train annotations as a start token (the annotations range from 0-5)
-    x_valid_target_inp = np.copy(train_annotations[valid_i])
-    x_valid_target_inp[:,1:]=x_valid_target_inp[:,:-1]
-    x_valid_target_inp[:,:20]=6
+    x_valid_target_inp = np.copy(x_valid_seqs)
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_kingdoms]
     y_valid = [train_annotations[valid_i],train_types[valid_i]]
 

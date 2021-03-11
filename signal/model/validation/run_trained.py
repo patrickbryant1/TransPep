@@ -97,7 +97,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
 
     #Define the transformer
-    transformer = Transformer(num_layers, embed_dim, num_heads, ff_dim, 21, 7,maxlen,maxlen)
+    transformer = Transformer(num_layers, embed_dim, num_heads, ff_dim, 21, 21,maxlen,maxlen)
     enc_padding_mask, combined_mask, dec_padding_mask = create_masks(seq_input,seq_target)
     x, attention_weights = transformer(seq_input,seq_target,
                     True,
@@ -164,8 +164,9 @@ def get_data(datadir, valid_partition):
     x_valid_seqs = train_seqs[valid_i]
     x_valid_kingdoms = train_kingdoms[valid_i]
     #The annotation 6 will be added to the train annotations as a start token (the annotations range from 0-5)
-    x_valid_target_inp=np.zeros((len(valid_i),1))
-    x_valid_target_inp[:,0]=6
+    x_valid_target_inp = np.copy(x_valid_seqs)
+    x_valid_target_inp[:,1:]=x_valid_seqs[:,:-1]
+    x_valid_target_inp[:,0]=20
     y_valid = [train_annotations[valid_i],train_types[valid_i]]
 
     return x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid
@@ -173,15 +174,14 @@ def get_data(datadir, valid_partition):
 def run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms):
 
     #Run predicions for all positions
-    for i in range(70):
+    for i in range(20,70):
         print(i)
         #Predict
         preds = model.predict([x_valid_seqs,x_valid_target_inp,x_valid_kingdoms])
         #Update x_valid_target_inp
-        x_valid_target_inp = np.zeros((x_valid_target_inp.shape[0],i+2))
-        x_valid_target_inp[:,0]=6
+        x_valid_target_inp = np.zeros((x_valid_target_inp.shape[0],i+1))
         #Here beam search can be implemented
-        x_valid_target_inp[:,1:]=np.argmax(preds[0][:,0,:i+1,:],axis=2)
+        x_valid_target_inp=np.argmax(preds[0][:,0,:i+1,:],axis=2)
         pdb.set_trace()
     return None
 
