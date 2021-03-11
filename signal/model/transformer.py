@@ -20,7 +20,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 #visualization
 from tensorflow.keras.callbacks import TensorBoard
 
-from multi_head_attention import MultiHeadSelfAttention
+from transformer_classes import MultiHeadAttention, EncoderLayer, DecoderLayer
 #from lr_finder import LRFinder
 
 
@@ -48,6 +48,9 @@ parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'P
 #set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 #####FUNCTIONS and CLASSES#####
+
+
+
 class TransformerBlock(layers.Layer):
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
         super(TransformerBlock, self).__init__()
@@ -200,7 +203,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
     #Create model
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
-    
+
     #Save model
     if save_model == True:
         model_json = model.to_json()
