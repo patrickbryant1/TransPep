@@ -13,6 +13,38 @@ OUTDIR=/home/patrick/results/protein_translation/attention/
 #   python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP &> $OUTDIR'/TP'$TP'/VP'$VP'/activations.txt'
 # done
 
+TP=1
+mkdir $OUTDIR'/TP'$TP
+for VP in 0 2 3 4
+do
+  mkdir $OUTDIR'/TP'$TP'/VP'$VP
+  python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP &> $OUTDIR'/TP'$TP'/VP'$VP'/activations.txt'
+done
+
+TP=2
+mkdir $OUTDIR'/TP'$TP
+for VP in 0 1 3 4
+do
+  mkdir $OUTDIR'/TP'$TP'/VP'$VP
+  python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP &> $OUTDIR'/TP'$TP'/VP'$VP'/activations.txt'
+done
+
+TP=3
+mkdir $OUTDIR'/TP'$TP
+for VP in 0 1 2 4
+do
+  mkdir $OUTDIR'/TP'$TP'/VP'$VP
+  python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP &> $OUTDIR'/TP'$TP'/VP'$VP'/activations.txt'
+done
+
+TP=4
+mkdir $OUTDIR'/TP'$TP
+for VP in 0 1 2 3
+do
+  mkdir $OUTDIR'/TP'$TP'/VP'$VP
+  python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP &> $OUTDIR'/TP'$TP'/VP'$VP'/activations.txt'
+done
+
 #Parse attention
 TP=0
 ATTENTIONDIR=$OUTDIR
@@ -21,4 +53,4 @@ ATTENTIONDIR=$OUTDIR
 #Analyze attention
 TP=0
 ATTENTIONDIR=$OUTDIR
-python3 analyze_attention.py --attention_dir $ATTENTIONDIR --checkpointdir $CHECKPOINTDIR'TP'$TP'/' --test_partition $TP
+#python3 analyze_attention.py --attention_dir $ATTENTIONDIR --checkpointdir $CHECKPOINTDIR'TP'$TP'/' --test_partition $TP
