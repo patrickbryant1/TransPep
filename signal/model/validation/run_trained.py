@@ -126,9 +126,7 @@ def load_model(variable_params, param_combo, weights):
     batch_size = int(net_params['batch_size']) #32
 
     #Create model
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
-
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,10)
     model.load_weights(weights)
     #print(model.summary())
     return model
@@ -164,14 +162,14 @@ def get_data(datadir, valid_partition):
 def run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms):
 
     preds = model.predict([x_valid_seqs,x_valid_target_inp,x_valid_kingdoms])
-    pdb.set_trace()
 
-    return None
+    return preds
 
 
 def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom):
     '''Evaluate the capacity to predict the clevage site
     annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
+    annotation [S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide | I: cytoplasm | M: transmembrane | O: extracellular]
     S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide |
     'NO_SP':0,'SP':1,'TAT':2,'LIPO':3
     SP = Sec/SPI
@@ -225,31 +223,46 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
         P_CS_pred = []
         P_annotations_pred = pred_annotations[np.intersect1d(P,pred_P)]
         for i in range(len(P_annotations_pred)):
-            P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
+            try:
+                P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
+            except:
+                pdb.set_trace()
+                P_CS_pred.append(0)
+
 
         #Get the TP and FP CS
-        TP_CS = 0
-        FP_CS = 0
+        TP_CS = {0:0,1:0,2:0,3:0} #exact CS, +/-1 error, +/-2 error, +/-3 error
+        FP_CS = {0:0,1:0,2:0,3:0}
         for i in range(len(P_CS)):
             CS_diff = P_CS[i]-P_CS_pred[i]
-            if CS_diff<3 and CS_diff>-3:
-                TP_CS+=1
-            else:
-                FP_CS+=1
+            for d in range(0,4):
+                if CS_diff<=d and CS_diff>=-d:
+                    TP_CS[d]+=1
+                else:
+                    FP_CS[d]+=1
 
         #Add the FPs from the wrong detection
-        FP_CS += FP
+        for d in range(0,4):
+            FP_CS[d] += FP
+
         #Calculate CS precision and recall
-        CS_precision = TP_CS/(TP_CS+FP_CS)
-        CS_recall = TP_CS/P.shape[0]
+        CS_precision = {}
+        CS_recall = {}
+        pdb.set_trace()
+        for d in range(0,4):
+            CS_precision[d]=TP_CS[d]/(TP_CS[d]+FP_CS[d])
+            CS_recall[d] = TP_CS[d]/P.shape[0]
+
+
         #Save
         fetched_types.append(type_name)
         MCCs.append(MCC)
-        Precisions.append(CS_precision)
-        Recalls.append(CS_recall)
+        Precisions.append([*CS_precision.values()])
+        Recalls.append([*CS_recall.values()])
 
 
     return fetched_types, MCCs, Precisions, Recalls
+
 
 ######################MAIN######################
 args = parser.parse_args()
@@ -272,18 +285,20 @@ all_kingdoms = []
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #weights
     weights=glob.glob(checkpointdir+'vp'+str(valid_partition)+'/*.hdf5')
+    if len(weights)<1:
+        continue
     #model
     model = load_model(variable_params, param_combo, weights[0])
     #Get data
     x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid = get_data(datadir, valid_partition)
     #Predict
-    run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms)
+    preds = run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms)
     #Fetch
-    pred_annotations = np.argmax(pred[0][:,0,:,:],axis=2)
-    pred_types = np.argmax(pred[1],axis=1)
+    pred_annotations = np.argmax(preds[0],axis=2)
+    pred_types = np.argmax(preds[1],axis=1)
     true_annotations = y_valid[0]
     true_types = y_valid[1]
-    kingdoms = np.argmax(x_valid[1],axis=1)
+    kingdoms = np.argmax(x_valid_kingdoms,axis=1)
     #Save
     all_pred_types.extend([*pred_types])
     all_pred_annotations.extend([*pred_annotations])
@@ -331,3 +346,4 @@ eval_df['Precision']=all_precisions
 eval_df['Recall']=all_recalls
 eval_df.to_csv(outdir+'eval_df'+str(test_partition)+'.csv')
 print(eval_df)
+pdb.set_trace()
