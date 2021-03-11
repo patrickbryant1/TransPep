@@ -98,11 +98,11 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     x2 = embedding_layer2(seq_target)
 
     #Define the transformer
-    transformer_block = TransformerBlock(embed_dim, num_heads, ff_dim)
+    transformer_block = TransformerBlock(embed_dim*2, num_heads, ff_dim)
     #Iterate
     for i in range(num_iterations):
         transformer_input = layers.Concatenate()([x1,x2])
-        x = transformer_block(x)
+        x = transformer_block(transformer_input)
 
         x = layers.GlobalAveragePooling1D()(x)
         x = layers.Dropout(0.1)(x)
@@ -110,10 +110,11 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
         x = layers.Dropout(0.1)(x)
         x = layers.Concatenate()([x,kingdom_input])
         x = layers.Dense(maxlen*6, activation="softmax")(x)
-        x2 = layers.Reshape((-1,maxlen,6),name='annotation')(preds)
+        x_rs = layers.Reshape((maxlen,6))(x)
+        x2 = tf.math.argmax(x_rs,axis=-1)
         x2 = embedding_layer2(x2)
 
-    preds = x2
+    preds = layers.Reshape((maxlen,6),name='annotation')(x)
     pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
     #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
