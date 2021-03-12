@@ -82,6 +82,20 @@ class TransformerBlock(layers.Layer):
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out1 + ffn_output)
 
+class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
+  def __init__(self, d_model, warmup_steps=4000):
+    super(CustomSchedule, self).__init__()
+
+    self.d_model = d_model
+    self.d_model = tf.cast(self.d_model, tf.float32)
+
+    self.warmup_steps = warmup_steps
+
+  def __call__(self, step):
+    arg1 = tf.math.rsqrt(step)
+    arg2 = step * (self.warmup_steps ** -1.5)
+
+    return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
 
 def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations):
     '''Create the transformer model
@@ -102,7 +116,8 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     #Iterate
     for i in range(num_iterations):
         transformer_input = layers.Concatenate()([x1,x2])
-        x = transformer_block(transformer_input)
+        for j in range(num_layers):
+            x = transformer_block(transformer_input)
 
         x = layers.GlobalAveragePooling1D()(x)
         x = layers.Dropout(0.1)(x)
@@ -115,15 +130,19 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
         x2 = embedding_layer2(x2)
 
     preds = layers.Reshape((maxlen,6),name='annotation')(x)
-    pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
+    #pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
     #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
 
-    model = keras.Model(inputs=[seq_input,seq_target,kingdom_input], outputs=[preds,pred_type])
+    model = keras.Model(inputs=[seq_input,seq_target,kingdom_input], outputs=preds)
     #Optimizer
-    opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
+    learning_rate = CustomSchedule(ff_dim)
+
+    opt = tf.keras.optimizers.Adam(learning_rate, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
+
+    #opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
     #Compile
-    model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
+    model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
 
     return model
 
@@ -175,7 +194,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_train_target_inp = np.zeros(train_annotations[train_i].shape)
     x_train_target_inp[:,:]=np.random.randint(6,size=70)
     x_train = [x_train_seqs,x_train_target_inp,x_train_kingdoms] #inp seq, target annoation, kingdom
-    y_train = [train_annotations[train_i],train_types[train_i]]
+    y_train = train_annotations[train_i] #,train_types[train_i]]
     #valid
     x_valid_seqs = train_seqs[valid_i]
     x_valid_kingdoms = train_kingdoms[valid_i]
@@ -183,7 +202,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_valid_target_inp = np.zeros(train_annotations[valid_i].shape)
     x_valid_target_inp[:,:]=np.random.randint(6,size=70)
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_kingdoms]
-    y_valid = [train_annotations[valid_i],train_types[valid_i]]
+    y_valid = train_annotations[valid_i] #,train_types[valid_i]]
 
     #Model
     #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
@@ -198,16 +217,12 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
     num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
-
+    num_iterations = int(net_params['num_iterations'])
     #Create model
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,10)
-
-    #Save model
-    #Instead of using a json file, simply import the model function from here and do
-    #model.load_weights(weights_file, by_name=True)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
 
     #Summary of model
-    print(model.summary())
+    #print(model.summary())
     #Checkpoint
     if checkpoint == True:
         #Make dir
@@ -217,12 +232,12 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
             print('Checkpoint directory exists...')
 
         checkpoint_path=checkpointdir+'vp'+str(valid_partition)+"/weights_{epoch:02d}.hdf5"
-        checkpoint = tf.keras.callbacks.ModelCheckpoint(
+        checkpointer = tf.keras.callbacks.ModelCheckpoint(
         checkpoint_path, monitor='val_loss', verbose=0, save_best_only=True,
         save_weights_only=True, mode='auto', save_freq='epoch')
 
         #Callbacks
-        callbacks=[checkpoint]
+        callbacks=[checkpointer]
     else:
         callbacks = []
 
