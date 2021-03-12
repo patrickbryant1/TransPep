@@ -10,12 +10,12 @@ OUTDIR=../results/
 #0
 TEST_PARTITION=0
 PARAM_COMBO=208
-#python3 ./transformer.py --train_data $TRAIN_DATA --datadir $DATADIR --test_partition $TEST_PARTITION --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR'TP'$TEST_PARTITION'/' --save_model $SAVE_MODEL --checkpoint $CHECKPOINT --num_epochs $NUM_EPOCHS --outdir $OUTDIR
+python3 ./transformer.py --train_data $TRAIN_DATA --datadir $DATADIR --test_partition $TEST_PARTITION --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR'TP'$TEST_PARTITION'/' --save_model $SAVE_MODEL --checkpoint $CHECKPOINT --num_epochs $NUM_EPOCHS --outdir $OUTDIR
 
 #1
 TEST_PARTITION=1
 PARAM_COMBO=208
-python3 ./transformer.py --train_data $TRAIN_DATA --datadir $DATADIR --test_partition $TEST_PARTITION --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR'TP'$TEST_PARTITION'/' --save_model $SAVE_MODEL --checkpoint $CHECKPOINT --num_epochs $NUM_EPOCHS --outdir $OUTDIR
+#python3 ./transformer.py --train_data $TRAIN_DATA --datadir $DATADIR --test_partition $TEST_PARTITION --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR'TP'$TEST_PARTITION'/' --save_model $SAVE_MODEL --checkpoint $CHECKPOINT --num_epochs $NUM_EPOCHS --outdir $OUTDIR
 
 # #2
 # TEST_PARTITION=2
