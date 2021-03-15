@@ -19,7 +19,7 @@ class MultiHeadSelfAttention(keras.layers.Layer):
     def attention(self, q, k, v):
         score = tf.matmul(q, k, transpose_b=True)
         dk = tf.cast(tf.shape(k)[-1], tf.float32)
-        scaled_score = score / tf.math.sqrt(dk)
+        scaled_score = score / tf.math.sqrt(dk) #Normalize - otherwise the gradients will quickly explode
         weights = tf.nn.softmax(scaled_score, axis=-1)
         output = tf.matmul(weights, v)
         return output, weights

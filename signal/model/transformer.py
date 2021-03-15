@@ -31,7 +31,6 @@ parser = argparse.ArgumentParser(description = '''A Transformer Neural Network f
 
 parser.add_argument('--train_data', nargs=1, type= str, default=sys.stdin, help = 'Path to training data in fasta format.')
 parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = 'Path to data directory.')
-parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test on.')
 parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with variable params.')
 parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
 parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = 'Path to checpoint directory. Include /in end')
@@ -182,7 +181,6 @@ except:
 #Get parameters
 variable_params=pd.read_csv(args.variable_params[0])
 param_combo=args.param_combo[0]
-test_partition = args.test_partition[0]
 checkpointdir = args.checkpointdir[0]
 save_model = bool(args.save_model[0])
 checkpoint = bool(args.checkpoint[0])
@@ -195,15 +193,17 @@ train_types = train_meta.Type.values
 #Onehot conversion
 train_kingdoms = np.eye(4)[train_kingdoms]
 
-#Get data
-#Run through all by taking as input
-test_i = train_meta[train_meta.Partition==test_partition].index
 #Params
 net_params = variable_params.loc[param_combo-1]
 test_partition = int(net_params['test_partition'])
 #Fixed params
 vocab_size = 21  # Only consider the top 20k words
 maxlen = 70  # Only consider the first 70 amino acids
+
+#Get data
+#Run through all by taking as input
+test_i = train_meta[train_meta.Partition==test_partition].index
+
 
 train_losses = []
 valid_losses = []
