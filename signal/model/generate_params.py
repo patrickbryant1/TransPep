@@ -6,12 +6,12 @@ import numpy as np
 import pandas as pd
 import pdb
 
-embed_dim = [16,32,64]
+embed_dim = [16,32]
 num_heads = [1,2,4]
-ff_dim = [16,32,64]
+ff_dim = [16,32]
 num_layers = [1,2,4]
-batch_sizes = [16,32,64]
-num_iterations = [1,10,20]
+batch_sizes = [32,64]
+num_iterations = [1,5,10]
 test_partitions = [0,1,2,3,4]
 
 combos = np.zeros((len(embed_dim)*len(num_heads)*len(ff_dim)*len(num_layers)*len(batch_sizes)*len(num_iterations)*len(test_partitions),7))
