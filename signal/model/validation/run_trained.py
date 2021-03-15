@@ -18,7 +18,8 @@ from tensorflow.keras import layers
 
 import glob
 from categorical_focal_loss import SparseCategoricalFocalLoss
-from transformer_classes import MultiHeadAttention, Encoder, Decoder
+from attention_class import MultiHeadSelfAttention #https://apoorvnandan.github.io/2020/05/10/transformer-classifier/
+
 
 import pdb
 
@@ -50,7 +51,7 @@ class TokenAndPositionEmbedding(layers.Layer):
 class TransformerBlock(layers.Layer):
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
         super(TransformerBlock, self).__init__()
-        self.att = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)
+        self.att = MultiHeadSelfAttention(embed_dim,num_heads)
         self.ffn = keras.Sequential(
             [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
         )
@@ -60,13 +61,12 @@ class TransformerBlock(layers.Layer):
         self.dropout2 = layers.Dropout(rate)
 
     def call(self, inputs, training):
-        attn_output = self.att(inputs, inputs)
+        attn_output = self.att(inputs)
         attn_output = self.dropout1(attn_output, training=training)
         out1 = self.layernorm1(inputs + attn_output)
         ffn_output = self.ffn(out1)
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out1 + ffn_output)
-
 
 def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations):
     '''Create the transformer model
@@ -87,7 +87,8 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     #Iterate
     for i in range(num_iterations):
         transformer_input = layers.Concatenate()([x1,x2])
-        x = transformer_block(transformer_input)
+        for j in range(num_layers):
+            x = transformer_block(transformer_input)
 
         x = layers.GlobalAveragePooling1D()(x)
         x = layers.Dropout(0.1)(x)
@@ -100,15 +101,11 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
         x2 = embedding_layer2(x2)
 
     preds = layers.Reshape((maxlen,6),name='annotation')(x)
-    pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
+    #pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
     #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
 
-    model = keras.Model(inputs=[seq_input,seq_target,kingdom_input], outputs=[preds,pred_type])
-    #Optimizer
-    opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
-    #Compile
-    model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
+    model = keras.Model(inputs=[seq_input,seq_target,kingdom_input], outputs=preds)
 
     return model
 
@@ -124,10 +121,11 @@ def load_model(variable_params, param_combo, weights):
     ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
     num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
-
+    num_iterations = int(net_params['num_iterations'])
     #Create model
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,10)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
     model.load_weights(weights)
+
     #print(model.summary())
     return model
 
@@ -160,10 +158,38 @@ def get_data(datadir, valid_partition):
     return x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid
 
 def run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms):
-
     preds = model.predict([x_valid_seqs,x_valid_target_inp,x_valid_kingdoms])
 
     return preds
+
+def get_pred_types(pred_annotations):
+    '''Get the predicted types based on the annotations
+    '''
+
+    annotation_type_conversion = {0:1,1:2,2:3} #S(0)=SP(1), T(1)=TAT(2),L(2)=LIPO(3) - all other 0 (No SP)
+    pred_types = []
+    for i in range(len(pred_annotations)):
+        if (0 in pred_annotations[i]) or (1 in pred_annotations[i]) or (2 in pred_annotations[i]):
+            counts = Counter(pred_annotations[i])
+            keys = [*counts.keys()]
+
+            key_count=0 #Count the occurance of each annotation - take the max for the type
+            key_type = 0
+            for key in annotation_type_conversion: #Got through all keys
+                if key not in keys:
+                    continue
+                else:
+                    if counts[key]>key_count:
+                        key_count=counts[key]
+                        key_type=annotation_type_conversion[key]
+
+            #Save
+            pred_types.append(key_type)
+
+        else:
+            pred_types.append(0)
+
+    return np.array(pred_types)
 
 
 def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom):
@@ -207,6 +233,8 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
         pred_N = np.argwhere(pred_types!=type_enc)[:,0]
         #TP and TN
         TP = np.intersect1d(P,pred_P).shape[0]
+        if TP<1:
+            continue
         FP = len(pred_P)-TP
         TN = np.intersect1d(N,pred_N).shape[0]
         FN= len(pred_N)-TN
@@ -251,8 +279,11 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
         CS_recall = {}
 
         for d in range(0,4):
-            CS_precision[d]=TP_CS[d]/(TP_CS[d]+FP_CS[d])
-            CS_recall[d] = TP_CS[d]/P.shape[0]
+            try:
+                CS_precision[d]=TP_CS[d]/(TP_CS[d]+FP_CS[d])
+                CS_recall[d] = TP_CS[d]/P.shape[0]
+            except:
+                pdb.set_trace()
 
 
         #Save
@@ -277,7 +308,6 @@ outdir = args.outdir[0]
 kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1}
 #Load and run model
 all_pred_annotations = []
-all_pred_types = []
 all_true_annotations = []
 all_true_types = []
 all_kingdoms = []
@@ -295,25 +325,25 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Predict
     preds = run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms)
     #Fetch
-    pred_annotations = np.argmax(preds[0],axis=2)
-    pred_types = np.argmax(preds[1],axis=1)
+    pred_annotations = np.argmax(preds,axis=2)
     true_annotations = y_valid[0]
     true_types = y_valid[1]
     kingdoms = np.argmax(x_valid_kingdoms,axis=1)
     #Save
-    all_pred_types.extend([*pred_types])
     all_pred_annotations.extend([*pred_annotations])
     all_true_types.extend([*true_types])
     all_true_annotations.extend([*true_annotations])
     all_kingdoms.extend([*kingdoms])
 
+
+
 #Array conversions
-all_pred_annotations = np.array(all_pred_annotations)
-all_pred_types = np.array(all_pred_types)
+all_pred_annotations = np.array(all_pred_annotations) #The type will be fetched from the annotations
 all_true_annotations = np.array(all_true_annotations)
 all_true_types = np.array(all_true_types)
 all_kingdoms = np.array(all_kingdoms)
-
+#Get pred types based on pred annotations
+all_pred_types = get_pred_types(all_pred_annotations)
 #Evaluate per kingdom
 evaluated_kingdoms = []
 all_types = []
@@ -347,4 +377,3 @@ eval_df['Precision']=all_precisions
 eval_df['Recall']=all_recalls
 eval_df.to_csv(outdir+'eval_df'+str(test_partition)+'.csv')
 print(eval_df)
-pdb.set_trace()

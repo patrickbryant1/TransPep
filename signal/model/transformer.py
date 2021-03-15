@@ -21,7 +21,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 #visualization
 from tensorflow.keras.callbacks import TensorBoard
 
-from attention_class import MultiHeadSelfAttention
+from attention_class import MultiHeadSelfAttention #https://apoorvnandan.github.io/2020/05/10/transformer-classifier/
 #from lr_finder import LRFinder
 
 
