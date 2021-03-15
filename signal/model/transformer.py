@@ -100,7 +100,7 @@ class DecoderBlock(layers.Layer):
         attn_output1 = self.dropout1(attn_output1, training=training)
         out1 = self.layernorm1(in_v + attn_output1)
         #Encoder-decoder attention
-        attn_output2,attn_weights2 = self.att([in_q,in_k,attn_output1]) #The weights are needed for downstream analysis
+        attn_output2,attn_weights2 = self.att(in_q,in_k,attn_output1) #The weights are needed for downstream analysis
         attn_output2 = self.dropout1(attn_output2, training=training)
         out2 = self.layernorm1(attn_output2 + attn_output1)
         ffn_output = self.ffn(out2)
@@ -130,10 +130,10 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
             #Encode
             enc_x, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
             #Decode
-            dec_x, enc_dec_attn_weights = encoder(enc_x,enc_x,x2) #q,k,v
-            x2 = embedding_layer2(dec_x)
+            dec_x, enc_dec_attn_weights = decoder(enc_x,enc_x,x2) #q,k,v
 
-        x = layers.GlobalAveragePooling1D()(x2)
+        x = layers.Reshape((maxlen,embed_dim))(dec_x)
+        x = layers.GlobalAveragePooling1D(data_format='channels_first')(x)
         x = layers.Dropout(0.1)(x)
         x = layers.Dense(20, activation="relu")(x)
         x = layers.Dropout(0.1)(x)
@@ -162,6 +162,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     #opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
     #Compile
     model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
+    print(model.summary())
     pdb.set_trace()
     return model
 
