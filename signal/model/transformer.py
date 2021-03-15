@@ -96,11 +96,11 @@ class DecoderBlock(layers.Layer):
 
     def call(self, in_q,in_k,in_v, training): #Inputs is a list with [q,k,v]
         #Self-attention
-        attn_output1,attn_weights1 = self.att(in_v,in_v,in_v) #The weights are needed for downstream analysis
+        attn_output1,attn_weights1 = self.att(in_q,in_q,in_q) #The weights are needed for downstream analysis
         attn_output1 = self.dropout1(attn_output1, training=training)
         out1 = self.layernorm1(in_v + attn_output1)
         #Encoder-decoder attention
-        attn_output2,attn_weights2 = self.att(in_q,in_k,attn_output1) #The weights are needed for downstream analysis
+        attn_output2,attn_weights2 = self.att(out1,in_k,in_v) #The weights are needed for downstream analysis
         attn_output2 = self.dropout1(attn_output2, training=training)
         out2 = self.layernorm1(attn_output2 + attn_output1)
         ffn_output = self.ffn(out2)
@@ -129,15 +129,14 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
         #Encode
         for j in range(num_layers):
             x1, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
-        #Decode
+        #Decoder
         for k in range(num_layers):
-            x2, enc_dec_attn_weights = decoder(x1,x1,x2) #q,k,v
+            x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
-        x = layers.Reshape((maxlen,embed_dim))(x2)
-        x = layers.GlobalAveragePooling1D(data_format='channels_first')(x)
+        x = layers.GlobalAveragePooling1D()(x2) #Compress
         x = layers.Dropout(0.1)(x)
         x = layers.Concatenate()([x,kingdom_input]) #Add the kingdom input
-        x = layers.Dense(20, activation="relu")(x) #Extract info
+        x = layers.Dense(20, activation="relu")(x) #Extract info using the linear layer
         x = layers.Dropout(0.1)(x)
         x = layers.Dense(maxlen*6, activation="softmax")(x) #Annotate
         x_rs = layers.Reshape((maxlen,6))(x)
@@ -199,6 +198,9 @@ train_kingdoms = np.eye(4)[train_kingdoms]
 #Get data
 #Run through all by taking as input
 test_i = train_meta[train_meta.Partition==test_partition].index
+#Params
+net_params = variable_params.loc[param_combo-1]
+test_partition = int(net_params['test_partition'])
 #Fixed params
 vocab_size = 21  # Only consider the top 20k words
 maxlen = 70  # Only consider the first 70 amino acids
@@ -227,8 +229,6 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
     #Model
     #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
-    #Params
-    net_params = variable_params.loc[param_combo-1]
 
     #Variable params
     embed_dim = int(net_params['embed_dim']) #32  # Embedding size for each token
