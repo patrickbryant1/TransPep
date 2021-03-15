@@ -62,9 +62,9 @@ class TokenAndPositionEmbedding(layers.Layer):
         x = self.token_emb(x)
         return x + positions
 
-class TransformerBlock(layers.Layer):
+class EncoderBlock(layers.Layer):
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
-        super(TransformerBlock, self).__init__()
+        super(EncoderBlock, self).__init__()
         self.att = MultiHeadSelfAttention(embed_dim,num_heads)
         self.ffn = keras.Sequential(
             [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
@@ -74,15 +74,38 @@ class TransformerBlock(layers.Layer):
         self.dropout1 = layers.Dropout(rate)
         self.dropout2 = layers.Dropout(rate)
 
-    def call(self, inputs, training):
-        attn_output = self.att(inputs)
+    def call(self, in_q,in_k,in_v, training): #Inputs is a list with [q,k,v]
+        attn_output,attn_weights = self.att(in_q,in_k,in_v) #The weights are needed for downstream analysis
         attn_output = self.dropout1(attn_output, training=training)
-        out1 = self.layernorm1(inputs + attn_output)
+        out1 = self.layernorm1(in_q + attn_output)
         ffn_output = self.ffn(out1)
         ffn_output = self.dropout2(ffn_output, training=training)
-        return self.layernorm2(out1 + ffn_output)
+        return self.layernorm2(out1 + ffn_output), attn_weights
 
+class DecoderBlock(layers.Layer):
+    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
+        super(DecoderBlock, self).__init__()
+        self.att = MultiHeadSelfAttention(embed_dim,num_heads)
+        self.ffn = keras.Sequential(
+            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
+        )
+        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
+        self.dropout1 = layers.Dropout(rate)
+        self.dropout2 = layers.Dropout(rate)
 
+    def call(self, in_q,in_k,in_v, training): #Inputs is a list with [q,k,v]
+        #Self-attention
+        attn_output1,attn_weights1 = self.att(in_v,in_v,in_v) #The weights are needed for downstream analysis
+        attn_output1 = self.dropout1(attn_output1, training=training)
+        out1 = self.layernorm1(in_v + attn_output1)
+        #Encoder-decoder attention
+        attn_output2,attn_weights2 = self.att([in_q,in_k,attn_output1]) #The weights are needed for downstream analysis
+        attn_output2 = self.dropout1(attn_output2, training=training)
+        out2 = self.layernorm1(attn_output2 + attn_output1)
+        ffn_output = self.ffn(out2)
+        ffn_output = self.dropout2(ffn_output, training=training)
+        return self.layernorm2(out2 + ffn_output), attn_weights2
 
 def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations):
     '''Create the transformer model
@@ -99,14 +122,18 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     x2 = embedding_layer2(seq_target)
 
     #Define the transformer
-    transformer_block = TransformerBlock(embed_dim*2, num_heads, ff_dim)
+    encoder = EncoderBlock(embed_dim, num_heads, ff_dim)
+    decoder = DecoderBlock(embed_dim, num_heads, ff_dim)
     #Iterate
     for i in range(num_iterations):
-        transformer_input = layers.Concatenate()([x1,x2])
         for j in range(num_layers):
-            x = transformer_block(transformer_input)
+            #Encode
+            enc_x, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
+            #Decode
+            dec_x, enc_dec_attn_weights = encoder(enc_x,enc_x,x2) #q,k,v
+            x2 = embedding_layer2(dec_x)
 
-        x = layers.GlobalAveragePooling1D()(x)
+        x = layers.GlobalAveragePooling1D()(x2)
         x = layers.Dropout(0.1)(x)
         x = layers.Dense(20, activation="relu")(x)
         x = layers.Dropout(0.1)(x)
@@ -135,7 +162,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     #opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
     #Compile
     model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
-
+    pdb.set_trace()
     return model
 
 ######################MAIN######################

@@ -28,12 +28,12 @@ class MultiHeadSelfAttention(keras.layers.Layer):
         x = tf.reshape(x, (batch_size, -1, self.num_heads, self.projection_dim))
         return tf.transpose(x, perm=[0, 2, 1, 3])
 
-    def call(self, x):
+    def call(self,x,y,z):
         # x.shape = [batch_size, seq_len, embedding_dim]
         batch_size = tf.shape(x)[0]
         q = self.wq(x)  # (batch_size, seq_len, embed_dim)
-        k = self.wk(x)  # (batch_size, seq_len, embed_dim)
-        v = self.wv(x)  # (batch_size, seq_len, embed_dim)
+        k = self.wk(y)  # (batch_size, seq_len, embed_dim)
+        v = self.wv(z)  # (batch_size, seq_len, embed_dim)
         q = self.separate_heads(
             q, batch_size
         )  # (batch_size, num_heads, seq_len, projection_dim)
@@ -53,4 +53,4 @@ class MultiHeadSelfAttention(keras.layers.Layer):
         output = self.combine_heads(
             concat_attention
         )  # (batch_size, seq_len, embed_dim)
-        return output
+        return output, weights
