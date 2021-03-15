@@ -126,21 +126,22 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     decoder = DecoderBlock(embed_dim, num_heads, ff_dim)
     #Iterate
     for i in range(num_iterations):
+        #Encode
         for j in range(num_layers):
-            #Encode
-            enc_x, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
-            #Decode
-            dec_x, enc_dec_attn_weights = decoder(enc_x,enc_x,x2) #q,k,v
+            x1, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
+        #Decode
+        for k in range(num_layers):
+            x2, enc_dec_attn_weights = decoder(x1,x1,x2) #q,k,v
 
-        x = layers.Reshape((maxlen,embed_dim))(dec_x)
+        x = layers.Reshape((maxlen,embed_dim))(x2)
         x = layers.GlobalAveragePooling1D(data_format='channels_first')(x)
         x = layers.Dropout(0.1)(x)
-        x = layers.Dense(20, activation="relu")(x)
+        x = layers.Concatenate()([x,kingdom_input]) #Add the kingdom input
+        x = layers.Dense(20, activation="relu")(x) #Extract info
         x = layers.Dropout(0.1)(x)
-        x = layers.Concatenate()([x,kingdom_input])
-        x = layers.Dense(maxlen*6, activation="softmax")(x)
+        x = layers.Dense(maxlen*6, activation="softmax")(x) #Annotate
         x_rs = layers.Reshape((maxlen,6))(x)
-        x2 = tf.math.argmax(x_rs,axis=-1)
+        x2 = tf.math.argmax(x_rs,axis=-1) #Needed for iterative training
         x2 = embedding_layer2(x2)
 
     preds = layers.Reshape((maxlen,6),name='annotation')(x)
@@ -162,8 +163,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     #opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
     #Compile
     model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
-    print(model.summary())
-    pdb.set_trace()
+
     return model
 
 ######################MAIN######################
@@ -199,6 +199,9 @@ train_kingdoms = np.eye(4)[train_kingdoms]
 #Get data
 #Run through all by taking as input
 test_i = train_meta[train_meta.Partition==test_partition].index
+#Fixed params
+vocab_size = 21  # Only consider the top 20k words
+maxlen = 70  # Only consider the first 70 amino acids
 
 train_losses = []
 valid_losses = []
@@ -211,16 +214,14 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_train_kingdoms = train_kingdoms[train_i]
 
     #Random annotations are added as input
-    x_train_target_inp = np.zeros(train_annotations[train_i].shape)
-    x_train_target_inp[:,:]=np.random.randint(6,size=70)
+    x_train_target_inp = np.random.randint(6,size=(len(train_i),maxlen))
     x_train = [x_train_seqs,x_train_target_inp,x_train_kingdoms] #inp seq, target annoation, kingdom
     y_train = train_annotations[train_i] #,train_types[train_i]]
     #valid
     x_valid_seqs = train_seqs[valid_i]
     x_valid_kingdoms = train_kingdoms[valid_i]
     #Random annotations
-    x_valid_target_inp = np.zeros(train_annotations[valid_i].shape)
-    x_valid_target_inp[:,:]=np.random.randint(6,size=70)
+    x_valid_target_inp =  np.random.randint(6,size=(len(valid_i),maxlen))
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_kingdoms]
     y_valid = train_annotations[valid_i] #,train_types[valid_i]]
 
@@ -228,9 +229,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
     #Params
     net_params = variable_params.loc[param_combo-1]
-    #Fixed params
-    vocab_size = 21  # Only consider the top 20k words
-    maxlen = 70  # Only consider the first 70 amino acids
+
     #Variable params
     embed_dim = int(net_params['embed_dim']) #32  # Embedding size for each token
     num_heads = int(net_params['num_heads']) #1  # Number of attention heads
@@ -242,7 +241,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
 
     #Summary of model
-    #print(model.summary())
+    print(model.summary())
     #Checkpoint
     if checkpoint == True:
         #Make dir
@@ -270,6 +269,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Save loss
     train_losses.append(history.history['loss'])
     valid_losses.append(history.history['val_loss'])
+    pdb.set_trace()
 
 #Save array of losses
 outid = str(test_partition)+'_'+str(param_combo)
