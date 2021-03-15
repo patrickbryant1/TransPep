@@ -132,8 +132,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
         for k in range(num_layers):
             x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
-        x = layers.GlobalAveragePooling1D()(x2) #Compress
-        x = layers.Dropout(0.1)(x)
+        x = layers.GlobalAveragePooling1D()(x2) #Compress to embed_dim dimensions only
         x = layers.Concatenate()([x,kingdom_input]) #Add the kingdom input
         x = layers.Dense(20, activation="relu")(x) #Extract info using the linear layer
         x = layers.Dropout(0.1)(x)
