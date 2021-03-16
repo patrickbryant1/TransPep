@@ -27,7 +27,7 @@ TEST_PARTITION=3
 PARAM_COMBO=49
 python3 ./transformer.py --train_data $TRAIN_DATA --datadir $DATADIR --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR'TP'$TEST_PARTITION'/' --save_model $SAVE_MODEL --checkpoint $CHECKPOINT --num_epochs $NUM_EPOCHS --outdir $OUTDIR
 
-#3
+#4
 TEST_PARTITION=4
 PARAM_COMBO=50
 python3 ./transformer.py --train_data $TRAIN_DATA --datadir $DATADIR --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR'TP'$TEST_PARTITION'/' --save_model $SAVE_MODEL --checkpoint $CHECKPOINT --num_epochs $NUM_EPOCHS --outdir $OUTDIR

@@ -167,10 +167,10 @@ def load_model(variable_params, param_combo, weights):
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
     model.load_weights(weights)
 
-    print(model.summary())
+    #print(model.summary())
     return model
 
-def get_data(datadir, valid_partition):
+def get_data(datadir, valid_partition, maxlen):
     '''Get the validation data
     '''
 
@@ -194,7 +194,7 @@ def get_data(datadir, valid_partition):
     #Random annotations
     x_valid_target_inp =  np.random.randint(6,size=(len(valid_i),maxlen))
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_kingdoms]
-    y_valid = train_annotations[valid_i]
+    y_valid = [train_annotations[valid_i],train_types[valid_i]]
 
     return x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid
 
@@ -362,15 +362,15 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #model
     model = load_model(variable_params, param_combo, weights[0])
     #Get data
-    x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid = get_data(datadir, valid_partition)
+    x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid = get_data(datadir, valid_partition,70)
     #Predict
     preds = run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms)
-    pdb.set_trace()
+
     #Fetch
     pred_annotations = np.argmax(preds,axis=2)
     true_annotations = y_valid[0]
     true_types = y_valid[1]
-    kingdoms = np.argmax(x_valid_kingdoms,axis=1)
+    kingdoms = np.argmax(x_valid_kingdoms[:,0,:],axis=1)
     #Save
     all_pred_annotations.extend([*pred_annotations])
     all_true_types.extend([*true_types])
@@ -392,6 +392,7 @@ all_types = []
 all_MCCs = []
 all_precisions = []
 all_recalls = []
+
 for key in kingdom_conversion:
     kingdom_indices = np.argwhere(all_kingdoms==kingdom_conversion[key])[:,0]
     #Get pred
@@ -415,7 +416,8 @@ eval_df = pd.DataFrame()
 eval_df['Kingdom']=evaluated_kingdoms
 eval_df['Type']=all_types
 eval_df['MCC']=all_MCCs
-eval_df['Precision']=all_precisions
 eval_df['Recall']=all_recalls
+eval_df['Precision']=all_precisions
+
 eval_df.to_csv(outdir+'eval_df'+str(test_partition)+'.csv')
 print(eval_df)

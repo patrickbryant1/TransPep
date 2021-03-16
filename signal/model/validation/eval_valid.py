@@ -38,12 +38,15 @@ def average_validation(valid_df,resultsdir):
             Kingdoms.append(kingdom)
             Types.append(type_conversion[type])
             sel_type = sel[sel.Type==type]
+
             av_MCC.append(np.average(sel_type['MCC']))
             std_MCC.append(np.std(sel_type['MCC']))
-            av_prec.append(np.average(sel_type['Precision']))
-            std_prec.append(np.std(sel_type['Precision']))
-            av_recall.append(np.average(sel_type['Recall']))
-            std_recall.append(np.std(sel_type['Recall']))
+            prec = np.array([ np.array(x[1:-1].split(','),dtype='float') for x in [*sel_type['Precision'].values] ])
+            av_prec.append(np.average(prec,axis=0))
+            std_prec.append(np.std(prec,axis=0))
+            recall = np.array([ np.array(x[1:-1].split(','),dtype='float') for x in [*sel_type['Recall'].values] ])
+            av_recall.append(np.average(recall,axis=0))
+            std_recall.append(np.std(recall,axis=0))
 
     av_std_df = pd.DataFrame()
     av_std_df['Kingdom']=Kingdoms
@@ -54,6 +57,7 @@ def average_validation(valid_df,resultsdir):
     av_std_df['Recall std'] = std_recall
     av_std_df['Precision average'] = av_prec
     av_std_df['Precision std'] = std_prec
+
     #Save
     av_std_df.to_csv(resultsdir+'valid_results.csv')
 
