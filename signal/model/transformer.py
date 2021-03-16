@@ -160,7 +160,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     #opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
     #Compile
     model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
-    pdb.set_trace()
+
     return model
 
 ######################MAIN######################
@@ -241,7 +241,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
 
     #Summary of model
-    #print(model.summary())
+    print(model.summary())
     #Checkpoint
     if checkpoint == True:
         #Make dir

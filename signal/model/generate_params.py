@@ -11,7 +11,7 @@ num_heads = [1,2,4]
 ff_dim = [16,32]
 num_layers = [1,2,4]
 batch_sizes = [32,64]
-num_iterations = [1,5,10]
+num_iterations = [1,2,4]
 test_partitions = [0,1,2,3,4]
 
 combos = np.zeros((len(embed_dim)*len(num_heads)*len(ff_dim)*len(num_layers)*len(batch_sizes)*len(num_iterations)*len(test_partitions),7))
