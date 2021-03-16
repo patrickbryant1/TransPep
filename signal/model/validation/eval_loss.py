@@ -52,7 +52,7 @@ def eval_loss(resultsdir,variable_params):
 
     #Create df
     loss_df = pd.DataFrame()
-    loss_df['test_partition'] = test_partition
+    #loss_df['test_partition'] = test_partition
     loss_df['param_combo'] = param_combo
     loss_df = pd.merge(loss_df,variable_params,on='param_combo',how='left')
     #Convert to array
@@ -60,9 +60,9 @@ def eval_loss(resultsdir,variable_params):
     valid_losses = np.array(valid_losses)
     #Vis
     best_params = []
+
     for tp in loss_df['test_partition'].unique():
         sel = loss_df[loss_df.test_partition==tp]
-
         sel_train_losses = train_losses[sel.index]
         sel_valid_losses = valid_losses[sel.index]
 
@@ -71,11 +71,11 @@ def eval_loss(resultsdir,variable_params):
             plt.plot(np.arange(train_losses.shape[-1]),np.average(sel_train_losses[i],axis=0),color='tab:blue',alpha=0.1)
             plt.plot(np.arange(train_losses.shape[-1]),np.average(sel_valid_losses[i],axis=0),color='tab:green',alpha=0.1)
 
-        plt.title('Test partition '+tp)
+        plt.title('Test partition '+str(int(tp)))
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
         plt.tight_layout()
-        plt.savefig(resultsdir+'loss_tp_'+tp+'.png',format='png',dpi=300)
+        plt.savefig(resultsdir+'loss_tp_'+str(int(tp))+'.png',format='png',dpi=300)
         plt.close()
         #Min valid loss vs parameters
         min_valid_losses = np.min(np.average(sel_valid_losses,axis=1),axis=1)
@@ -86,9 +86,9 @@ def eval_loss(resultsdir,variable_params):
         best_params.append(min_combo)
         fig,ax = plt.subplots(figsize=(10/2.54,10/2.54))
         sns.pairplot(valid_sel,x_vars=['embed_dim', 'num_heads', 'ff_dim', 'num_layers', 'batch_size', 'num_iterations'],y_vars='min_valid_loss')
-        plt.title('Test partition '+tp)
+        plt.title('Test partition '+str(int(tp)))
         plt.tight_layout()
-        plt.savefig(resultsdir+'pairplot_tp_'+tp+'.png',format='png',dpi=300)
+        plt.savefig(resultsdir+'pairplot_tp_'+str(int(tp))+'.png',format='png',dpi=300)
         plt.close()
 
     #Save best params

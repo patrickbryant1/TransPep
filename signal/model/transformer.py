@@ -112,17 +112,19 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
 
     seq_input = layers.Input(shape=(maxlen,)) #Input aa sequences
     seq_target = layers.Input(shape=(maxlen,)) #Targets - annotations
-    kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
+    kingdom_input = layers.Input(shape=(maxlen,4)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
 
     ##Embeddings
     embedding_layer1 = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 6, embed_dim)
+    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 6, embed_dim+4) #Need to add 4 so that x1 and x2 match
     x1 = embedding_layer1(seq_input)
+    #Add kingdom input
+    x1 = layers.Concatenate()([x1,kingdom_input])
     x2 = embedding_layer2(seq_target)
 
     #Define the transformer
-    encoder = EncoderBlock(embed_dim, num_heads, ff_dim)
-    decoder = DecoderBlock(embed_dim, num_heads, ff_dim)
+    encoder = EncoderBlock(embed_dim+4, num_heads, ff_dim)
+    decoder = DecoderBlock(embed_dim+4, num_heads, ff_dim)
     #Iterate
     for i in range(num_iterations):
         #Encode
@@ -132,16 +134,14 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
         for k in range(num_layers):
             x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
-        x = layers.GlobalAveragePooling1D()(x2) #Compress to embed_dim dimensions only
-        x = layers.Concatenate()([x,kingdom_input]) #Add the kingdom input
-        x = layers.Dense(20, activation="relu")(x) #Extract info using the linear layer
-        x = layers.Dropout(0.1)(x)
-        x = layers.Dense(maxlen*6, activation="softmax")(x) #Annotate
-        x_rs = layers.Reshape((maxlen,6))(x)
+        x2 = layers.Dense(6, activation="softmax")(x2) #Annotate
+        x_rs = layers.Reshape((maxlen,6))(x2)
         x2 = tf.math.argmax(x_rs,axis=-1) #Needed for iterative training
         x2 = embedding_layer2(x2)
 
-    preds = layers.Reshape((maxlen,6),name='annotation')(x)
+    x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
+    x2 = layers.Dense(6, activation="softmax")(x2) #Annotate
+    preds = layers.Reshape((maxlen,6),name='annotation')(x2)
     #pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
     #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
@@ -160,7 +160,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     #opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
     #Compile
     model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
-
+    pdb.set_trace()
     return model
 
 ######################MAIN######################
@@ -213,7 +213,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #train
     x_train_seqs = train_seqs[train_i]
     x_train_kingdoms = train_kingdoms[train_i]
-
+    x_train_kingdoms = np.repeat(np.expand_dims(x_train_kingdoms,axis=1),70,axis=1)
     #Random annotations are added as input
     x_train_target_inp = np.random.randint(6,size=(len(train_i),maxlen))
     x_train = [x_train_seqs,x_train_target_inp,x_train_kingdoms] #inp seq, target annoation, kingdom
@@ -221,6 +221,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #valid
     x_valid_seqs = train_seqs[valid_i]
     x_valid_kingdoms = train_kingdoms[valid_i]
+    x_valid_kingdoms = np.repeat(np.expand_dims(x_valid_kingdoms,axis=1),70,axis=1)
     #Random annotations
     x_valid_target_inp =  np.random.randint(6,size=(len(valid_i),maxlen))
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_kingdoms]
