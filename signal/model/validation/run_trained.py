@@ -48,9 +48,9 @@ class TokenAndPositionEmbedding(layers.Layer):
         x = self.token_emb(x)
         return x + positions
 
-class TransformerBlock(layers.Layer):
+class EncoderBlock(layers.Layer):
     def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
-        super(TransformerBlock, self).__init__()
+        super(EncoderBlock, self).__init__()
         self.att = MultiHeadSelfAttention(embed_dim,num_heads)
         self.ffn = keras.Sequential(
             [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
@@ -60,13 +60,38 @@ class TransformerBlock(layers.Layer):
         self.dropout1 = layers.Dropout(rate)
         self.dropout2 = layers.Dropout(rate)
 
-    def call(self, inputs, training):
-        attn_output = self.att(inputs)
+    def call(self, in_q,in_k,in_v, training): #Inputs is a list with [q,k,v]
+        attn_output,attn_weights = self.att(in_q,in_k,in_v) #The weights are needed for downstream analysis
         attn_output = self.dropout1(attn_output, training=training)
-        out1 = self.layernorm1(inputs + attn_output)
+        out1 = self.layernorm1(in_q + attn_output)
         ffn_output = self.ffn(out1)
         ffn_output = self.dropout2(ffn_output, training=training)
-        return self.layernorm2(out1 + ffn_output)
+        return self.layernorm2(out1 + ffn_output), attn_weights
+
+class DecoderBlock(layers.Layer):
+    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
+        super(DecoderBlock, self).__init__()
+        self.att = MultiHeadSelfAttention(embed_dim,num_heads)
+        self.ffn = keras.Sequential(
+            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
+        )
+        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
+        self.dropout1 = layers.Dropout(rate)
+        self.dropout2 = layers.Dropout(rate)
+
+    def call(self, in_q,in_k,in_v, training): #Inputs is a list with [q,k,v]
+        #Self-attention
+        attn_output1,attn_weights1 = self.att(in_q,in_q,in_q) #The weights are needed for downstream analysis
+        attn_output1 = self.dropout1(attn_output1, training=training)
+        out1 = self.layernorm1(in_v + attn_output1)
+        #Encoder-decoder attention
+        attn_output2,attn_weights2 = self.att(out1,in_k,in_v) #The weights are needed for downstream analysis
+        attn_output2 = self.dropout1(attn_output2, training=training)
+        out2 = self.layernorm1(attn_output2 + attn_output1)
+        ffn_output = self.ffn(out2)
+        ffn_output = self.dropout2(ffn_output, training=training)
+        return self.layernorm2(out2 + ffn_output), attn_weights2
 
 def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations):
     '''Create the transformer model
@@ -74,38 +99,54 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
 
     seq_input = layers.Input(shape=(maxlen,)) #Input aa sequences
     seq_target = layers.Input(shape=(maxlen,)) #Targets - annotations
-    kingdom_input = layers.Input(shape=(4,)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
+    kingdom_input = layers.Input(shape=(maxlen,4)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
 
     ##Embeddings
     embedding_layer1 = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 6, embed_dim)
+    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 6, embed_dim+4) #Need to add 4 so that x1 and x2 match
     x1 = embedding_layer1(seq_input)
+    #Add kingdom input
+    x1 = layers.Concatenate()([x1,kingdom_input])
     x2 = embedding_layer2(seq_target)
 
     #Define the transformer
-    transformer_block = TransformerBlock(embed_dim*2, num_heads, ff_dim)
+    encoder = EncoderBlock(embed_dim+4, num_heads, ff_dim)
+    decoder = DecoderBlock(embed_dim+4, num_heads, ff_dim)
     #Iterate
     for i in range(num_iterations):
-        transformer_input = layers.Concatenate()([x1,x2])
+        #Encode
         for j in range(num_layers):
-            x = transformer_block(transformer_input)
+            x1, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
+        #Decoder
+        for k in range(num_layers):
+            x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
-        x = layers.GlobalAveragePooling1D()(x)
-        x = layers.Dropout(0.1)(x)
-        x = layers.Dense(20, activation="relu")(x)
-        x = layers.Dropout(0.1)(x)
-        x = layers.Concatenate()([x,kingdom_input])
-        x = layers.Dense(maxlen*6, activation="softmax")(x)
-        x_rs = layers.Reshape((maxlen,6))(x)
-        x2 = tf.math.argmax(x_rs,axis=-1)
+        x2 = layers.Dense(6, activation="softmax")(x2) #Annotate
+        x_rs = layers.Reshape((maxlen,6))(x2)
+        x2 = tf.math.argmax(x_rs,axis=-1) #Needed for iterative training
         x2 = embedding_layer2(x2)
 
-    preds = layers.Reshape((maxlen,6),name='annotation')(x)
+    x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
+    preds = layers.Dense(6, activation="softmax")(x2) #Annotate
+    #preds = layers.Reshape((maxlen,6),name='annotation')(x2)
     #pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
     #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
 
     model = keras.Model(inputs=[seq_input,seq_target,kingdom_input], outputs=preds)
+    #Optimizer
+    initial_learning_rate = 0.001
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate,
+    decay_steps=10000,
+    decay_rate=0.96,
+    staircase=True)
+
+    opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
+
+    #opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
+    #Compile
+    model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
 
     return model
 
@@ -126,7 +167,7 @@ def load_model(variable_params, param_combo, weights):
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
     model.load_weights(weights)
 
-    #print(model.summary())
+    print(model.summary())
     return model
 
 def get_data(datadir, valid_partition):
@@ -149,11 +190,11 @@ def get_data(datadir, valid_partition):
     #valid
     x_valid_seqs = train_seqs[valid_i]
     x_valid_kingdoms = train_kingdoms[valid_i]
+    x_valid_kingdoms = np.repeat(np.expand_dims(x_valid_kingdoms,axis=1),70,axis=1)
     #Random annotations
-    x_valid_target_inp = np.zeros(train_annotations[valid_i].shape)
-    x_valid_target_inp[:,:]=np.random.randint(6,size=70)
+    x_valid_target_inp =  np.random.randint(6,size=(len(valid_i),maxlen))
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_kingdoms]
-    y_valid = [train_annotations[valid_i],train_types[valid_i]]
+    y_valid = train_annotations[valid_i]
 
     return x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid
 
@@ -324,6 +365,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid = get_data(datadir, valid_partition)
     #Predict
     preds = run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms)
+    pdb.set_trace()
     #Fetch
     pred_annotations = np.argmax(preds,axis=2)
     true_annotations = y_valid[0]
