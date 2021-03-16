@@ -240,7 +240,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
 
     #Summary of model
-    print(model.summary())
+    #print(model.summary())
     #Checkpoint
     if checkpoint == True:
         #Make dir
