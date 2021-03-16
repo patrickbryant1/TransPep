@@ -268,7 +268,6 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Save loss
     train_losses.append(history.history['loss'])
     valid_losses.append(history.history['val_loss'])
-    pdb.set_trace()
 
 #Save array of losses
 outid = str(test_partition)+'_'+str(param_combo)
