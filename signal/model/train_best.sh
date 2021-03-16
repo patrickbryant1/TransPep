@@ -8,7 +8,7 @@ NUM_EPOCHS=50
 OUTDIR=../results/
 
 #0
-PARAM_COMBO=50
+PARAM_COMBO=150
 TEST_PARTITION=0
 python3 ./transformer.py --train_data $TRAIN_DATA --datadir $DATADIR --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR'TP'$TEST_PARTITION'/' --save_model $SAVE_MODEL --checkpoint $CHECKPOINT --num_epochs $NUM_EPOCHS --outdir $OUTDIR
 

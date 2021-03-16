@@ -140,8 +140,8 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
         x2 = embedding_layer2(x2)
 
     x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
-    x2 = layers.Dense(6, activation="softmax")(x2) #Annotate
-    preds = layers.Reshape((maxlen,6),name='annotation')(x2)
+    preds = layers.Dense(6, activation="softmax")(x2) #Annotate
+    #preds = layers.Reshape((maxlen,6),name='annotation')(x2)
     #pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
     #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
 
@@ -241,7 +241,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
 
     #Summary of model
-    print(model.summary())
+    #print(model.summary())
     #Checkpoint
     if checkpoint == True:
         #Make dir
