@@ -157,7 +157,6 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
 
     opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
 
-    #opt = keras.optimizers.Adam(learning_rate=0.001,amsgrad=True)
     #Compile
     model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
 
