@@ -16,7 +16,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from categorical_focal_loss import SparseCategoricalFocalLoss
 from tensorflow.keras.callbacks import ModelCheckpoint
-from multi_head_attention import MultiHeadSelfAttention
+from attention_class import MultiHeadSelfAttention
 
 from tensorflow.keras.models import model_from_json
 import glob
@@ -32,7 +32,7 @@ parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, h
 parser.add_argument('--valid_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to get the valid model from.')
 parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with variable params.')
 parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
-
+parser.add_argument('--outdir', nargs=1, type= int, default=sys.stdin, help = 'Output directory.')
 
 
 #FUNCTIONS
@@ -135,18 +135,6 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
 
 
     model = keras.Model(inputs=[seq_input,seq_target,kingdom_input], outputs=preds)
-    #Optimizer
-    initial_learning_rate = 0.001
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate,
-    decay_steps=10000,
-    decay_rate=0.96,
-    staircase=True)
-
-    opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
-
-    #Compile
-    model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
 
     return model
 
@@ -169,11 +157,11 @@ def load_model(variable_params, param_combo, weights):
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
     model.load_weights(weights)
     print(model.summary())
-    pdb.set_trace()
+
     return model
 
 
-def get_data(datadir, test_partition):
+def get_data(datadir, test_partition, maxlen):
     '''Get the test data
     '''
 
@@ -205,6 +193,20 @@ def get_data(datadir, test_partition):
     return x_bench, y_bench
 
 
+def get_attention(model,data):
+    '''Obtain the output of the attention layers
+    '''
+    # with a Sequential model
+    #Enc self-attention
+    get_enc_layer_output = keras.backend.function([model.layers[0].input,model.layers[2].input],[model.layers[4].output])
+    enc_attention = get_enc_layer_output([data[0],data[2]])[0][0][1]
+
+    #Enc-dec attention
+    get_dec_layer_output = keras.backend.function([model.layers[0].input,model.layers[5].input,model.layers[2].input],[model.layers[7].output])
+    enc_dec_attention = get_dec_layer_output(data)[0][0][1]
+
+    return enc_attention, enc_dec_attention
+
 ######################MAIN######################
 args = parser.parse_args()
 checkpointdir=args.checkpointdir[0]
@@ -213,16 +215,21 @@ test_partition = args.test_partition[0]
 valid_partition = args.valid_partition[0]
 variable_params=pd.read_csv(args.variable_params[0])
 param_combo=args.param_combo[0]
+outdir = args.outdir[0]
 
 #Load and run model
 
 #Get data
-x_bench, y_bench = get_data(datadir, test_partition)
+x_bench, y_bench = get_data(datadir, test_partition,70)
 #Get activations - printed to stderr in multi_head_attention function
 #weights
 weights=glob.glob(checkpointdir+'TP'+str(test_partition)+'/vp'+str(valid_partition)+'/*.hdf5')
+
 #model
-model = load_model(variable_params, param_combo, weights)
-#Predict
-for i in range(len(x_bench[0])):
-    bench_pred = model.predict([np.array([x_bench[0][i]]),np.array([x_bench[1][i]])])
+model = load_model(variable_params, param_combo, weights[0])
+#Get attention
+enc_attention, enc_dec_attention = get_attention(model,x_bench)
+#Save
+np.save(outdir+'enc_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',enc_attention)
+np.save(outdir+'enc_dec_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',enc_dec_attention)
+pdb.set_trace()
