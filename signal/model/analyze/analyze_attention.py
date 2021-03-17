@@ -69,26 +69,33 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
 
         type_enc_dec_attention = enc_dec_attention[type_TP]
         type_seqs = seqs[type_TP]
+        type_annotations = pred_annotations[type_P][:,0,:]
 
-        fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
-        im = plt.imshow(np.average(type_enc_dec_attention,axis=0))#In seqs on x, out annotations on y
-        plt.xlabel('Sequence position')
-        plt.ylabel('Annotation position')
-        plt.title(type)
-        plt.tight_layout()
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.05)
-        plt.colorbar(im, cax=cax)
-        plt.tight_layout()
-        plt.savefig(attention_dir+'enc_dec_attention_'+str(types[type])+'.png',format='png',dpi=300)
-        continue
+        # fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
+        # im = plt.imshow(np.average(type_enc_dec_attention,axis=0))#In seqs on x, out annotations on y
+        # plt.xlabel('Sequence position')
+        # plt.ylabel('Annotation position')
+        # plt.title(type)
+        # plt.tight_layout()
+        # divider = make_axes_locatable(ax)
+        # cax = divider.append_axes("right", size="5%", pad=0.05)
+        # plt.colorbar(im, cax=cax)
+        # plt.tight_layout()
+        # plt.savefig(attention_dir+'enc_dec_attention_'+str(types[type])+'.png',format='png',dpi=300)
+
+
         #Go through all positions
         for i in range(70):
             col = type_seqs[:,i]
             #Go through all amino acids
             for aa in np.unique(col):
+                #Where col==aa
                 col_pos = np.argwhere(col==aa)
-                aa_activations = type_activations[col_pos,i]
+                #Get corresponding enc-dec attention
+                aa_attention = type_enc_dec_attention[col_pos,i,:]
+                #Get annotations
+                for j in range(70):
+                col_annotation = type_annotations[col_pos,i]
                 pdb.set_trace()
 
 
