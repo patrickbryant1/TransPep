@@ -105,7 +105,7 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
                         aa_annotation_pos_attention = np.average(type_enc_dec_attention[aa_col_pos,i,j][annotation_col_pos][:,0,0])
                         aa_annotation_pairs.append([i,aa,j,annotation,aa_annotation_pos_attention])
 
-                        pdb.set_trace()
+                pdb.set_trace()
 
     pdb.set_trace()
     #Array conversion
