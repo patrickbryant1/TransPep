@@ -233,14 +233,13 @@ enc_attention, enc_dec_attention = get_attention(model,x_bench)
 np.save(outdir+'enc_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',enc_attention)
 np.save(outdir+'enc_dec_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',enc_dec_attention)
 #Save the true annotations and types
-np.save(outdir+'annotations_'+str(test_partition)+'_'+str(valid_partition)+'.npy',y_bench[0])
-np.save(outdir+'types_'+str(test_partition)+'_'+str(valid_partition)+'.npy',y_bench[1])
+np.save(outdir+'annotations_'+str(test_partition)+'.npy',y_bench[0])
+np.save(outdir+'types_'+str(test_partition)+'.npy',y_bench[1])
 #Save the sequences
-np.save(outdir+'seqs_'+str(test_partition)+'_'+str(valid_partition)+'.npy',x_bench[0])
+np.save(outdir+'seqs_'+str(test_partition)+'.npy',x_bench[0])
 #Save the kingdoms
-np.save(outdir+'kingdoms_'+str(test_partition)+'_'+str(valid_partition)+'.npy',x_bench[2])
+np.save(outdir+'kingdoms_'+str(test_partition)+'.npy',x_bench[2])
 
 #Save pred annotations
 pred_annotations = model.predict(x_bench)
 np.save(outdir+'pred_annotations_'+str(test_partition)+'_'+str(valid_partition)+'.npy',pred_annotations)
-pdb.set_trace()

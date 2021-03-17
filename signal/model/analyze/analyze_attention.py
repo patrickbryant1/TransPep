@@ -78,28 +78,34 @@ test_partition = args.test_partition[0]
 #Parse
 enc_attention = []
 enc_dec_attention = []
+pred_annotations = []
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Load
     try:
         enc_attention.append(np.load(attention_dir+'enc_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
         enc_dec_attention.append(np.load(attention_dir+'enc_dec_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
+        pred_annotations.append(np.load(attention_dir+'pred_annotations_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
     except:
         continue
 #Array conversion
 enc_attention = np.array(enc_attention)
 enc_dec_attention = np.array(enc_dec_attention)
+pred_annotations = np.array(pred_annotations)
 #Average across validation splits
 enc_attention = np.average(enc_attention,axis=0)
 enc_dec_attention = np.average(enc_dec_attention,axis=0)
+pred_annotations = np.average(pred_annotations,axis=0)
+pred_annotations = np.argmax(pred_annotations,axis=2)
 #Max across attention heads
 enc_attention = np.max(enc_attention,axis=1)
 enc_dec_attention = np.max(enc_dec_attention,axis=1)
 
 #Get true annotations and types
-bench_true_annotations = np.load(attention_dir+'annotations_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True)
-bench_true_types = np.load(checkpointdir+'bench_true_types.npy',allow_pickle=True)
+bench_true_annotations = np.load(attention_dir+'annotations_'+str(test_partition)+'.npy',allow_pickle=True)
+bench_true_types = np.load(attention_dir+'types_'+str(test_partition)+'.npy',allow_pickle=True)
 #Get seqs
-bench_seqs = np.load(checkpointdir+'bench_seqs.npy',allow_pickle=True)
+bench_seqs = np.load(attention_dir+'seqs_'+str(test_partition)+'.npy',allow_pickle=True)
+
 #Analyze the activations for different types
-analyze_type_attention(activations, bench_pred_types, bench_true_types,bench_seqs,test_partition, attention_dir)
+analyze_type_attention(enc_dec_attention, bench_true_types,bench_pred_annotations,bench_seqs, attention_dir)
 pdb.set_trace()
