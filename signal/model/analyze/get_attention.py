@@ -32,7 +32,7 @@ parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, h
 parser.add_argument('--valid_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to get the valid model from.')
 parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with variable params.')
 parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
-parser.add_argument('--outdir', nargs=1, type= int, default=sys.stdin, help = 'Output directory.')
+parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'Output directory.')
 
 
 #FUNCTIONS
@@ -232,4 +232,3 @@ enc_attention, enc_dec_attention = get_attention(model,x_bench)
 #Save
 np.save(outdir+'enc_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',enc_attention)
 np.save(outdir+'enc_dec_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',enc_dec_attention)
-pdb.set_trace()

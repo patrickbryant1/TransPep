@@ -15,7 +15,6 @@ import pdb
 #Arguments for argparse module:
 parser = argparse.ArgumentParser(description = '''Analyze attention.''')
 parser.add_argument('--attention_dir', nargs=1, type= str, default=sys.stdin, help = '''path to attention.''')
-parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = '''path checkpoints with .h5 files containing weights for net.''')
 parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test/bench on.')
 
 
@@ -78,15 +77,16 @@ checkpointdir=args.checkpointdir[0]
 test_partition = args.test_partition[0]
 
 #Parse
-activations1 = []
-activations2 = []
+enc_attention = []
+enc_dec_attention = []
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Load
-    activations1.append(np.load(attention_dir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+'/activations1.npy',allow_pickle=True))
-    activations2.append(np.load(attention_dir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+'/activations2.npy',allow_pickle=True))
+    enc_attention.append(np.load(attention_dir+'enc_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
+    enc_dec_attention.append(np.load(attention_dir+'enc_dec_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
 #Array conversion
-activations1 = np.array(activations1)
-activations2 = np.array(activations2)
+enc_attention = np.array(enc_attention)
+enc_dec_attention = np.array(enc_dec_attention)
+pdb.set_trace()
 #Average across validation splits
 activations1 = np.average(activations1,axis=0)
 activations2 = np.average(activations2,axis=0)
