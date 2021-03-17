@@ -85,19 +85,27 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
 
 
         #Go through all positions
+        #Save all aa-annotation attention weights
+        aa_annotation_pairs = []
         for i in range(70):
             col = type_seqs[:,i]
             #Go through all amino acids
             for aa in np.unique(col):
                 #Where col==aa
-                col_pos = np.argwhere(col==aa)
-                #Get corresponding enc-dec attention
-                aa_attention = type_enc_dec_attention[col_pos,i,:]
+                aa_col_pos = np.argwhere(col==aa)
+
                 #Get annotations
                 for j in range(70):
-                col_annotation = type_annotations[col_pos,i]
-                pdb.set_trace()
+                    col_annotation = type_annotations[aa_col_pos,j][:,0]
+                    #Go through all annotations in that position and obtain attention weight
+                    for annotation in np.unique(col_annotation):
+                        annotation_col_pos = np.argwhere(col_annotation==annotation)
+                        #Save
+                        #Get corresponding enc-dec attention
+                        aa_annotation_pos_attention = np.average(type_enc_dec_attention[aa_col_pos,i,j][annotation_col_pos][:,0,0])
+                        aa_annotation_pairs.append([i,aa,j,annotation,aa_annotation_pos_attention])
 
+                        pdb.set_trace()
 
     pdb.set_trace()
     #Array conversion
