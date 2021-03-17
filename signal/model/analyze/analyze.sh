@@ -6,12 +6,12 @@ BENCH_SET=../../data/benchmark_set.fasta
 VARIABLE_PARAMS=../param_combos.csv
 OUTDIR=../../results/attention/
 
-# TP=0
-# PARAM_COMBO=886
-# for VP in 1 2 3 4
-# do
-#   python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --outdir $OUTDIR
-# done
+TP=0
+PARAM_COMBO=886
+for VP in 1 2 3 4
+do
+  python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --outdir $OUTDIR
+done
 #
 # TP=1
 # mkdir $OUTDIR'/TP'$TP

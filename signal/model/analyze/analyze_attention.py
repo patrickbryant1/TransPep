@@ -73,7 +73,6 @@ def analyze_type_attention(activations, bench_pred_types, bench_true_types, benc
 plt.rcParams.update({'font.size': 7})
 args = parser.parse_args()
 attention_dir = args.attention_dir[0]
-checkpointdir=args.checkpointdir[0]
 test_partition = args.test_partition[0]
 
 #Parse
@@ -81,22 +80,23 @@ enc_attention = []
 enc_dec_attention = []
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Load
-    enc_attention.append(np.load(attention_dir+'enc_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
-    enc_dec_attention.append(np.load(attention_dir+'enc_dec_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
+    try:
+        enc_attention.append(np.load(attention_dir+'enc_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
+        enc_dec_attention.append(np.load(attention_dir+'enc_dec_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
+    except:
+        continue
 #Array conversion
 enc_attention = np.array(enc_attention)
 enc_dec_attention = np.array(enc_dec_attention)
-pdb.set_trace()
 #Average across validation splits
-activations1 = np.average(activations1,axis=0)
-activations2 = np.average(activations2,axis=0)
-#Average across embedding dimensions
-activations1 = np.average(activations1,axis=2)
-activations2 = np.average(activations2,axis=2)
-#join the activations from both heads
-activations = (activations1+activations2)/2
-#Get predicted types and true types
-bench_pred_types = np.load(checkpointdir+'bench_pred_types.npy',allow_pickle=True)
+enc_attention = np.average(enc_attention,axis=0)
+enc_dec_attention = np.average(enc_dec_attention,axis=0)
+#Max across attention heads
+enc_attention = np.max(enc_attention,axis=1)
+enc_dec_attention = np.max(enc_dec_attention,axis=1)
+
+#Get true annotations and types
+bench_true_annotations = np.load(attention_dir+'annotations_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True)
 bench_true_types = np.load(checkpointdir+'bench_true_types.npy',allow_pickle=True)
 #Get seqs
 bench_seqs = np.load(checkpointdir+'bench_seqs.npy',allow_pickle=True)
