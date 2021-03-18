@@ -46,17 +46,10 @@ def get_pred_types(pred_annotations):
 
     return np.array(pred_types)
 
-
-def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_annotations, attention_dir):
-    '''Analyze the activations per type
-    {'NO_SP':0,'SP':1,'TAT':2,'LIPO':3}
-    SP: Sec substrates cleaved by SPase I (Sec/SPI),
-    LIPO: Sec substrates cleaved by SPase II (Sec/SPII),
-    TAT: Tat substrates cleaved by SPase I (Tat/SPI).
-    annotation [S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide | I: cytoplasm | M: transmembrane | O: extracellular]
+def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir, types, kingdom):
+    '''Analyze the attention for a certain kingdom
     '''
 
-    types = {'NO_SP':0,'Sec/SPI':1,'Tat/SPI':2,'Sec/SPII':3}
     AMINO_ACIDS = { 'A':0,'R':1,'N':2,'D':3,'C':4,'E':5,
                     'Q':6,'G':7,'H':8,'I':9,'L':10,'K':11,
                     'M':12,'F':13,'P':14,'S':15,'T':16,'W':17,
@@ -65,14 +58,9 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
     annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
 
     # create color scheme
-    annotation_color_scheme = {
-        'S' : 'tab:blue',
-        'T' : 'tab:pink',
-        'L' : 'tab:purple',
-        'I': 'gray',
-        'M': 'k',
-        'O':'tab:gray'
-    }
+    annotation_color_scheme = {'S' : 'tab:blue','T' : 'tab:pink', 'L' : 'tab:purple',
+                                'I': 'gray', 'M': 'k', 'O':'tab:gray'}
+
     for type in types:
         type_P = np.argwhere(true_types==types[type])
         type_pred_P = np.argwhere(pred_types==types[type])
@@ -82,7 +70,7 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
         type_seqs = seqs[type_TP]
         type_annotations = pred_annotations[type_TP]
 
-        fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
+        fig,ax = plt.subplots(figsize=(9,9))
         im = plt.imshow(np.average(type_enc_dec_attention,axis=0))#In seqs on x, out annotations on y
         plt.xlabel('Sequence position')
         plt.ylabel('Annotation position')
@@ -92,7 +80,7 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
         cax = divider.append_axes("right", size="5%", pad=0.05)
         plt.colorbar(im, cax=cax)
         plt.tight_layout()
-        plt.savefig(attention_dir+'enc_dec_attention_'+str(types[type])+'.png',format='png',dpi=300)
+        plt.savefig(attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
 
 
@@ -126,7 +114,7 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
 
         #Convert to dfs
         aa_attention_df = pd.DataFrame(aa_attention,columns = [*AMINO_ACIDS.keys()])
-        #annotation_attention[::-1,:]
+        annotation_attention = annotation_attention[::-1,:]
         annotation_attention_df = pd.DataFrame(annotation_attention,columns = [*annotation_conversion.keys()])
 
         #Logos
@@ -134,20 +122,37 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
         fig,ax = plt.subplots(figsize=(9/2.54,4.5/2.54))
         logomaker.Logo(aa_attention_df, color_scheme='skylign_protein')
         plt.ylabel('Attention')
-        plt.savefig(attention_dir+'aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
+        plt.savefig(attention_dir+kingdom+'_aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
         #annotation
         fig,ax = plt.subplots(figsize=(9/2.54,4.5/2.54))
         logomaker.Logo(annotation_attention_df, color_scheme=annotation_color_scheme)
         plt.ylabel('Attention')
-        plt.savefig(attention_dir+'annotation_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
+        plt.savefig(attention_dir+kingdom+'_annotation_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
-    pdb.set_trace()
 
-
-def get_logo(attentions):
-    '''Get the height for the logo
+def analyze_attention(seqs, kingdoms, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir):
+    '''Analyze the activations per type
+    {'NO_SP':0,'SP':1,'TAT':2,'LIPO':3}
+    SP: Sec substrates cleaved by SPase I (Sec/SPI),
+    LIPO: Sec substrates cleaved by SPase II (Sec/SPII),
+    TAT: Tat substrates cleaved by SPase I (Tat/SPI).
+    annotation [S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide | I: cytoplasm | M: transmembrane | O: extracellular]
     '''
+
+
+    types = {'NO_SP':0,'Sec/SPI':1,'Tat/SPI':2,'Sec/SPII':3}
+    kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1}
+
+    for key in kingdom_conversion:
+        kingdom_indices = np.argwhere(kingdoms==kingdom_conversion[key])[:,0]
+        if key=='EUKRAYA':
+            types = {'NO_SP':0,'Sec/SPI':1}
+        get_kingdom_attention(seqs[kingdom_indices], true_types[kingdom_indices], true_annotations[kingdom_indices], pred_types[kingdom_indices],
+        pred_annotations[kingdom_indices],pred_annotation_probs[kingdom_indices], enc_dec_attention[kingdom_indices], attention_dir+key+'/', types, key)
+        pdb.set_trace()
+
+
 
 ######################MAIN######################
 plt.rcParams.update({'font.size': 7})
@@ -159,15 +164,19 @@ attention_dir = args.attention_dir[0]
 enc_attention = []
 enc_dec_attention = []
 pred_annotations = []
+pred_annotation_probs = []
 true_annotations = []
 true_types = []
 seqs = []
+kingdoms = []
 for test_partition in range(5):
     #Get true annotations and types
     true_annotations.extend([*np.load(attention_dir+'annotations_'+str(test_partition)+'.npy',allow_pickle=True)])
     true_types.extend([*np.load(attention_dir+'types_'+str(test_partition)+'.npy',allow_pickle=True)])
     #Get seqs
     seqs.extend([*np.load(attention_dir+'seqs_'+str(test_partition)+'.npy',allow_pickle=True)])
+    #Kingdoms
+    kingdoms.extend([*np.load(attention_dir+'kingdoms_'+str(test_partition)+'.npy',allow_pickle=True)])
     #For parition
     partition_enc_attention = []
     partition_enc_dec_attention = []
@@ -187,20 +196,23 @@ for test_partition in range(5):
     partition_enc_attention = np.average(partition_enc_attention,axis=0)
     partition_enc_dec_attention = np.average(partition_enc_dec_attention,axis=0)
     partition_pred_annotations = np.average(partition_pred_annotations,axis=0)
-    partition_pred_annotations = np.argmax(partition_pred_annotations,axis=2)
 
     #Append
     enc_attention.extend([*partition_enc_attention])
     enc_dec_attention.extend([*partition_enc_dec_attention])
-    pred_annotations.extend([*partition_pred_annotations])
+    pred_annotation_probs.extend([*partition_pred_annotations])
+    pred_annotations.extend([*np.argmax(partition_pred_annotations,axis=2)])
 
 #Array conversion
 enc_attention = np.array(enc_attention)
 enc_dec_attention = np.array(enc_dec_attention)
 pred_annotations = np.array(pred_annotations)
+pred_annotation_probs = np.array(pred_annotation_probs)
 true_annotations = np.array(true_annotations)
 true_types = np.array(true_types)
 seqs = np.array(seqs)
+kingdoms = np.array(kingdoms)
+kingdoms = np.argmax(kingdoms[:,0],axis=1)
 
 #Get types
 pred_types = get_pred_types(pred_annotations)
@@ -209,5 +221,5 @@ enc_attention = np.max(enc_attention,axis=1)
 enc_dec_attention = np.max(enc_dec_attention,axis=1)
 
 #Analyze the activations for different types
-analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_annotations, attention_dir)
+analyze_attention(seqs, kingdoms, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir)
 pdb.set_trace()
