@@ -15,10 +15,6 @@ import pdb
 #Arguments for argparse module:
 parser = argparse.ArgumentParser(description = '''Analyze attention.''')
 parser.add_argument('--attention_dir', nargs=1, type= str, default=sys.stdin, help = '''path to attention.''')
-parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test/bench on.')
-
-
-
 
 #####################FUNCTIONS#####################
 def get_pred_types(pred_annotations):
@@ -128,24 +124,56 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
 plt.rcParams.update({'font.size': 7})
 args = parser.parse_args()
 attention_dir = args.attention_dir[0]
-test_partition = args.test_partition[0]
+
 
 #Parse
 enc_attention = []
 enc_dec_attention = []
 pred_annotations = []
-for valid_partition in np.setdiff1d(np.arange(5),test_partition):
-    #Load
-    try:
-        enc_attention.append(np.load(attention_dir+'enc_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
-        enc_dec_attention.append(np.load(attention_dir+'enc_dec_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
-        pred_annotations.append(np.load(attention_dir+'pred_annotations_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
-    except:
-        continue
+true_annotations = []
+true_types = []
+seqs = []
+for test_partition in range(5):
+    #Get true annotations and types
+    true_annotations.extend([*np.load(attention_dir+'annotations_'+str(test_partition)+'.npy',allow_pickle=True)])
+    true_types.extend([*np.load(attention_dir+'types_'+str(test_partition)+'.npy',allow_pickle=True)])
+    #Get seqs
+    seqs.extend([*np.load(attention_dir+'seqs_'+str(test_partition)+'.npy',allow_pickle=True)])
+    #For parition
+    partition_enc_attention = []
+    partition_enc_dec_attention = []
+    partition_pred_annotations = []
+    for valid_partition in np.setdiff1d(np.arange(5),test_partition):
+        #Load
+        partition_enc_attention.append(np.load(attention_dir+'enc_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
+        partition_enc_dec_attention.append(np.load(attention_dir+'enc_dec_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
+        partition_pred_annotations.append(np.load(attention_dir+'pred_annotations_'+str(test_partition)+'_'+str(valid_partition)+'.npy',allow_pickle=True))
+
+    #Array conversion
+    partition_enc_attention = np.array(partition_enc_attention)
+    partition_enc_dec_attention = np.array(partition_enc_dec_attention)
+    partition_pred_annotations = np.array(partition_pred_annotations)
+    #Average across validation splits
+    print(partition_enc_dec_attention.shape, partition_enc_attention.shape)
+    partition_enc_attention = np.average(partition_enc_attention,axis=0)
+    partition_enc_dec_attention = np.average(partition_enc_dec_attention,axis=0)
+    partition_pred_annotations = np.average(partition_pred_annotations,axis=0)
+    partition_pred_annotations = np.argmax(partition_pred_annotations,axis=2)
+
+    #Append
+    enc_attention.extend([*partition_enc_attention])
+    enc_dec_attention.extend([*partition_enc_dec_attention])
+    pred_annotations.extend([*partition_pred_annotations])
+
+pdb.set_trace()
 #Array conversion
 enc_attention = np.array(enc_attention)
 enc_dec_attention = np.array(enc_dec_attention)
 pred_annotations = np.array(pred_annotations)
+true_annotations = np.array(true_annotations)
+true_types = np.array(true_types)
+seqs = np.array(seqs)
+pdb.set_trace()
 #Average across validation splits
 enc_attention = np.average(enc_attention,axis=0)
 enc_dec_attention = np.average(enc_dec_attention,axis=0)
@@ -157,11 +185,7 @@ pred_types = get_pred_types(pred_annotations)
 enc_attention = np.max(enc_attention,axis=1)
 enc_dec_attention = np.max(enc_dec_attention,axis=1)
 
-#Get true annotations and types
-true_annotations = np.load(attention_dir+'annotations_'+str(test_partition)+'.npy',allow_pickle=True)
-true_types = np.load(attention_dir+'types_'+str(test_partition)+'.npy',allow_pickle=True)
-#Get seqs
-seqs = np.load(attention_dir+'seqs_'+str(test_partition)+'.npy',allow_pickle=True)
+
 
 #Analyze the activations for different types
 analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_annotations, attention_dir)

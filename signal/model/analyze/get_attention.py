@@ -204,7 +204,7 @@ def get_attention(model,data):
     #Enc-dec attention
     get_dec_layer_output = keras.backend.function([model.layers[0].input,model.layers[5].input,model.layers[2].input],[model.layers[7].output])
     enc_dec_attention = get_dec_layer_output(data)[0][0][1]
-    
+
     return enc_attention, enc_dec_attention
 
 ######################MAIN######################
@@ -229,6 +229,7 @@ weights=glob.glob(checkpointdir+'TP'+str(test_partition)+'/vp'+str(valid_partiti
 model = load_model(variable_params, param_combo, weights[0])
 #Get attention
 enc_attention, enc_dec_attention = get_attention(model,x_bench)
+pdb.set_trace()
 #Save
 np.save(outdir+'enc_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',enc_attention)
 np.save(outdir+'enc_dec_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',enc_dec_attention)

@@ -17,7 +17,7 @@ import pdb
 
 ###########FUNTIONS###########
 
-def parse_and_format(filename):
+def parse_and_format(filename,blosum62,evo):
     '''Parse and format the data:
     >Uniprot_AC|Kingdom|Type|Partition No
     amino-acid sequence
@@ -67,8 +67,12 @@ def parse_and_format(filename):
                 if len(line)<70: #Add X if shorter than 70
                     line = line+'X'*(70-len(line))
                 current_seq = []
+
                 for char in line:
-                    current_seq.append(AMINO_ACIDS[char])
+                    if evo==True:
+                        current_seq.append(blosum62[char].values)
+                    else:
+                        current_seq.append(AMINO_ACIDS[char])
                 Seqs.append(current_seq)
                 get_seq = False
                 #Get annotation next

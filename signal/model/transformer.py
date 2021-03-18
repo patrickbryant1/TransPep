@@ -170,7 +170,7 @@ try:
     train_seqs = np.load(datadir+'seqs.npy',allow_pickle=True)
     train_annotations = np.load(datadir+'annotations.npy',allow_pickle=True)
 except:
-    train_meta, train_seqs, train_annotations = parse_and_format(args.train_data[0])
+    train_meta, train_seqs, train_annotations = parse_and_format(args.train_data[0],'',False)
     #Save
     train_meta.to_csv(datadir+'train_meta.csv')
     np.save(datadir+'seqs.npy',train_seqs)

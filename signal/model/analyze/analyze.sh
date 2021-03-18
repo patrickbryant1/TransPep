@@ -20,29 +20,28 @@ do
   python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --outdir $OUTDIR
 done
 
-# TP=2
-# PARAM_COMBO=273
-# for VP in 0 1 3 4
-# do
-#   python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --outdir $OUTDIR
-# done
-#
-# TP=3
-# PARAM_COMBO=274
-# for VP in 0 1 2 4
-# do
-#   python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --outdir $OUTDIR
-# done
-#
-# TP=4
-# PARAM_COMBO=275
-# for VP in 0 1 2 3
-# do
-#   python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --outdir $OUTDIR
-# done
+TP=2
+PARAM_COMBO=273
+for VP in 0 1 3 4
+do
+  python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --outdir $OUTDIR
+done
+
+TP=3
+PARAM_COMBO=274
+for VP in 0 1 2 4
+do
+  python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --outdir $OUTDIR
+done
+
+TP=4
+PARAM_COMBO=275
+for VP in 0 1 2 3
+do
+  python3 get_attention.py --checkpointdir $CHECKPOINTDIR --datadir $DATADIR --test_partition $TP --valid_partition $VP --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --outdir $OUTDIR
+done
 
 
 #Analyze attention
-TP=0
 ATTENTIONDIR=$OUTDIR
-#python3 analyze_attention.py --attention_dir $ATTENTIONDIR --test_partition $TP
+#python3 analyze_attention.py --attention_dir $ATTENTIONDIR
