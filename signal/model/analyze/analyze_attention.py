@@ -56,6 +56,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                     'Y':18,'V':19,'X':20
                   }
     annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
+    annotation_type_conversion = {'Sec/SPI': 0, 'Tat/SPI': 1, 'Sec/SPII': 2}
 
     # create color scheme
     annotation_color_scheme = {'S' : 'tab:blue','T' : 'tab:pink', 'L' : 'tab:purple',
@@ -70,6 +71,30 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_seqs = seqs[type_TP]
         type_annotations = pred_annotations[type_TP]
 
+        if type!='NO_SP':
+            #Get all true positive CSs
+            P_annotations = true_annotations[type_TP]
+            P_CS = []
+            for i in range(len(P_annotations)):
+                P_CS.append(np.argwhere(P_annotations[i]==annotation_type_conversion[type])[-1,0])
+
+            #Order the attention matrix properly
+            ordered_type_enc_dec_attention = np.zeros((len(type_enc_dec_attention),40,40))
+            for i in range(len(type_enc_dec_attention)):
+                pdb.set_trace()
+                #Upper left
+                ordered_type_enc_dec_attention[i,:20,:20]=type_enc_dec_attention[i,P_CS[i]-20:P_CS[i],P_CS[i]-20:P_CS[i]]
+                #Upper right
+                ordered_type_enc_dec_attention[i,:20,20:]=type_enc_dec_attention[i,P_CS[i]-20:P_CS[i],P_CS[i]:P_CS[i]+20]
+                #Lower left
+                ordered_type_enc_dec_attention[i,20:,:20]=type_enc_dec_attention[i,P_CS[i]:P_CS[i]+20,P_CS[i]-20:P_CS[i]]
+                #Lower right
+                ordered_type_enc_dec_attention[i,20:,20:]=type_enc_dec_attention[i,P_CS[i]:P_CS[i]+20,P_CS[i]:P_CS[i]+20]
+
+                pdb.set_trace()
+        else:
+            continue
+        #Plot activation matrix around the CS
         fig,ax = plt.subplots(figsize=(9,9))
         im = plt.imshow(np.average(type_enc_dec_attention,axis=0))#In seqs on x, out annotations on y
         plt.xlabel('Sequence position')
@@ -121,13 +146,15 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #aa
         fig,ax = plt.subplots(figsize=(9/2.54,4.5/2.54))
         logomaker.Logo(aa_attention_df, color_scheme='skylign_protein')
-        plt.ylabel('Attention')
+        plt.ylabel('log2 Attention')
+        plt.xticks([])
         plt.savefig(attention_dir+kingdom+'_aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
         #annotation
         fig,ax = plt.subplots(figsize=(9/2.54,4.5/2.54))
         logomaker.Logo(annotation_attention_df, color_scheme=annotation_color_scheme)
-        plt.ylabel('Attention')
+        plt.xticks([])
+        plt.ylabel('log2 Attention')
         plt.savefig(attention_dir+kingdom+'_annotation_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
 

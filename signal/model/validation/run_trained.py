@@ -233,7 +233,7 @@ def get_pred_types(pred_annotations):
     return np.array(pred_types)
 
 
-def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom):
+def eval_type_cs(pred_annotations,pred_annotation_probs,pred_types,true_annotations,true_types,kingdom):
     '''Evaluate the capacity to predict the clevage site
     annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
     annotation [S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide | I: cytoplasm | M: transmembrane | O: extracellular]
@@ -295,6 +295,7 @@ def eval_type_cs(pred_annotations,pred_types,true_annotations,true_types,kingdom
         P_annotations_pred = pred_annotations[np.intersect1d(P,pred_P)]
         for i in range(len(P_annotations_pred)):
             try:
+                pdb.set_trace()
                 P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
             except:
                 P_CS_pred.append(0)
@@ -349,6 +350,7 @@ outdir = args.outdir[0]
 kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1}
 #Load and run model
 all_pred_annotations = []
+all_pred_annotation_probs = []
 all_true_annotations = []
 all_true_types = []
 all_kingdoms = []
@@ -373,6 +375,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     kingdoms = np.argmax(x_valid_kingdoms[:,0,:],axis=1)
     #Save
     all_pred_annotations.extend([*pred_annotations])
+    all_pred_annotation_probs.extend([*preds])
     all_true_types.extend([*true_types])
     all_true_annotations.extend([*true_annotations])
     all_kingdoms.extend([*kingdoms])
@@ -381,6 +384,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
 #Array conversions
 all_pred_annotations = np.array(all_pred_annotations) #The type will be fetched from the annotations
+all_pred_annotation_probs = np.array(all_pred_annotation_probs)
 all_true_annotations = np.array(all_true_annotations)
 all_true_types = np.array(all_true_types)
 all_kingdoms = np.array(all_kingdoms)
@@ -397,12 +401,13 @@ for key in kingdom_conversion:
     kingdom_indices = np.argwhere(all_kingdoms==kingdom_conversion[key])[:,0]
     #Get pred
     kingdom_pred_annotations = all_pred_annotations[kingdom_indices]
+    kingdom_pred_annotation_probs = all_pred_annotation_probs[kingdom_indices]
     kingdom_pred_types = all_pred_types[kingdom_indices]
     #Get true
     kingdom_true_annotations = all_true_annotations[kingdom_indices]
     kingdom_true_types = all_true_types[kingdom_indices]
     #Eval
-    fetched_types, MCCs, Precisions, Recalls = eval_type_cs(kingdom_pred_annotations,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
+    fetched_types, MCCs, Precisions, Recalls = eval_type_cs(kingdom_pred_annotations,kingdom_pred_annotation_probs,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
 
     #Save
     evaluated_kingdoms.extend([key]*len(fetched_types))
