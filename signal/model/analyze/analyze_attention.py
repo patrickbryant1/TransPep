@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import time
 from collections import Counter
-
+import logomaker
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import pdb
@@ -56,7 +56,12 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
     '''
 
     types = {'NO_SP':0,'Sec/SPI':1,'Tat/SPI':2,'Sec/SPII':3}
-    amino_acids = np.arange(21)
+    AMINO_ACIDS = { 'A':0,'R':1,'N':2,'D':3,'C':4,'E':5,
+                    'Q':6,'G':7,'H':8,'I':9,'L':10,'K':11,
+                    'M':12,'F':13,'P':14,'S':15,'T':16,'W':17,
+                    'Y':18,'V':19,'X':20
+                  }
+    annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
 
     for type in types:
         type_P = np.argwhere(true_types==types[type])
@@ -80,45 +85,59 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
         # plt.savefig(attention_dir+'enc_dec_attention_'+str(types[type])+'.png',format='png',dpi=300)
 
 
-        #Go through all positions
-        #Save all aa-annotation attention weights
-        aa_annotation_pairs = []
+
+        #Get aa attention
+        aa_attention = np.zeros((70,21))
         for i in range(70):
             col = type_seqs[:,i]
             #Go through all amino acids
-            for aa in np.unique(col):
+            for aa in range(21):
+                if aa not in col:
+                    continue
                 #Where col==aa
                 aa_col_pos = np.argwhere(col==aa)
+                #Get corresponding enc-dec attention
+                aa_col_attention = np.average(type_enc_dec_attention[aa_col_pos,:,i]) #axis 0 = row in np, 1=col
+                aa_attention[i,aa]=aa_col_attention
 
-                #Get annotations
-                for j in range(70):
-                    col_annotation = type_annotations[aa_col_pos,j][:,0]
-                    #Go through all annotations in that position and obtain attention weight
-                    for annotation in np.unique(col_annotation):
-                        annotation_col_pos = np.argwhere(col_annotation==annotation)
-                        #Save
-                        #Get corresponding enc-dec attention
-                        aa_annotation_pos_attention = np.average(type_enc_dec_attention[aa_col_pos,i,j][annotation_col_pos][:,0,0])
-                        aa_annotation_pairs.append([i,aa,j,annotation,aa_annotation_pos_attention])
+        #Get annotation attention
+        annotation_attention = np.zeros((70,6))
+        for j in range(70):
+            row = type_annotations[:,j]
+            for at in range(6):
+                if at not in row:
+                    continue
+                #Where row==at
+                at_row_pos = np.argwhere(row==at)
+                #Get corresponding enc-dec attention
+                at_row_attention = np.average(type_enc_dec_attention[aa_col_pos,j,:]) #axis 0 = row in np, 1=col
+                annotation_attention[j,at]= at_row_attention
 
-                pdb.set_trace()
 
+        #Convert to dfs
+        aa_attention_df = pd.DataFrame(aa_attention,columns = [*AMINO_ACIDS.keys()])
+        #annotation_attention[::-1,:]
+        annotation_attention_df = pd.DataFrame(annotation_attention,columns = [*annotation_conversion.keys()])
+
+        #Logos
+        #aa
+        fig,ax = plt.subplots(figsize=(9/2.54,4.5/2.54))
+        logomaker.Logo(aa_attention_df)
+        plt.ylabel('Attention')
+        plt.savefig(attention_dir+'aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
+        plt.close()
+        #annotation
+        fig,ax = plt.subplots(figsize=(9/2.54,4.5/2.54))
+        logomaker.Logo(annotation_attention_df)
+        plt.ylabel('Attention')
+        plt.savefig(attention_dir+'annotation_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
+        plt.close()
     pdb.set_trace()
-    #Array conversion
-    #all_type_activations = np.array(all_type_activations)
-    #all_type_seqs = np.array(all_type_seqs)
-    pdb.set_trace()
-    fig,ax = plt.subplots(figsize=(18/2.54,9/2.54))
-    im = plt.imshow(all_type_activations)
-    plt.yticks(ticks=[0,1,2,3],labels=[*types.keys()])
-    plt.xlabel('Sequence position')
-    plt.tight_layout()
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    plt.colorbar(im, cax=cax)
-    plt.tight_layout()
-    plt.savefig(attention_dir+'type_attention_'+str(test_partition)+'.png',format='png',dpi=300)
-    pdb.set_trace()
+
+
+def get_logo(attentions):
+    '''Get the height for the logo
+    '''
 
 ######################MAIN######################
 plt.rcParams.update({'font.size': 7})
@@ -165,7 +184,6 @@ for test_partition in range(5):
     enc_dec_attention.extend([*partition_enc_dec_attention])
     pred_annotations.extend([*partition_pred_annotations])
 
-pdb.set_trace()
 #Array conversion
 enc_attention = np.array(enc_attention)
 enc_dec_attention = np.array(enc_dec_attention)
@@ -173,19 +191,12 @@ pred_annotations = np.array(pred_annotations)
 true_annotations = np.array(true_annotations)
 true_types = np.array(true_types)
 seqs = np.array(seqs)
-pdb.set_trace()
-#Average across validation splits
-enc_attention = np.average(enc_attention,axis=0)
-enc_dec_attention = np.average(enc_dec_attention,axis=0)
-pred_annotations = np.average(pred_annotations,axis=0)
-pred_annotations = np.argmax(pred_annotations,axis=2)
+
 #Get types
 pred_types = get_pred_types(pred_annotations)
 #Max across attention heads
 enc_attention = np.max(enc_attention,axis=1)
 enc_dec_attention = np.max(enc_dec_attention,axis=1)
-
-
 
 #Analyze the activations for different types
 analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_annotations, attention_dir)

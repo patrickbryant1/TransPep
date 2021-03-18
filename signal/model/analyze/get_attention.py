@@ -156,7 +156,7 @@ def load_model(variable_params, param_combo, weights):
     #Create model
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
     model.load_weights(weights)
-    print(model.summary())
+    #print(model.summary())
 
     return model
 
@@ -193,18 +193,17 @@ def get_data(datadir, test_partition, maxlen):
     return x_bench, y_bench
 
 
-def get_attention(model,data):
+def get_attention(model,data,enc_inp,enc_outp,dec_inp,dec_outp):
     '''Obtain the output of the attention layers
     '''
     # with a Sequential model
     #Enc self-attention
-    get_enc_layer_output = keras.backend.function([model.layers[0].input,model.layers[2].input],[model.layers[4].output])
+    get_enc_layer_output = keras.backend.function(enc_inp,enc_outp)
     enc_attention = get_enc_layer_output([data[0],data[2]])[0][0][1]
 
     #Enc-dec attention
-    get_dec_layer_output = keras.backend.function([model.layers[0].input,model.layers[5].input,model.layers[2].input],[model.layers[7].output])
+    get_dec_layer_output = keras.backend.function(dec_inp,dec_outp)
     enc_dec_attention = get_dec_layer_output(data)[0][0][1]
-
     return enc_attention, enc_dec_attention
 
 ######################MAIN######################
@@ -228,8 +227,15 @@ weights=glob.glob(checkpointdir+'TP'+str(test_partition)+'/vp'+str(valid_partiti
 #model
 model = load_model(variable_params, param_combo, weights[0])
 #Get attention
-enc_attention, enc_dec_attention = get_attention(model,x_bench)
-pdb.set_trace()
+if test_partition==0:
+    enc_inp,enc_outp = [model.layers[0].input,model.layers[2].input],[model.layers[4].output]
+    dec_inp,dec_outp = [model.layers[0].input,model.layers[5].input,model.layers[2].input],[model.layers[7].output]
+else:
+    enc_inp,enc_outp = [model.layers[0].input,model.layers[2].input],[model.layers[6].output]
+    dec_inp,dec_outp = [model.layers[0].input,model.layers[3].input,model.layers[2].input],[model.layers[7].output]
+
+enc_attention, enc_dec_attention = get_attention(model,x_bench,enc_inp,enc_outp,dec_inp,dec_outp)
+print(enc_attention.shape)
 #Save
 np.save(outdir+'enc_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',enc_attention)
 np.save(outdir+'enc_dec_attention_'+str(test_partition)+'_'+str(valid_partition)+'.npy',enc_dec_attention)
