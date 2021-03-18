@@ -16,6 +16,7 @@ import pdb
 
 
 ###########FUNTIONS###########
+
 def parse_and_format(filename):
     '''Parse and format the data:
     >Uniprot_AC|Kingdom|Type|Partition No
@@ -41,6 +42,8 @@ def parse_and_format(filename):
                     'M':12,'F':13,'P':14,'S':15,'T':16,'W':17,
                     'Y':18,'V':19,'X':20
                   }
+
+
     #Keep track of what to get
     get_seq = False
     get_annotation = False
