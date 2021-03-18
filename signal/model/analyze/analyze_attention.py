@@ -53,6 +53,7 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
     SP: Sec substrates cleaved by SPase I (Sec/SPI),
     LIPO: Sec substrates cleaved by SPase II (Sec/SPII),
     TAT: Tat substrates cleaved by SPase I (Tat/SPI).
+    annotation [S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide | I: cytoplasm | M: transmembrane | O: extracellular]
     '''
 
     types = {'NO_SP':0,'Sec/SPI':1,'Tat/SPI':2,'Sec/SPII':3}
@@ -63,6 +64,15 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
                   }
     annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
 
+    # create color scheme
+    annotation_color_scheme = {
+        'S' : 'tab:blue',
+        'T' : 'tab:pink',
+        'L' : 'tab:purple',
+        'I': 'gray',
+        'M': 'k',
+        'O':'tab:gray'
+    }
     for type in types:
         type_P = np.argwhere(true_types==types[type])
         type_pred_P = np.argwhere(pred_types==types[type])
@@ -70,20 +80,20 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
 
         type_enc_dec_attention = enc_dec_attention[type_TP]
         type_seqs = seqs[type_TP]
-        type_annotations = pred_annotations[type_P][:,0,:]
+        type_annotations = pred_annotations[type_TP]
 
-        # fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
-        # im = plt.imshow(np.average(type_enc_dec_attention,axis=0))#In seqs on x, out annotations on y
-        # plt.xlabel('Sequence position')
-        # plt.ylabel('Annotation position')
-        # plt.title(type)
-        # plt.tight_layout()
-        # divider = make_axes_locatable(ax)
-        # cax = divider.append_axes("right", size="5%", pad=0.05)
-        # plt.colorbar(im, cax=cax)
-        # plt.tight_layout()
-        # plt.savefig(attention_dir+'enc_dec_attention_'+str(types[type])+'.png',format='png',dpi=300)
-
+        fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
+        im = plt.imshow(np.average(type_enc_dec_attention,axis=0))#In seqs on x, out annotations on y
+        plt.xlabel('Sequence position')
+        plt.ylabel('Annotation position')
+        plt.title(type)
+        plt.tight_layout()
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+        plt.tight_layout()
+        plt.savefig(attention_dir+'enc_dec_attention_'+str(types[type])+'.png',format='png',dpi=300)
+        plt.close()
 
 
         #Get aa attention
@@ -97,7 +107,7 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
                 #Where col==aa
                 aa_col_pos = np.argwhere(col==aa)
                 #Get corresponding enc-dec attention
-                aa_col_attention = np.average(type_enc_dec_attention[aa_col_pos,:,i]) #axis 0 = row in np, 1=col
+                aa_col_attention = np.max(type_enc_dec_attention[aa_col_pos,:,i]) #axis 0 = row in np, 1=col
                 aa_attention[i,aa]=aa_col_attention
 
         #Get annotation attention
@@ -110,7 +120,7 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
                 #Where row==at
                 at_row_pos = np.argwhere(row==at)
                 #Get corresponding enc-dec attention
-                at_row_attention = np.average(type_enc_dec_attention[aa_col_pos,j,:]) #axis 0 = row in np, 1=col
+                at_row_attention = np.max(type_enc_dec_attention[at_row_pos,j,:]) #axis 0 = row in np, 1=col
                 annotation_attention[j,at]= at_row_attention
 
 
@@ -122,13 +132,13 @@ def analyze_type_attention(enc_dec_attention, seqs, true_types, pred_types,pred_
         #Logos
         #aa
         fig,ax = plt.subplots(figsize=(9/2.54,4.5/2.54))
-        logomaker.Logo(aa_attention_df)
+        logomaker.Logo(aa_attention_df, color_scheme='skylign_protein')
         plt.ylabel('Attention')
         plt.savefig(attention_dir+'aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
         #annotation
         fig,ax = plt.subplots(figsize=(9/2.54,4.5/2.54))
-        logomaker.Logo(annotation_attention_df)
+        logomaker.Logo(annotation_attention_df, color_scheme=annotation_color_scheme)
         plt.ylabel('Attention')
         plt.savefig(attention_dir+'annotation_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
