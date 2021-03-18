@@ -204,7 +204,7 @@ def get_attention(model,data):
     #Enc-dec attention
     get_dec_layer_output = keras.backend.function([model.layers[0].input,model.layers[5].input,model.layers[2].input],[model.layers[7].output])
     enc_dec_attention = get_dec_layer_output(data)[0][0][1]
-
+    
     return enc_attention, enc_dec_attention
 
 ######################MAIN######################
