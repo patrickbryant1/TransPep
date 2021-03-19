@@ -112,7 +112,6 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_annotations = pred_annotations[type_TP]
 
         #Look at the attention for the specific type
-
         aa_area, attention_area = precision_vs_attention(enc_dec_attention[type_pred_P[:,0]])
         all_aa_area.append(aa_area)
         all_attention_area.append(aa_area)
@@ -134,15 +133,31 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             P_CS = []
             for i in range(len(P_annotations)):
                 P_CS.append(np.argwhere(P_annotations[i]==annotation_type_conversion[type])[-1,0])
-
+            P_CS = np.array(P_CS)
             #Get all pred positive CSs from the true positives (all the other will be wrong)
             P_CS_pred = []
             P_annotations_pred = type_annotations
             for i in range(len(P_annotations_pred)):
-                try:
-                    P_CS_pred.append(np.argwhere(P_annotations_pred[i]==annotation_type_conversion[type])[-1,0])
-                except:
-                    P_CS_pred.append(0)
+                P_CS_pred.append(np.argwhere(P_annotations_pred[i]==annotation_type_conversion[type])[-1,0])
+            P_CS_pred = np.array(P_CS_pred)
+
+            #Get TP CS
+            CS_diff = P_CS-P_CS_pred
+            CS_TP = np.argwhere(np.absolute(CS_diff)<=3)[:,0]
+            #Get the mapping to the type TPs
+            CS_TP =type_TP[CS_TP]
+
+            #Plot CS attention
+            fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
+            for i in range(len(aa_area)):
+                if type_pred_P[i][0] in CS_TP:
+                    color = 'b'
+                else:
+                    color='r'
+                plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.5)
+            plt.title(kingdom+' '+type)
+            plt.show()
+            #plt.savefig(attention_dir+kingdom+'__attention_area_type'+str(types[type])+'.png',format='png',dpi=300)
 
             pdb.set_trace()
 
