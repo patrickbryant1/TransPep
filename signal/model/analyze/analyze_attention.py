@@ -122,10 +122,12 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                 color = 'b'
             else:
                 color='r'
-            plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.5)
+            plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2)
         plt.title(kingdom+' '+type)
-        plt.savefig(attention_dir+kingdom+'__attention_area_type'+str(types[type])+'.png',format='png',dpi=300)
-
+        plt.xlabel('Steps away from max attention')
+        plt.ylabel('% Attention')
+        plt.savefig(attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png',format='png',dpi=300)
+        plt.close()
 
         if type!='NO_SP':
             #Get all positive CSs that have TP type
@@ -154,12 +156,13 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                     color = 'b'
                 else:
                     color='r'
-                plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.5)
-            plt.title(kingdom+' '+type)
-            plt.show()
-            #plt.savefig(attention_dir+kingdom+'__attention_area_type'+str(types[type])+'.png',format='png',dpi=300)
-
-            pdb.set_trace()
+                plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2)
+            plt.title(kingdom+' CS '+type)
+            plt.xlabel('Steps away from max attention')
+            plt.ylabel('% Attention')
+            plt.savefig(attention_dir+kingdom+'_attention_area_CS'+str(types[type])+'.png',format='png',dpi=300)
+            plt.close()
+            continue
 
         else:
             continue
