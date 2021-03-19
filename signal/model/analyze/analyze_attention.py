@@ -46,6 +46,33 @@ def get_pred_types(pred_annotations):
 
     return np.array(pred_types)
 
+def precision_vs_attention(attention_matrix):
+    '''Check how many aa are required to capture 90 % of the total attention
+    when the type is correctly predicted.
+    '''
+
+    n_rows = []
+    for i in range(len(attention_matrix)):
+        sample = attention_matrix[i]
+        total_sample_attention = np.sum(sample)
+        row_sums = np.sum(sample,axis=0)
+        max_row = np.argmax(row_sums)
+
+        #Search the area around the max attention and see how far away you have to go to obtain 90 % of the attention
+        fetched_attention = row_sums[max_row]
+        m=1 #minus change
+        p=1 #plus change
+        while fetched_attention<0.9*total_sample_attention:
+            li = max(max_row-m,0) #Left index
+            ri = min(max_row+p,len(row_sums)) #Right index
+            fetched_attention=np.sum(row_sums[li:ri])
+
+            m+=1
+            p+=1
+            print(li,ri,fetched_attention/total_sample_attention)
+        n_rows.append(ri-li)
+    pdb.set_trace()
+
 def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir, types, kingdom):
     '''Analyze the attention for a certain kingdom
     '''
@@ -62,9 +89,10 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
     annotation_color_scheme = {'S' : 'tab:blue','T' : 'tab:pink', 'L' : 'tab:purple',
                                 'I': 'gray', 'M': 'k', 'O':'tab:gray'}
 
-    #figsize=(9,9)
+
 
     for type in types:
+        figsize=(9,9)
         type_P = np.argwhere(true_types==types[type])
         type_pred_P = np.argwhere(pred_types==types[type])
         type_TP = np.intersect1d(type_P,type_pred_P)
@@ -72,6 +100,9 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_enc_dec_attention = enc_dec_attention[type_TP]
         type_seqs = seqs[type_TP]
         type_annotations = pred_annotations[type_TP]
+
+        #Look at the attention for the specific type
+        precision_vs_attention(enc_dec_attention)
 
         if type!='NO_SP':
             #Get all true positive CSs
@@ -95,16 +126,16 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                 ordered_type_enc_dec_attention[i,:10,40-ur_len:]=type_enc_dec_attention[i,P_CS[i]-5:P_CS[i]+5,P_CS[i]:ur]
 
             type_enc_dec_attention = ordered_type_enc_dec_attention
+            figsize=(9,4.5)
 
-        else:
-            continue
         #Plot activation matrix around the CS
-        fig,ax = plt.subplots(figsize=(9,9))
+        fig,ax = plt.subplots(figsize=figsize)
         im = plt.imshow(np.average(type_enc_dec_attention,axis=0))#In seqs on x, out annotations on y
-        plt.axvline(19.5, color='y', linewidth=1, linestyle=':')
-        plt.axhline(4.5, color='y', linewidth=1, linestyle=':')
-        plt.xticks(ticks=np.arange(type_enc_dec_attention.shape[2]),labels=[-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
-        plt.yticks(ticks=np.arange(type_enc_dec_attention.shape[1]),labels=[-5,-4,-3,-2,-1,1,2,3,4,5])
+        if type!='NO_SP':
+            plt.axvline(19.5, color='y', linewidth=1, linestyle=':')
+            plt.axhline(4.5, color='y', linewidth=1, linestyle=':')
+            plt.xticks(ticks=np.arange(type_enc_dec_attention.shape[2]),labels=[-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
+            plt.yticks(ticks=np.arange(type_enc_dec_attention.shape[1]),labels=[-5,-4,-3,-2,-1,1,2,3,4,5])
         plt.xlabel('Sequence position')
         plt.ylabel('Annotation position')
         plt.title(type)
@@ -153,17 +184,19 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
         #Logos
         #aa
-        fig,ax = plt.subplots(figsize=(9/2.54,4.5/2.54))
+        fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
         aa_logo = logomaker.Logo(aa_attention_df, color_scheme='skylign_protein')
         plt.ylabel('log2 Attention')
         plt.xticks([])
-        aa_logo.ax.axvline(19.5, color='k', linewidth=1, linestyle=':')
+        if type!='NO_SP':
+            aa_logo.ax.axvline(19.5, color='k', linewidth=1, linestyle=':')
         plt.savefig(attention_dir+kingdom+'_aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
         #annotation
-        fig,ax = plt.subplots(figsize=(9/2.54,4.5/2.54))
+        fig,ax = plt.subplots(figsize=(figsize[1]/2.54,figsize[1]/2.54))
         attention_logo = logomaker.Logo(annotation_attention_df, color_scheme=annotation_color_scheme)
-        attention_logo.ax.axvline(4.5, color='k', linewidth=1, linestyle=':')
+        if type!='NO_SP':
+            attention_logo.ax.axvline(4.5, color='k', linewidth=1, linestyle=':')
         plt.xticks([])
         plt.ylabel('log2 Attention')
         plt.savefig(attention_dir+kingdom+'_annotation_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
