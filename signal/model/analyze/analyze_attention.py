@@ -85,7 +85,7 @@ def precision_vs_attention(attention_matrix):
 
     return n_rows, fetched_attention
 
-def calc_best_percentage_split(aa_area, attention_area, type_TP_or_not,kingdom,type):
+def calc_best_percentage_split(aa_area, attention_area, type_TP_or_not,kingdom,type,attention_dir):
     '''Go through all distances in steps of 2 aa and search for the best
     attention % cutoff.
     '''
@@ -95,29 +95,33 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP_or_not,kingdom,t
     best_attention_cutoff = [] #Best attention cutoff
     #Get only TP
     type_TP = np.argwhere(type_TP_or_not==1)[:,0]
-    for i in range(aa_area.shape[1]):
-        aa_area_i = aa_area[:,i]
-        attention_area_i = attention_area[:,i]
+    try:
+        for i in range(aa_area.shape[1]):
+            aa_area_i = aa_area[:,i]
+            attention_area_i = attention_area[:,i]
 
-        perc_above_cutoff = [] #Percent of all curves above the cutoff
-        precision_above_cutoff = [] #Percent TP above cutoff
-        for p in np.arange(min(attention_area_i),max(attention_area_i),0.01):
-            #Get above cutoff
-            above_cutoff = np.argwhere(attention_area_i>=p)[:,0]
-            if len(above_cutoff)<1:
-                continue
-            perc_above_cutoff.append(len(above_cutoff)/len(aa_area))
-            #Get overlap with TP
-            n_overlap = np.intersect1d(above_cutoff,type_TP).shape[0]
-            precision_above_cutoff.append(n_overlap/len(above_cutoff))
-        #Plot
-        plt.plot(perc_above_cutoff,precision_above_cutoff)
-    plt.xlabel('% Selected')
-    plt.ylabel('Precision')
-    plt.title(kingom + ' ' +type)
-    plt.ylim([0,1])
-    plt.show()
-    pdb.set_trace()
+            perc_above_cutoff = [] #Percent of all curves above the cutoff
+            precision_above_cutoff = [] #Percent TP above cutoff
+            for p in np.arange(min(attention_area_i),max(attention_area_i),0.01):
+                #Get above cutoff
+                above_cutoff = np.argwhere(attention_area_i>=p)[:,0]
+                if len(above_cutoff)<1:
+                    continue
+                perc_above_cutoff.append(len(above_cutoff)/len(aa_area))
+                #Get overlap with TP
+                n_overlap = np.intersect1d(above_cutoff,type_TP).shape[0]
+                precision_above_cutoff.append(n_overlap/len(above_cutoff))
+            #Plot
+            plt.plot(np.array(perc_above_cutoff)*100,precision_above_cutoff)
+        plt.xlabel('% Selected')
+        plt.ylabel('Precision')
+        plt.title(kingdom + ' ' +type)
+        plt.ylim([0,1])
+        plt.savefig(attention_dir+kingdom+'_precision_type'+'_'.join(type.split('/'))+'.png',format='png',dpi=300)
+        plt.close()
+    except:
+        pdb.set_trace()
+
 
 
 
@@ -176,7 +180,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
         if type!='NO_SP':
             #Calculate the best splitting point
-            calc_best_percentage_split(np.array(aa_area), np.array(attention_area), np.array(type_TP_or_not),kingdom,type)
+            calc_best_percentage_split(np.array(aa_area), np.array(attention_area), np.array(type_TP_or_not),kingdom,type,attention_dir)
 
             #Get all positive CSs that have TP type
             P_annotations = true_annotations[type_TP]
