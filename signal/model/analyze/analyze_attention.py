@@ -52,6 +52,7 @@ def precision_vs_attention(attention_matrix):
     '''
 
     n_rows = []
+    fetched_attention = []
     for i in range(len(attention_matrix)):
         sample = attention_matrix[i]
         total_sample_attention = np.sum(sample)
@@ -59,19 +60,26 @@ def precision_vs_attention(attention_matrix):
         max_row = np.argmax(row_sums)
 
         #Search the area around the max attention and see how far away you have to go to obtain 90 % of the attention
-        fetched_attention = row_sums[max_row]
+        fetched_sample_attention = [row_sums[max_row]/total_sample_attention]
+        n_sample_rows = [1]
         m=1 #minus change
         p=1 #plus change
-        while fetched_attention<0.9*total_sample_attention:
-            li = max(max_row-m,0) #Left index
-            ri = min(max_row+p,len(row_sums)) #Right index
-            fetched_attention=np.sum(row_sums[li:ri])
+        li = max(max_row-m,0) #Left index
+        ri = min(max_row+p,len(row_sums)) #Right index
 
+        while li>0 or ri<len(row_sums):
+
+            fetched_sample_attention.append(np.sum(row_sums[li:ri])/total_sample_attention)
+            n_sample_rows.append(ri-li)
             m+=1
             p+=1
-            print(li,ri,fetched_attention/total_sample_attention)
-        n_rows.append(ri-li)
-    pdb.set_trace()
+            li = max(max_row-m,0) #Left index
+            ri = min(max_row+p,len(row_sums)) #Right index
+
+        n_rows.append(n_sample_rows)
+        fetched_attention.append(fetched_sample_attention)
+
+    return n_rows, fetched_attention
 
 def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir, types, kingdom):
     '''Analyze the attention for a certain kingdom
@@ -90,6 +98,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                                 'I': 'gray', 'M': 'k', 'O':'tab:gray'}
 
 
+    all_aa_area = []
+    all_attention_area = []
 
     for type in types:
         figsize=(9,9)
@@ -102,7 +112,21 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_annotations = pred_annotations[type_TP]
 
         #Look at the attention for the specific type
-        precision_vs_attention(enc_dec_attention)
+        aa_area, attention_area = precision_vs_attention(enc_dec_attention[type_P[:,0]])
+        all_aa_area.append(aa_area)
+        all_attention_area.append(aa_area)
+        #Plot
+        for i in range(len(aa_area)):
+            if type_P[i][0] in type_TP:
+                color = 'b'
+            else:
+                color='r'
+            plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.5)
+        plt.title(kingdom+' '+type)
+        plt.savefig(attention_dir+kingdom+'_attention_area'+str(types[type])+'.png',format='png',dpi=300)
+
+        continue
+
 
         if type!='NO_SP':
             #Get all true positive CSs
