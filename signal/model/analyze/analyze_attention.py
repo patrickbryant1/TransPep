@@ -112,28 +112,42 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_annotations = pred_annotations[type_TP]
 
         #Look at the attention for the specific type
-        aa_area, attention_area = precision_vs_attention(enc_dec_attention[type_P[:,0]])
+
+        aa_area, attention_area = precision_vs_attention(enc_dec_attention[type_pred_P[:,0]])
         all_aa_area.append(aa_area)
         all_attention_area.append(aa_area)
         #Plot
+        fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
         for i in range(len(aa_area)):
-            if type_P[i][0] in type_TP:
+            if type_pred_P[i][0] in type_TP:
                 color = 'b'
             else:
                 color='r'
             plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.5)
         plt.title(kingdom+' '+type)
-        plt.savefig(attention_dir+kingdom+'_attention_area'+str(types[type])+'.png',format='png',dpi=300)
-
-        continue
+        plt.savefig(attention_dir+kingdom+'__attention_area_type'+str(types[type])+'.png',format='png',dpi=300)
 
 
         if type!='NO_SP':
-            #Get all true positive CSs
+            #Get all positive CSs that have TP type
             P_annotations = true_annotations[type_TP]
             P_CS = []
             for i in range(len(P_annotations)):
                 P_CS.append(np.argwhere(P_annotations[i]==annotation_type_conversion[type])[-1,0])
+
+            #Get all pred positive CSs from the true positives (all the other will be wrong)
+            P_CS_pred = []
+            P_annotations_pred = type_annotations
+            for i in range(len(P_annotations_pred)):
+                try:
+                    P_CS_pred.append(np.argwhere(P_annotations_pred[i]==annotation_type_conversion[type])[-1,0])
+                except:
+                    P_CS_pred.append(0)
+
+            pdb.set_trace()
+
+        else:
+            continue
 
             #Order the attention matrix properly
             ordered_type_enc_dec_attention = np.zeros((len(type_enc_dec_attention),10,40))
