@@ -293,6 +293,7 @@ def eval_type_cs(pred_annotations,pred_annotation_probs,pred_types,true_annotati
         #Get all pred positive CSs from the true positives (all the other will be wrong)
         P_CS_pred = []
         P_annotations_pred = pred_annotations[np.intersect1d(P,pred_P)]
+        P_annotation_probs_pred = pred_annotation_probs[np.intersect1d(P,pred_P)]
         for i in range(len(P_annotations_pred)):
             try:
                 pdb.set_trace()
