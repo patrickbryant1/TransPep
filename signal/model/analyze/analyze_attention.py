@@ -81,6 +81,15 @@ def precision_vs_attention(attention_matrix):
 
     return n_rows, fetched_attention
 
+def calc_best_percentage_split():
+    '''Go through all distances in steps of 2 aa and search for the best
+    attention % cutoff.
+    '''
+
+    perc_above_cutoff = []
+    best_perc_cutoff = []
+    aa_dist = []
+    
 def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir, types, kingdom):
     '''Analyze the attention for a certain kingdom
     '''
@@ -117,10 +126,13 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         all_attention_area.append(aa_area)
         #Plot
         fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
+        type_TP_or_not = []
         for i in range(len(aa_area)):
             if type_pred_P[i][0] in type_TP:
+                type_TP_or_not.append(1)
                 color = 'b'
             else:
+                type_TP_or_not.append(0)
                 color='r'
             plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2)
         plt.title(kingdom+' '+type)
@@ -128,6 +140,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         plt.ylabel('% Attention')
         plt.savefig(attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
+        #Save info
+        pdb.set_trace()
 
         if type!='NO_SP':
             #Get all positive CSs that have TP type
