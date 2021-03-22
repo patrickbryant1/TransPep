@@ -50,18 +50,23 @@ def plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, t
     '''Plot the attention vs amino acid area
     '''
     #Plot
-    fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
+    fig,ax = plt.subplots(figsize=(4.5/2.54,4.5/2.54))
 
     for i in range(len(aa_area)):
         if type_pred_P[i] in type_TP:
             color = 'b'
+            alpha=0.2
         else:
             color='r'
-        plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2,linewidth=1)
+            alpha=0.5
+        plt.plot(aa_area[i],attention_area[i],color=color,alpha=alpha,linewidth=1)
 
     plt.title(kingdom+' '+type)
-    plt.xlabel('Number of columns surrounding max attention')
+    plt.xlabel('Number of columns')
     plt.ylabel('% Attention')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.tight_layout()
     plt.savefig(outname,format='png',dpi=300)
     plt.close()
 
@@ -165,7 +170,7 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,out
     plt.plot(pos_included_85,np.array(percentage_85)*100, label='85%',color='tab:gray',alpha=0.5)
     plt.legend(title='Precision')
     plt.xlabel('Number of columns',fontsize=7)
-    plt.ylabel('% Positive selected',fontsize=7)
+    plt.ylabel('% TP selected',fontsize=7)
     plt.title(kingdom + ' ' +type)
     plt.ylim([0,110])
     ax.spines['top'].set_visible(False)
@@ -288,7 +293,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #TP
             plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
 
-
+        continue
         #Plot attention matrix
         #TP
         plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54))
