@@ -237,10 +237,10 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         # #Calculate the attention localization
         aa_area, attention_area = get_attention_distribution(type_enc_dec_attention)
         #Plot
-        plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png')
+        #plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png')
 
         #Get the best percentage split
-        calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,type_TP))[:,0],kingdom,type,attention_dir+kingdom+'_precision_type'+str(types[type])+'.png')
+        #calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,type_TP))[:,0],kingdom,type,attention_dir+kingdom+'_precision_type'+str(types[type])+'.png')
 
         if type!='NO_SP':
 
@@ -266,10 +266,10 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
             #Get the calculated attention localization for the TP CSs
             #Plot
-            plot_attention_distribution(aa_area, attention_area, type_pred_P, CS_TP, CS_FP, kingdom, type+' CS', attention_dir+kingdom+'_attention_area_CS'+str(types[type])+'.png')
+            #plot_attention_distribution(aa_area, attention_area, type_pred_P, CS_TP, CS_FP, kingdom, type+' CS', attention_dir+kingdom+'_attention_area_CS'+str(types[type])+'.png')
 
             #Get the best percentage split
-            calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,CS_TP))[:,0],kingdom,type+' CS',attention_dir+kingdom+'_precision_CS'+str(types[type])+'.png')
+            #calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,CS_TP))[:,0],kingdom,type+' CS',attention_dir+kingdom+'_precision_CS'+str(types[type])+'.png')
 
             #Order the attention matrix properly
             type_enc_dec_attention_TP = enc_dec_attention[type_TP]
@@ -291,14 +291,15 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
             #Plot attention matrix
             #TP
-            plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
+            #plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
 
-        continue
+            type_enc_dec_attention = ordered_type_enc_dec_attention_TP
+
         #Plot attention matrix
         #TP
-        plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54))
+        #plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54))
         #FP
-        plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_FP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_FP.png',(9/2.54,9/2.54))
+        #plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_FP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_FP.png',(9/2.54,9/2.54))
 
         #Get aa attention
         aa_attention = np.zeros((type_enc_dec_attention.shape[2],21))
