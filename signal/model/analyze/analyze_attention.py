@@ -60,7 +60,7 @@ def plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, t
         plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2,linewidth=1)
 
     plt.title(kingdom+' '+type)
-    plt.xlabel('Number of rows surrounding max attention')
+    plt.xlabel('Number of columns surrounding max attention')
     plt.ylabel('% Attention')
     plt.savefig(outname,format='png',dpi=300)
     plt.close()
@@ -114,10 +114,12 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,out
     '''Go through all distances in steps of 2 aa and search for the best attention % cutoff.
     '''
 
-    perc_above_cutoff = [] #Percent of all curves above the cutoff
-    precision_above_cutoff = [] #Percent TP above cutoff
-    best_attention_cutoff = [] #Best attention cutoff
 
+    pos_included_95 = []
+    percentage_95 = []
+
+    pos_included_90 = []
+    percentage_90 = []
 
     for i in range(aa_area.shape[1]):
         attention_area_i = attention_area[:,i]
@@ -130,18 +132,32 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,out
                 continue
             perc_above_cutoff.append(len(above_cutoff)/len(attention_area))
             #Get overlap with TP
-
             n_overlap = np.intersect1d(above_cutoff,type_TP).shape[0]
             precision_above_cutoff.append(n_overlap/len(above_cutoff))
         #Plot
-        plt.plot(np.array(perc_above_cutoff)*100,precision_above_cutoff,label=aa_area[0,i])
+        #Get cutoff where precision is 95 %
+        best_cutoff_pos = np.argwhere(np.array(precision_above_cutoff)>=0.95)
+        if len(best_cutoff_pos)>0:
+            percentage_95.append(perc_above_cutoff[best_cutoff_pos[0][0]])
+            pos_included_95.append(aa_area[0,i])
+
+        #Get cutoff where precision is 90 %
+        best_cutoff_pos = np.argwhere(np.array(precision_above_cutoff)>=0.90)
+        if len(best_cutoff_pos)>0:
+            percentage_90.append(perc_above_cutoff[best_cutoff_pos[0][0]])
+            pos_included_90.append(aa_area[0,i])
+
+    plt.plot(pos_included_95,np.array(percentage_95)*100,label='95%')
+    plt.plot(pos_included_95,np.array(percentage_90)*100, label='90%')
     plt.legend()
-    plt.xlabel('% Selected')
-    plt.ylabel('Precision')
+    plt.xlabel('Number of columns surrounding max attention')
+    plt.ylabel('% Positive selected')
     plt.title(kingdom + ' ' +type)
     plt.ylim([0,1])
     plt.savefig(outname,format='png',dpi=300)
     plt.close()
+
+
 
 def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
     '''Plot the encoder-decoder matrix
