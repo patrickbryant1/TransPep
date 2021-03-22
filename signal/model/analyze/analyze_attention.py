@@ -47,8 +47,8 @@ def get_pred_types(pred_annotations):
     return np.array(pred_types)
 
 def precision_vs_attention(attention_matrix):
-    '''Check how many aa are required to capture 90 % of the total attention
-    when the type is correctly predicted.
+    '''Check how the distribution of te total attention varies btw TP and FP.
+    Gravity = a1*a2/(a1-a2 dist ^2)
     '''
 
     n_rows = []
@@ -56,9 +56,8 @@ def precision_vs_attention(attention_matrix):
     for i in range(len(attention_matrix)):
         sample = attention_matrix[i]
         total_sample_attention = np.sum(sample)
-        row_sums = np.sum(sample,axis=0)
-        max_row = np.argmax(row_sums)
-
+        max_loc = np.argwhere(sample==np.max(sample))
+        pdb.set_trace()
         #Search the area around the max attention and see how far away you have to go to obtain 90 % of the attention
         fetched_sample_attention = [row_sums[max_row]/total_sample_attention]
         n_sample_rows = [1]
@@ -83,6 +82,24 @@ def precision_vs_attention(attention_matrix):
         n_rows.append(np.array(n_sample_rows))
         fetched_attention.append(np.array(fetched_sample_attention))
 
+    #aa_area, attention_area = precision_vs_attention(enc_dec_attention[type_pred_P[:,0]])
+
+    #Plot
+    # fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
+    # type_TP_or_not = []
+    # for i in range(len(aa_area)):
+    #     if type_pred_P[i][0] in type_TP:
+    #         type_TP_or_not.append(1)
+    #         color = 'b'
+    #     else:
+    #         type_TP_or_not.append(0)
+    #         color='r'
+    #     plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2)
+    # plt.title(kingdom+' '+type)
+    # plt.xlabel('Number of rows surrounding max attention')
+    # plt.ylabel('% Attention')
+    # plt.savefig(attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png',format='png',dpi=300)
+    # plt.close()
     return n_rows, fetched_attention
 
 def calc_best_percentage_split(aa_area, attention_area, type_TP_or_not,kingdom,type,attention_dir):
@@ -122,7 +139,41 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP_or_not,kingdom,t
     except:
         pdb.set_trace()
 
+        # #Plot CS attention
+        # fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
+        # for i in range(len(aa_area)):
+        #     if type_pred_P[i][0] in CS_TP:
+        #         color = 'b'
+        #     else:
+        #         color='r'
+        #     plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2)
+        # plt.title(kingdom+' CS '+type)
+        # plt.xlabel('Number of rows surrounding max attention')
+        # plt.ylabel('% Attention')
+        # plt.savefig(attention_dir+kingdom+'_attention_area_CS'+str(types[type])+'.png',format='png',dpi=300)
+        # plt.close()
 
+def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
+    '''Plot the encoder-decoder matrix
+    '''
+    #Plot activation matrix around the CS/or the whole matrix if no CS for the TP
+    fig,ax = plt.subplots(figsize=figsize)
+    im = plt.imshow(np.average(attention_matrix,axis=0)) #In seqs on x, out annotations on y
+    if attention_matrix.shape[2]==40:
+        plt.axvline(19.5, color='y', linewidth=1, linestyle=':')
+        plt.axhline(4.5, color='y', linewidth=1, linestyle=':')
+        plt.xticks(ticks=np.arange(attention_matrix.shape[2]),labels=[-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
+        plt.yticks(ticks=np.arange(attention_matrix.shape[1]),labels=[-5,-4,-3,-2,-1,1,2,3,4,5])
+    plt.xlabel('Sequence position')
+    plt.ylabel('Annotation position')
+    plt.title(kingdom+' '+type)
+    plt.tight_layout()
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+    plt.tight_layout()
+    plt.savefig(outname,format='png',dpi=300)
+    plt.close()
 
 
 def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir, types, kingdom):
@@ -142,46 +193,22 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                                 'I': 'gray', 'M': 'k', 'O':'tab:gray'}
 
 
-    all_aa_area = []
-    all_attention_area = []
 
     for type in types:
         figsize=(9,9)
         type_P = np.argwhere(true_types==types[type])
-        type_pred_P = np.argwhere(pred_types==types[type])
+        type_pred_P = np.argwhere(pred_types==types[type])[:,0]
         type_TP = np.intersect1d(type_P,type_pred_P)
-
-        type_enc_dec_attention = enc_dec_attention[type_TP]
+        type_FP = np.setdiff1d(type_pred_P,type_TP)
+        #Attention of pred pos
+        type_enc_dec_attention = enc_dec_attention[type_pred_P]
         type_seqs = seqs[type_TP]
         type_annotations = pred_annotations[type_TP]
 
-        #Look at the attention for the specific type
-        aa_area, attention_area = precision_vs_attention(enc_dec_attention[type_pred_P[:,0]])
-        all_aa_area.append(aa_area)
-        all_attention_area.append(aa_area)
-        #Plot
-        fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
-        type_TP_or_not = []
-        for i in range(len(aa_area)):
-            if type_pred_P[i][0] in type_TP:
-                type_TP_or_not.append(1)
-                color = 'b'
-            else:
-                type_TP_or_not.append(0)
-                color='r'
-            plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2)
-        plt.title(kingdom+' '+type)
-        plt.xlabel('Number of rows surrounding max attention')
-        plt.ylabel('% Attention')
-        plt.savefig(attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png',format='png',dpi=300)
-        plt.close()
-
-
-
         if type!='NO_SP':
-            #Calculate the best splitting point
-            calc_best_percentage_split(np.array(aa_area), np.array(attention_area), np.array(type_TP_or_not),kingdom,type,attention_dir)
-
+        #     #Calculate the best splitting point
+        #     calc_best_percentage_split(np.array(aa_area), np.array(attention_area), np.array(type_TP_or_not),kingdom,type,attention_dir)
+        #
             #Get all positive CSs that have TP type
             P_annotations = true_annotations[type_TP]
             P_CS = []
@@ -201,60 +228,36 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #Get the mapping to the type TPs
             CS_TP =type_TP[CS_TP]
 
-            #Plot CS attention
-            fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
-            for i in range(len(aa_area)):
-                if type_pred_P[i][0] in CS_TP:
-                    color = 'b'
-                else:
-                    color='r'
-                plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2)
-            plt.title(kingdom+' CS '+type)
-            plt.xlabel('Number of rows surrounding max attention')
-            plt.ylabel('% Attention')
-            plt.savefig(attention_dir+kingdom+'_attention_area_CS'+str(types[type])+'.png',format='png',dpi=300)
-            plt.close()
-            continue
-
-        else:
-            continue
 
             #Order the attention matrix properly
-            ordered_type_enc_dec_attention = np.zeros((len(type_enc_dec_attention),10,40))
-            for i in range(len(type_enc_dec_attention)):
+            type_enc_dec_attention_TP = enc_dec_attention[type_TP]
+            ordered_type_enc_dec_attention_TP = np.zeros((len(type_enc_dec_attention_TP),10,40))
+            for i in range(len(type_enc_dec_attention_TP)):
 
                 #Upper left
                 ul = max(P_CS[i]-20,0)
                 ul_len = min(P_CS[i],20)
-                ordered_type_enc_dec_attention[i,:10,20-ul_len:20]=type_enc_dec_attention[i,P_CS[i]-5:P_CS[i]+5,ul:P_CS[i]]
+                ordered_type_enc_dec_attention_TP[i,:10,20-ul_len:20]=type_enc_dec_attention_TP[i,P_CS[i]-5:P_CS[i]+5,ul:P_CS[i]]
 
                 #Upper right
                 ur = min(P_CS[i]+20,70)
                 ur_len = min(70-P_CS[i],20)
-                ordered_type_enc_dec_attention[i,:10,40-ur_len:]=type_enc_dec_attention[i,P_CS[i]-5:P_CS[i]+5,P_CS[i]:ur]
+                ordered_type_enc_dec_attention_TP[i,:10,40-ur_len:]=type_enc_dec_attention_TP[i,P_CS[i]-5:P_CS[i]+5,P_CS[i]:ur]
 
-            type_enc_dec_attention = ordered_type_enc_dec_attention
+
             figsize=(9,4.5)
 
-        #Plot activation matrix around the CS
-        fig,ax = plt.subplots(figsize=figsize)
-        im = plt.imshow(np.average(type_enc_dec_attention,axis=0))#In seqs on x, out annotations on y
-        if type!='NO_SP':
-            plt.axvline(19.5, color='y', linewidth=1, linestyle=':')
-            plt.axhline(4.5, color='y', linewidth=1, linestyle=':')
-            plt.xticks(ticks=np.arange(type_enc_dec_attention.shape[2]),labels=[-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
-            plt.yticks(ticks=np.arange(type_enc_dec_attention.shape[1]),labels=[-5,-4,-3,-2,-1,1,2,3,4,5])
-        plt.xlabel('Sequence position')
-        plt.ylabel('Annotation position')
-        plt.title(type)
-        plt.tight_layout()
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.05)
-        plt.colorbar(im, cax=cax)
-        plt.tight_layout()
-        plt.savefig(attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'.png',format='png',dpi=300)
-        plt.close()
+            #Plot attention matrix
+            #TP
+            plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
+        
 
+        #Plot attention matrix
+        #TP
+        plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',figsize)
+        #FP
+        plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_FP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_FP.png',figsize)
+        continue
 
 
         #Get aa attention
