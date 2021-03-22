@@ -59,8 +59,6 @@ def plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, t
             color='r'
         plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2,linewidth=1)
 
-    plt.plot(aa_area[i],av_TP,color='b',alpha=1,linewidth=2)
-    plt.plot(aa_area[i],av_FP,color='r',alpha=1,linewidth=2)
     plt.title(kingdom+' '+type)
     plt.xlabel('Number of rows surrounding max attention')
     plt.ylabel('% Attention')
@@ -112,56 +110,39 @@ def get_attention_distribution(attention_matrix):
 
     return np.array(n_cols), np.array(fetched_attention)
 
-def calc_best_percentage_split(aa_area, attention_area, type_TP_or_not,kingdom,type,attention_dir):
-    '''Go through all distances in steps of 2 aa and search for the best
-    attention % cutoff.
+def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,outname):
+    '''Go through all distances in steps of 2 aa and search for the best attention % cutoff.
     '''
 
     perc_above_cutoff = [] #Percent of all curves above the cutoff
     precision_above_cutoff = [] #Percent TP above cutoff
     best_attention_cutoff = [] #Best attention cutoff
-    #Get only TP
-    type_TP = np.argwhere(type_TP_or_not==1)[:,0]
-    try:
-        for i in range(aa_area.shape[1]):
-            aa_area_i = aa_area[:,i]
-            attention_area_i = attention_area[:,i]
 
-            perc_above_cutoff = [] #Percent of all curves above the cutoff
-            precision_above_cutoff = [] #Percent TP above cutoff
-            for p in np.arange(min(attention_area_i),max(attention_area_i),0.01):
-                #Get above cutoff
-                above_cutoff = np.argwhere(attention_area_i>=p)[:,0]
-                if len(above_cutoff)<1:
-                    continue
-                perc_above_cutoff.append(len(above_cutoff)/len(aa_area))
-                #Get overlap with TP
-                n_overlap = np.intersect1d(above_cutoff,type_TP).shape[0]
-                precision_above_cutoff.append(n_overlap/len(above_cutoff))
-            #Plot
-            plt.plot(np.array(perc_above_cutoff)*100,precision_above_cutoff)
-        plt.xlabel('% Selected')
-        plt.ylabel('Precision')
-        plt.title(kingdom + ' ' +type)
-        plt.ylim([0,1])
-        plt.savefig(attention_dir+kingdom+'_precision_type'+'_'.join(type.split('/'))+'.png',format='png',dpi=300)
-        plt.close()
-    except:
-        pdb.set_trace()
 
-        # #Plot CS attention
-        # fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
-        # for i in range(len(aa_area)):
-        #     if type_pred_P[i][0] in CS_TP:
-        #         color = 'b'
-        #     else:
-        #         color='r'
-        #     plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2)
-        # plt.title(kingdom+' CS '+type)
-        # plt.xlabel('Number of rows surrounding max attention')
-        # plt.ylabel('% Attention')
-        # plt.savefig(attention_dir+kingdom+'_attention_area_CS'+str(types[type])+'.png',format='png',dpi=300)
-        # plt.close()
+    for i in range(aa_area.shape[1]):
+        aa_area_i = aa_area[:,i]
+        attention_area_i = attention_area[:,i]
+
+        perc_above_cutoff = [] #Percent of all curves above the cutoff
+        precision_above_cutoff = [] #Percent TP above cutoff
+        for p in np.arange(min(attention_area_i),max(attention_area_i),0.01):
+            #Get above cutoff
+            above_cutoff = np.argwhere(attention_area_i>=p)[:,0]
+            if len(above_cutoff)<1:
+                continue
+            perc_above_cutoff.append(len(above_cutoff)/len(aa_area))
+            #Get overlap with TP
+            pdb.set_trace()
+            n_overlap = np.intersect1d(above_cutoff,type_TP).shape[0]
+            precision_above_cutoff.append(n_overlap/len(above_cutoff))
+    #Plot
+    plt.plot(np.array(perc_above_cutoff)*100,precision_above_cutoff)
+    plt.xlabel('% Selected')
+    plt.ylabel('Precision')
+    plt.title(kingdom + ' ' +type)
+    plt.ylim([0,1])
+    plt.savefig(attention_dir+kingdom+'_precision_type'+'_'.join(type.split('/'))+'.png',format='png',dpi=300)
+    plt.close()
 
 def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
     '''Plot the encoder-decoder matrix
@@ -203,7 +184,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                                 'I': 'gray', 'M': 'k', 'O':'tab:gray'}
 
 
-
+    #Go through all types
     for type in types:
         figsize=(9,9)
         type_P = np.argwhere(true_types==types[type])
@@ -219,9 +200,10 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #Calculate the attention localization
         aa_area, attention_area = get_attention_distribution(type_enc_dec_attention)
         #Plot
-        plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png')
-        continue
+        #plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png')
 
+        #Get the best percentage split
+        calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,type_TP))[:,0],kingdom,type,outname)
 
         if type!='NO_SP':
         #     #Calculate the best splitting point
