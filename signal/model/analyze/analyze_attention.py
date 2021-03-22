@@ -117,9 +117,10 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,out
 
     pos_included_95 = []
     percentage_95 = []
-
     pos_included_90 = []
     percentage_90 = []
+    pos_included_85 = []
+    percentage_85 = []
 
     for i in range(aa_area.shape[1]):
         attention_area_i = attention_area[:,i]
@@ -130,10 +131,14 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,out
             above_cutoff = np.argwhere(attention_area_i>=p)[:,0]
             if len(above_cutoff)<1:
                 continue
-            perc_above_cutoff.append(len(above_cutoff)/len(attention_area))
+
             #Get overlap with TP
             n_overlap = np.intersect1d(above_cutoff,type_TP).shape[0]
             precision_above_cutoff.append(n_overlap/len(above_cutoff))
+
+            #How many TP of all TP above cutoff?
+            perc_above_cutoff.append(n_overlap/len(type_TP))
+
         #Plot
         #Get cutoff where precision is 95 %
         best_cutoff_pos = np.argwhere(np.array(precision_above_cutoff)>=0.95)
@@ -147,13 +152,25 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,out
             percentage_90.append(perc_above_cutoff[best_cutoff_pos[0][0]])
             pos_included_90.append(aa_area[0,i])
 
-    plt.plot(pos_included_95,np.array(percentage_95)*100,label='95%')
-    plt.plot(pos_included_95,np.array(percentage_90)*100, label='90%')
-    plt.legend()
-    plt.xlabel('Number of columns surrounding max attention')
-    plt.ylabel('% Positive selected')
+        #Get cutoff where precision is 85 %
+        best_cutoff_pos = np.argwhere(np.array(precision_above_cutoff)>=0.85)
+        if len(best_cutoff_pos)>0:
+            percentage_85.append(perc_above_cutoff[best_cutoff_pos[0][0]])
+            pos_included_85.append(aa_area[0,i])
+
+    #Plot
+    fig,ax = plt.subplots(figsize=(4.5/2.54,4.5/2.54))
+    plt.plot(pos_included_95,np.array(percentage_95)*100,label='95%',color='tab:blue',alpha=0.5)
+    plt.plot(pos_included_90,np.array(percentage_90)*100, label='90%',color='tab:green',alpha=0.5)
+    plt.plot(pos_included_85,np.array(percentage_85)*100, label='85%',color='tab:gray',alpha=0.5)
+    plt.legend(title='Precision')
+    plt.xlabel('Number of columns',fontsize=7)
+    plt.ylabel('% Positive selected',fontsize=7)
     plt.title(kingdom + ' ' +type)
-    plt.ylim([0,1])
+    plt.ylim([0,110])
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.tight_layout()
     plt.savefig(outname,format='png',dpi=300)
     plt.close()
 
@@ -212,18 +229,16 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_annotations = pred_annotations[type_TP]
 
 
-        #Calculate the attention localization
-        aa_area, attention_area = get_attention_distribution(type_enc_dec_attention)
-        #Plot
-        #plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png')
-
-        #Get the best percentage split
-        calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,type_TP))[:,0],kingdom,type,attention_dir+kingdom+'_precision_type_'+str(types[type])+'.png')
-        continue
-        if type!='NO_SP':
-        #     #Calculate the best splitting point
-        #     calc_best_percentage_split(np.array(aa_area), np.array(attention_area), np.array(type_TP_or_not),kingdom,type,attention_dir)
+        # #Calculate the attention localization
+        # aa_area, attention_area = get_attention_distribution(type_enc_dec_attention)
+        # #Plot
+        # plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png')
         #
+        # #Get the best percentage split
+        # calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,type_TP))[:,0],kingdom,type,attention_dir+kingdom+'_precision_type_'+str(types[type])+'.png')
+        #
+        if type!='NO_SP':
+
             #Get all positive CSs that have TP type
             P_annotations = true_annotations[type_TP]
             P_CS = []
@@ -242,6 +257,13 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             CS_TP = np.argwhere(np.absolute(CS_diff)<=3)[:,0]
             #Get the mapping to the type TPs
             CS_TP =type_TP[CS_TP]
+
+            #Get the calculated attention localization for the TP CSs
+            #Plot
+            plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png')
+
+            #Get the best percentage split
+            calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,type_TP))[:,0],kingdom,type,attention_dir+kingdom+'_precision_type_'+str(types[type])+'.png')
 
 
             #Order the attention matrix properly
