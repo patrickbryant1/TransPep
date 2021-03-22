@@ -120,9 +120,7 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,out
 
 
     for i in range(aa_area.shape[1]):
-        aa_area_i = aa_area[:,i]
         attention_area_i = attention_area[:,i]
-
         perc_above_cutoff = [] #Percent of all curves above the cutoff
         precision_above_cutoff = [] #Percent TP above cutoff
         for p in np.arange(min(attention_area_i),max(attention_area_i),0.01):
@@ -130,18 +128,19 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,out
             above_cutoff = np.argwhere(attention_area_i>=p)[:,0]
             if len(above_cutoff)<1:
                 continue
-            perc_above_cutoff.append(len(above_cutoff)/len(aa_area))
+            perc_above_cutoff.append(len(above_cutoff)/len(attention_area))
             #Get overlap with TP
-            pdb.set_trace()
+
             n_overlap = np.intersect1d(above_cutoff,type_TP).shape[0]
             precision_above_cutoff.append(n_overlap/len(above_cutoff))
-    #Plot
-    plt.plot(np.array(perc_above_cutoff)*100,precision_above_cutoff)
+        #Plot
+        plt.plot(np.array(perc_above_cutoff)*100,precision_above_cutoff,label=aa_area[0,i])
+    plt.legend()
     plt.xlabel('% Selected')
     plt.ylabel('Precision')
     plt.title(kingdom + ' ' +type)
     plt.ylim([0,1])
-    plt.savefig(attention_dir+kingdom+'_precision_type'+'_'.join(type.split('/'))+'.png',format='png',dpi=300)
+    plt.savefig(outname,format='png',dpi=300)
     plt.close()
 
 def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
@@ -203,8 +202,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png')
 
         #Get the best percentage split
-        calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,type_TP))[:,0],kingdom,type,outname)
-
+        calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,type_TP))[:,0],kingdom,type,attention_dir+kingdom+'_precision_type_'+str(types[type])+'.png')
+        continue
         if type!='NO_SP':
         #     #Calculate the best splitting point
         #     calc_best_percentage_split(np.array(aa_area), np.array(attention_area), np.array(type_TP_or_not),kingdom,type,attention_dir)
