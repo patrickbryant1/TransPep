@@ -58,12 +58,7 @@ def plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, t
         else:
             color='r'
         plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2,linewidth=1)
-    #Plt average
-    try:
-        av_TP = np.median(attention_area[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],axis=0)
-        av_FP = np.median(attention_area[np.argwhere(np.isin(type_pred_P,type_FP))[:,0]],axis=0)
-    except:
-        pdb.set_trace()
+
     plt.plot(aa_area[i],av_TP,color='b',alpha=1,linewidth=2)
     plt.plot(aa_area[i],av_FP,color='r',alpha=1,linewidth=2)
     plt.title(kingdom+' '+type)
@@ -90,22 +85,28 @@ def get_attention_distribution(attention_matrix):
         n_sample_cols = [1]
         m=1 #minus change
         p=1 #plus change
+        if max_col-m<0:
+            p+=1
+        if max_col+p>len(col_sums):
+            m+=1
         li = max(max_col-m,0) #Left index
         ri = min(max_col+p,len(col_sums)) #Right index
 
         while li>0 or ri<len(col_sums):
             fetched_sample_attention.append(np.sum(col_sums[li:ri])/total_sample_attention)
-            n_sample_cols.append(ri-li)
-            m+=1
-            p+=1
+            n_sample_cols.append(ri+1-li)
             if max_col-m<=0:
                 p+=1
             if max_col+p>=len(col_sums):
                 m+=1
-
+            #Increase index
+            m+=1
+            p+=1
             li = max(max_col-m,0) #Left index
             ri = min(max_col+p,len(col_sums)) #Right index
 
+            if n_sample_cols[-1]-n_sample_cols[-2]!=2:
+                pdb.set_trace()
         n_cols.append(np.array(n_sample_cols))
         fetched_attention.append(np.array(fetched_sample_attention))
 
