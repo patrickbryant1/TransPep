@@ -46,39 +46,43 @@ def get_pred_types(pred_annotations):
 
     return np.array(pred_types)
 
-def precision_vs_attention(attention_matrix):
-    '''Check how the distribution of te total attention varies btw TP and FP.
-    Gravity = a1*a2/(a1-a2 dist ^2)
+def attention_distribution(attention_matrix):
+    '''Check how the distribution of the total attention varies btw TP and FP.
     '''
 
-    gravity = []
+    n_cols = []
+    fetched_attention = []
     for i in range(len(attention_matrix)):
         sample = attention_matrix[i]
         total_sample_attention = np.sum(sample)
-        max_loc = np.argwhere(sample==np.max(sample))
-        pdb.set_trace()
-        #Calculate the gravity of the area around the max attention
+        col_sums = np.sum(sample,axis=0)
+        max_col = np.argmax(col_sums)
 
+        #Search the area around the max attention and see how far away you have to go to obtain 90 % of the attention
+        fetched_sample_attention = [col_sums[max_col]/total_sample_attention]
+        n_sample_cols = [1]
+        m=1 #minus change
+        p=1 #plus change
+        li = max(max_col-m,0) #Left index
+        ri = min(max_col+p,len(col_sums)) #Right index
 
-    #aa_area, attention_area = precision_vs_attention(enc_dec_attention[type_pred_P[:,0]])
+        while li>0 or ri<len(col_sums):
+            fetched_sample_attention.append(np.sum(col_sums[li:ri])/total_sample_attention)
+            n_sample_cols.append(ri-li)
+            m+=1
+            p+=1
+            if max_col-m<=0:
+                p+=1
+            if max_col+p>=len(col_sums):
+                m+=1
 
-    #Plot
-    # fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
-    # type_TP_or_not = []
-    # for i in range(len(aa_area)):
-    #     if type_pred_P[i][0] in type_TP:
-    #         type_TP_or_not.append(1)
-    #         color = 'b'
-    #     else:
-    #         type_TP_or_not.append(0)
-    #         color='r'
-    #     plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2)
-    # plt.title(kingdom+' '+type)
-    # plt.xlabel('Number of rows surrounding max attention')
-    # plt.ylabel('% Attention')
-    # plt.savefig(attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png',format='png',dpi=300)
-    # plt.close()
-    return n_rows, fetched_attention
+            li = max(max_col-m,0) #Left index
+            ri = min(max_col+p,len(col_sums)) #Right index
+
+        n_cols.append(np.array(n_sample_cols))
+        fetched_attention.append(np.array(fetched_sample_attention))
+
+    return np.array(n_cols), np.array(fetched_attention)
 
 def calc_best_percentage_split(aa_area, attention_area, type_TP_or_not,kingdom,type,attention_dir):
     '''Go through all distances in steps of 2 aa and search for the best
@@ -183,9 +187,28 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_seqs = seqs[type_TP]
         type_annotations = pred_annotations[type_TP]
 
-        #Get gravity
-        precision_vs_attention(type_enc_dec_attention)
 
+        #Calculate the attention localization
+        attention_distribution(type_enc_dec_attention)
+
+        pdb.set_trace()
+        #Plot
+        # fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
+        # type_TP_or_not = []
+        # for i in range(len(aa_area)):
+        #     if type_pred_P[i][0] in type_TP:
+        #         type_TP_or_not.append(1)
+        #         color = 'b'
+        #     else:
+        #         type_TP_or_not.append(0)
+        #         color='r'
+        #     plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2)
+        # plt.title(kingdom+' '+type)
+        # plt.xlabel('Number of rows surrounding max attention')
+        # plt.ylabel('% Attention')
+        # plt.savefig(attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png',format='png',dpi=300)
+        # plt.close()
+        
         if type!='NO_SP':
         #     #Calculate the best splitting point
         #     calc_best_percentage_split(np.array(aa_area), np.array(attention_area), np.array(type_TP_or_not),kingdom,type,attention_dir)
