@@ -51,36 +51,14 @@ def precision_vs_attention(attention_matrix):
     Gravity = a1*a2/(a1-a2 dist ^2)
     '''
 
-    n_rows = []
-    fetched_attention = []
+    gravity = []
     for i in range(len(attention_matrix)):
         sample = attention_matrix[i]
         total_sample_attention = np.sum(sample)
         max_loc = np.argwhere(sample==np.max(sample))
         pdb.set_trace()
-        #Search the area around the max attention and see how far away you have to go to obtain 90 % of the attention
-        fetched_sample_attention = [row_sums[max_row]/total_sample_attention]
-        n_sample_rows = [1]
-        m=1 #minus change
-        p=1 #plus change
-        li = max(max_row-m,0) #Left index
-        ri = min(max_row+p,len(row_sums)) #Right index
+        #Calculate the gravity of the area around the max attention
 
-        while li>0 or ri<len(row_sums):
-            fetched_sample_attention.append(np.sum(row_sums[li:ri])/total_sample_attention)
-            n_sample_rows.append(ri-li)
-            m+=1
-            p+=1
-            if max_row-m<=0:
-                p+=1
-            if max_row+p>=len(row_sums):
-                m+=1
-
-            li = max(max_row-m,0) #Left index
-            ri = min(max_row+p,len(row_sums)) #Right index
-
-        n_rows.append(np.array(n_sample_rows))
-        fetched_attention.append(np.array(fetched_sample_attention))
 
     #aa_area, attention_area = precision_vs_attention(enc_dec_attention[type_pred_P[:,0]])
 
@@ -205,6 +183,9 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_seqs = seqs[type_TP]
         type_annotations = pred_annotations[type_TP]
 
+        #Get gravity
+        precision_vs_attention(type_enc_dec_attention)
+
         if type!='NO_SP':
         #     #Calculate the best splitting point
         #     calc_best_percentage_split(np.array(aa_area), np.array(attention_area), np.array(type_TP_or_not),kingdom,type,attention_dir)
@@ -250,13 +231,13 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #Plot attention matrix
             #TP
             plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
-        
+
 
         #Plot attention matrix
         #TP
-        plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',figsize)
+        plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54))
         #FP
-        plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_FP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_FP.png',figsize)
+        plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_FP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_FP.png',(9/2.54,9/2.54))
         continue
 
 
