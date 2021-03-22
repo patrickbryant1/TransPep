@@ -46,7 +46,34 @@ def get_pred_types(pred_annotations):
 
     return np.array(pred_types)
 
-def attention_distribution(attention_matrix):
+def plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, outname):
+    '''Plot the attention vs amino acid area
+    '''
+    #Plot
+    fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
+
+    for i in range(len(aa_area)):
+        if type_pred_P[i] in type_TP:
+            color = 'b'
+        else:
+            color='r'
+        plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2,linewidth=1)
+    #Plt average
+    try:
+        av_TP = np.median(attention_area[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],axis=0)
+        av_FP = np.median(attention_area[np.argwhere(np.isin(type_pred_P,type_FP))[:,0]],axis=0)
+    except:
+        pdb.set_trace()
+    plt.plot(aa_area[i],av_TP,color='b',alpha=1,linewidth=2)
+    plt.plot(aa_area[i],av_FP,color='r',alpha=1,linewidth=2)
+    plt.title(kingdom+' '+type)
+    plt.xlabel('Number of rows surrounding max attention')
+    plt.ylabel('% Attention')
+    plt.savefig(outname,format='png',dpi=300)
+    plt.close()
+
+
+def get_attention_distribution(attention_matrix):
     '''Check how the distribution of the total attention varies btw TP and FP.
     '''
 
@@ -189,26 +216,12 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
 
         #Calculate the attention localization
-        attention_distribution(type_enc_dec_attention)
-
-        pdb.set_trace()
+        aa_area, attention_area = get_attention_distribution(type_enc_dec_attention)
         #Plot
-        # fig,ax = plt.subplots(figsize=(9/2.54,9/2.54))
-        # type_TP_or_not = []
-        # for i in range(len(aa_area)):
-        #     if type_pred_P[i][0] in type_TP:
-        #         type_TP_or_not.append(1)
-        #         color = 'b'
-        #     else:
-        #         type_TP_or_not.append(0)
-        #         color='r'
-        #     plt.plot(aa_area[i],attention_area[i],color=color,alpha=0.2)
-        # plt.title(kingdom+' '+type)
-        # plt.xlabel('Number of rows surrounding max attention')
-        # plt.ylabel('% Attention')
-        # plt.savefig(attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png',format='png',dpi=300)
-        # plt.close()
-        
+        plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png')
+        continue
+
+
         if type!='NO_SP':
         #     #Calculate the best splitting point
         #     calc_best_percentage_split(np.array(aa_area), np.array(attention_area), np.array(type_TP_or_not),kingdom,type,attention_dir)
