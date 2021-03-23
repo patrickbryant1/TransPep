@@ -5,6 +5,7 @@ import argparse
 import sys
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import time
 from collections import Counter
 import logomaker
@@ -180,12 +181,22 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,out
     plt.close()
 
 
-def pred_prob_vs_precision():
+def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type):
     '''Compare the prediction probability of the TP and FP across the signal peptide region.
     '''
 
+    if type!=3: #3=NO_SP
+        TP_activation = np.sum(type_probs_TP[:,:,type],axis=1)
+        FP_activation = np.sum(type_probs_FP[:,:,type],axis=1)
+    else:
+        TP_activation = np.sum(np.sum(type_probs_TP[:,:,type:],axis=1),axis=1)
+        FP_activation = np.sum(np.sum(type_probs_FP[:,:,type:],axis=1),axis=1)
 
+    sns.distplot(TP_activation,label='TP')
+    sns.distplot(FP_activation, label='FP')
+    plt.legend()
 
+    pdb.set_trace()
 def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
     '''Plot the encoder-decoder matrix
     '''
@@ -219,12 +230,11 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                     'Y':18,'V':19,'X':20
                   }
     annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
-    annotation_type_conversion = {'Sec/SPI': 0, 'Tat/SPI': 1, 'Sec/SPII': 2}
+    annotation_type_conversion = {'Sec/SPI': 0, 'Tat/SPI': 1, 'Sec/SPII': 2, 'NO_SP':3}
 
     # create color scheme
     annotation_color_scheme = {'S' : 'tab:blue','T' : 'tab:pink', 'L' : 'tab:purple',
                                 'I': 'gray', 'M': 'k', 'O':'tab:gray'}
-
 
     #Go through all types
     for type in types:
@@ -238,13 +248,16 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #TP
         type_enc_dec_attention_TP = enc_dec_attention[type_TP]
         #seqs and annotations of TP
-        type_seqs = seqs[type_TP]
-        type_annotations = pred_annotations[type_TP]
+        type_seqs_TP = seqs[type_TP]
+        type_annotations_TP = pred_annotations[type_TP]
+        #Probabilities
+        type_probs_TP = pred_annotation_probs[type_TP]
+        type_probs_FP = pred_annotation_probs[type_FP]
 
-
-
+        #Plot type probabilities
+        pred_prob_vs_precision(type_probs_TP, type_probs_FP,annotation_type_conversion[type])
         # #Calculate the attention localization
-        aa_area, attention_area = get_attention_distribution(type_enc_dec_attention)
+        #aa_area, attention_area = get_attention_distribution(type_enc_dec_attention)
         #Plot
         #plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png')
 
@@ -272,6 +285,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #Get the mapping to the type TPs
             CS_TP =type_TP[CS_TP]
             CS_FP = np.setdiff1d(type_pred_P,CS_TP)
+            pdb.set_trace()
 
             #Get the calculated attention localization for the TP CSs
             #Plot
@@ -312,7 +326,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #Get aa attention
         aa_attention = np.zeros((type_enc_dec_attention_TP.shape[2],21))
         for i in range(len(aa_attention)):
-            col = type_seqs[:,i]
+            col = type_seqs_TP[:,i]
             #Go through all amino acids
             for aa in range(21):
                 if aa not in col:
@@ -320,20 +334,20 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                 #Where col==aa
                 aa_col_pos = np.argwhere(col==aa)
                 #Get corresponding enc-dec attention
-                aa_col_attention = np.max(type_enc_dec_attention[aa_col_pos,:,i]) #axis 0 = row in np, 1=col
+                aa_col_attention = np.max(type_enc_dec_attention_TP[aa_col_pos,:,i]) #axis 0 = row in np, 1=col
                 aa_attention[i,aa]=aa_col_attention
 
         #Get annotation attention
         annotation_attention = np.zeros((type_enc_dec_attention_TP.shape[1],6))
         for j in range(len(annotation_attention)):
-            row = type_annotations[:,j]
+            row = type_annotations_TP[:,j]
             for at in range(6):
                 if at not in row:
                     continue
                 #Where row==at
                 at_row_pos = np.argwhere(row==at)
                 #Get corresponding enc-dec attention
-                at_row_attention = np.max(type_enc_dec_attention[at_row_pos,j,:]) #axis 0 = row in np, 1=col
+                at_row_attention = np.max(type_enc_dec_attention_TP[at_row_pos,j,:]) #axis 0 = row in np, 1=col
                 annotation_attention[j,at]= at_row_attention
 
 
