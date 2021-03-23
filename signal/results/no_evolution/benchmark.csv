@@ -1,7 +1,7 @@
 Method,Kingdom,Type,MCC,Recall,Precision
 SignalP 5.0,Archaea,Sec/SPI,917,820,812
-SignalP 4.1,Archaea,Sec/SPI,n.d,n.d.,n.d.
-DeepSig,Archaea,Sec/SPI,n.d,n.d.,n.d.
+SignalP 4.1,Archaea,Sec/SPI,n.d.,n.d.,n.d.
+DeepSig,Archaea,Sec/SPI,n.d.,n.d.,n.d.
 LipoP,Archaea,Sec/SPI,604,720,562
 Philius,Archaea,Sec/SPI,447,700,438
 Phobius,Archaea,Sec/SPI,514,700,432
