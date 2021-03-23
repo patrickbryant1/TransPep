@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-CHECKPOINTDIR=/home/patrick/results/protein_translation/model_checkpoints/
+CHECKPOINTDIR=../../checkpoint/
 DATADIR=../../data/
 BENCH_SET=../../data/benchmark_set.fasta
 VARIABLE_PARAMS=../param_combos.csv
