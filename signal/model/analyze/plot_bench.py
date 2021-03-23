@@ -6,6 +6,7 @@ import sys
 import pandas as pd
 import seaborn as sns
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 
 
@@ -18,15 +19,20 @@ parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'O
 
 
 ##########FUNCTIONS###########
-def plot_scores(type_CSV):
+def plot_scores(type_CSV,type,outdir):
     '''Plot the distributions
     '''
     for score in ['MCC','Recall','Precision']:
-        g = sns.catplot(x='Method', y=score, hue='Kingdom', kind="bar", data=type_CSV)
-        g.set_xticklabels(rotation=30)
-        plt.title(score)
-        plt.show()
-        pdb.set_trace()
+        fig,ax = plt.subplots(figsize=(12/2.54,4.5/2.54))
+        sns.color_palette("Set2")
+        sns.set_style("whitegrid")
+        g = sns.catplot(x='Method', y=score, hue='Kingdom', kind="bar", data=type_CSV, palette="Paired",legend_out=False)
+        g.set_xticklabels(rotation=45)
+        plt.ylim([0,1])
+        plt.title(type)
+        plt.tight_layout()
+        plt.savefig(outdir+'_'.join(type.split('/'))+'_'+score+'.png',dpi=300)
+
 
 
 
@@ -35,11 +41,11 @@ def plot_scores(type_CSV):
 args = parser.parse_args()
 benchcsv = pd.read_csv(args.benchcsv[0])
 outdir = args.outdir[0]
-
+matplotlib.rcParams.update({'font.size': 7})
 #Fix data
 benchcsv = benchcsv.replace('n.d.',0)
 for score in ['MCC','Recall','Precision']:
     benchcsv[score] = np.array(benchcsv[score],dtype='int')/1000
 for type in benchcsv.Type.unique():
     type_CSV = benchcsv[benchcsv.Type==type]
-    plot_scores(type_CSV)
+    plot_scores(type_CSV,type,outdir)
