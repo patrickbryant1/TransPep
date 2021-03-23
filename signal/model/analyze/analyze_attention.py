@@ -227,8 +227,13 @@ def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,
     ax2.spines['left'].set_color('tab:blue')
     ax1.set_ylim([0,1.1])
     #Where is the precision 99%
-    prec_cutoff = np.argwhere(np.array(precision)>=0.99)[0][0]
-    ax1.axvline(x=prec_cutoff,ymin=0,ymax=1,ls='--')
+    try:
+        prec_cutoff = np.argwhere(np.array(precision)>=0.99)[0][0]
+        print(kingdom,type,prec_cutoff,percent_TP[prec_cutoff])
+        ax1.axvline(x=prec_cutoff,ymin=0,ymax=1,ls='--',color='gray',linewidth=1)
+    except:
+        print('No precision above 0.99')
+
     plt.xlabel('Prob. sum cutoff')
     ax1.set_ylabel('Precision',color='tab:blue')
     ax2.set_ylabel('%TP',color='mediumseagreen')
@@ -236,7 +241,7 @@ def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,
     plt.tight_layout()
     plt.savefig(outname2,format='png',dpi=300)
     plt.close()
-    pdb.set_trace()
+
 
 def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
     '''Plot the encoder-decoder matrix
