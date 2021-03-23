@@ -1,0 +1,73 @@
+Method,Kingdom,Type,MCC,Recall,Precision
+SignalP 5.0,Archaea,Sec/SPI,917,820,812
+SignalP 4.1,Archaea,Sec/SPI,n.d,n.d.,n.d.
+DeepSig,Archaea,Sec/SPI,n.d,n.d.,n.d.
+LipoP,Archaea,Sec/SPI,604,720,562
+Philius,Archaea,Sec/SPI,447,700,438
+Phobius,Archaea,Sec/SPI,514,700,432
+PolyPhobius,Archaea,Sec/SPI,453,700,407
+PrediSi,Archaea,Sec/SPI,n.d.,n.d.,n.d.
+PRED-LIPO,Archaea,Sec/SPI,586,680,515
+PRED-SIGNAL,Archaea,Sec/SPI,584,900,489
+PRED-TAT,Archaea,Sec/SPI,626,820,562
+Signal-3L 2.0,Archaea,Sec/SPI,n.d.,n.d.,n.d.
+Signal-CF,Archaea,Sec/SPI,n.d.,n.d.,n.d.
+SOSUIsignal,Archaea,Sec/SPI,n.d.,n.d.,n.d.
+SPEPlip,Archaea,Sec/SPI,n.d.,n.d.,n.d.
+SCOPTOCUS,Archaea,Sec/SPI,408,560,341
+TOPCONS2,Archaea,Sec/SPI,432,640,390
+TransPep,Archaea,Sec/SPI,855,740,672
+SignalP 5.0,Eukarya,Sec/SPI,883,833,732
+SignalP 4.1,Eukarya,Sec/SPI,808,786,693
+DeepSig,Eukarya,Sec/SPI,819,724,700
+LipoP,Eukarya,Sec/SPI,363,448,207
+Philius,Eukarya,Sec/SPI,421,781,191
+Phobius,Eukarya,Sec/SPI,510,786,267
+PolyPhobius,Eukarya,Sec/SPI,456,833,216
+PrediSi,Eukarya,Sec/SPI,553,767,321
+PRED-LIPO,Eukarya,Sec/SPI,234,181,131
+PRED-SIGNAL,Eukarya,Sec/SPI,272,362,106
+PRED-TAT,Eukarya,Sec/SPI,326,614,119
+Signal-3L 2.0,Eukarya,Sec/SPI,597,762,379
+Signal-CF,Eukarya,Sec/SPI,326,762,123
+SOSUIsignal,Eukarya,Sec/SPI,375,576,121
+SPEPlip,Eukarya,Sec/SPI,655,810,418
+SCOPTOCUS,Eukarya,Sec/SPI,492,757,233
+TOPCONS2,Eukarya,Sec/SPI,477,729,210
+TransPep,Eukarya,Sec/SPI,810,757,609
+SignalP 5.0,Gram-negative bacteria,Sec/SPI,830,800,809
+SignalP 4.1,Gram-negative bacteria,Sec/SPI,248,744,175
+DeepSig,Gram-negative bacteria,Sec/SPI,166,678,148
+LipoP,Gram-negative bacteria,Sec/SPI,483,789,351
+Philius,Gram-negative bacteria,Sec/SPI,127,811,122
+Phobius,Gram-negative bacteria,Sec/SPI,132,811,124
+PolyPhobius,Gram-negative bacteria,Sec/SPI,144,822,124
+PrediSi,Gram-negative bacteria,Sec/SPI,244,822,164
+PRED-LIPO,Gram-negative bacteria,Sec/SPI,398,600,273
+PRED-SIGNAL,Gram-negative bacteria,Sec/SPI,98,644,110
+PRED-TAT,Gram-negative bacteria,Sec/SPI,187,822,145
+Signal-3L 2.0,Gram-negative bacteria,Sec/SPI,110,733,129
+Signal-CF,Gram-negative bacteria,Sec/SPI,106,778,115
+SOSUIsignal,Gram-negative bacteria,Sec/SPI,108,622,94
+SPEPlip,Gram-negative bacteria,Sec/SPI,498,733,332
+SCOPTOCUS,Gram-negative bacteria,Sec/SPI,127,867,124
+TOPCONS2,Gram-negative bacteria,Sec/SPI,131,767,115
+TransPep,Gram-negative bacteria,Sec/SPI,737,644,600
+SignalP 5.0,Gram-positive bacteria,Sec/SPI,760,880,629
+SignalP 4.1,Gram-positive bacteria,Sec/SPI,148,840,83
+DeepSig,Gram-positive bacteria,Sec/SPI,115,840,80
+LipoP,Gram-positive bacteria,Sec/SPI,403,640,163
+Philius,Gram-positive bacteria,Sec/SPI,75,600,54
+Phobius,Gram-positive bacteria,Sec/SPI,74,600,54
+PolyPhobius,Gram-positive bacteria,Sec/SPI,111,720,63
+PrediSi,Gram-positive bacteria,Sec/SPI,121,800,78
+PRED-LIPO,Gram-positive bacteria,Sec/SPI,410,760,216
+PRED-SIGNAL,Gram-positive bacteria,Sec/SPI,114,720,64
+PRED-TAT,Gram-positive bacteria,Sec/SPI,189,760,87
+Signal-3L 2.0,Gram-positive bacteria,Sec/SPI,106,840,78
+Signal-CF,Gram-positive bacteria,Sec/SPI,84,800,65
+SOSUIsignal,Gram-positive bacteria,Sec/SPI,47,440,39
+SPEPlip,Gram-positive bacteria,Sec/SPI,350,720,198
+SCOPTOCUS,Gram-positive bacteria,Sec/SPI,100,880,77
+TOPCONS2,Gram-positive bacteria,Sec/SPI,71,440,39
+TransPep,Gram-positive bacteria,Sec/SPI,661,680,500

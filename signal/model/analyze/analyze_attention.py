@@ -180,6 +180,11 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,out
     plt.close()
 
 
+def pred_prob_vs_precision():
+    '''Compare the prediction probability of the TP and FP across the signal peptide region.
+    '''
+
+
 
 def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
     '''Plot the encoder-decoder matrix
@@ -230,8 +235,12 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_FP = np.setdiff1d(type_pred_P,type_TP)
         #Attention of pred pos
         type_enc_dec_attention = enc_dec_attention[type_pred_P]
+        #TP
+        type_enc_dec_attention_TP = enc_dec_attention[type_TP]
+        #seqs and annotations of TP
         type_seqs = seqs[type_TP]
         type_annotations = pred_annotations[type_TP]
+
 
 
         # #Calculate the attention localization
@@ -272,7 +281,6 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,CS_TP))[:,0],kingdom,type+' CS',attention_dir+kingdom+'_precision_CS'+str(types[type])+'.png')
 
             #Order the attention matrix properly
-            type_enc_dec_attention_TP = enc_dec_attention[type_TP]
             ordered_type_enc_dec_attention_TP = np.zeros((len(type_enc_dec_attention_TP),10,40))
             for i in range(len(type_enc_dec_attention_TP)):
 
@@ -293,10 +301,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #TP
             #plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
 
-            type_enc_dec_attention = ordered_type_enc_dec_attention_TP
 
-        else:
-            continue
+
         #Plot attention matrix
         #TP
         #plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54))
@@ -304,7 +310,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_FP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_FP.png',(9/2.54,9/2.54))
 
         #Get aa attention
-        aa_attention = np.zeros((type_enc_dec_attention.shape[2],21))
+        aa_attention = np.zeros((type_enc_dec_attention_TP.shape[2],21))
         for i in range(len(aa_attention)):
             col = type_seqs[:,i]
             #Go through all amino acids
@@ -318,7 +324,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                 aa_attention[i,aa]=aa_col_attention
 
         #Get annotation attention
-        annotation_attention = np.zeros((type_enc_dec_attention.shape[1],6))
+        annotation_attention = np.zeros((type_enc_dec_attention_TP.shape[1],6))
         for j in range(len(annotation_attention)):
             row = type_annotations[:,j]
             for at in range(6):
