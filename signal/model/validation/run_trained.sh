@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 VARIABLE_PARAMS=../param_combos.csv
-CHECKPOINTDIR=/home/patrick/results/protein_translation/model_checkpoints/
+CHECKPOINTDIR=../../checkpoint/
 DATADIR=../../data/
 OUTDIR=../../results/
 
