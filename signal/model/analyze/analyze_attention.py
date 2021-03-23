@@ -214,16 +214,24 @@ def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,
         TP_above = len(np.argwhere(TP_activation>=i))
         FP_above = len(np.argwhere(FP_activation>=i))
         precision.append(TP_above/(TP_above+FP_above))
-        percent_TP.append(TP_above/len(TP_activation))
+        percent_TP.append(100*TP_above/len(TP_activation))
+
 
     fig,ax1 = plt.subplots(figsize=(6/2.54,4.5/2.54))
     ax2 = ax1.twinx()
     ax1.plot(np.arange(0,max(all_probs),1),precision,color='tab:blue')
     ax2.plot(np.arange(0,max(all_probs),1),percent_TP,color='mediumseagreen')
     ax1.spines['top'].set_visible(False)
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_color('mediumseagreen')
+    ax2.spines['left'].set_color('tab:blue')
+    ax1.set_ylim([0,1.1])
+    #Where is the precision 99%
+    prec_cutoff = np.argwhere(np.array(precision)>=0.99)[0][0]
+    ax1.axvline(x=prec_cutoff,ymin=0,ymax=1,ls='--')
     plt.xlabel('Prob. sum cutoff')
-    ax1.set_ylabel('Precision')
-    ax2.set_ylabel('%TP')
+    ax1.set_ylabel('Precision',color='tab:blue')
+    ax2.set_ylabel('%TP',color='mediumseagreen')
     plt.title(kingdom+' '+type)
     plt.tight_layout()
     plt.savefig(outname2,format='png',dpi=300)
