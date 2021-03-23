@@ -181,22 +181,30 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,out
     plt.close()
 
 
-def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type):
+def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,outname):
     '''Compare the prediction probability of the TP and FP across the signal peptide region.
     '''
 
     if type!=3: #3=NO_SP
-        TP_activation = np.sum(type_probs_TP[:,:,type],axis=1)
-        FP_activation = np.sum(type_probs_FP[:,:,type],axis=1)
+        TP_activation = np.sum(type_probs_TP[:,:,type_index],axis=1)
+        FP_activation = np.sum(type_probs_FP[:,:,type_index],axis=1)
     else:
-        TP_activation = np.sum(np.sum(type_probs_TP[:,:,type:],axis=1),axis=1)
-        FP_activation = np.sum(np.sum(type_probs_FP[:,:,type:],axis=1),axis=1)
+        TP_activation = np.sum(np.sum(type_probs_TP[:,:,type_index:],axis=1),axis=1)
+        FP_activation = np.sum(np.sum(type_probs_FP[:,:,type_index:],axis=1),axis=1)
 
+    fig,ax = plt.subplots(figsize=(4.5/2.54,4.5/2.54))
     sns.distplot(TP_activation,label='TP')
     sns.distplot(FP_activation, label='FP')
+    plt.title(kingdom+' '+type)
     plt.legend()
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.xlabel('Probability')
+    plt.ylabel('Density')
+    plt.tight_layout()
+    plt.savefig(outname,format='png',dpi=300)
+    plt.close()
 
-    pdb.set_trace()
 def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
     '''Plot the encoder-decoder matrix
     '''
@@ -255,7 +263,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_probs_FP = pred_annotation_probs[type_FP]
 
         #Plot type probabilities
-        pred_prob_vs_precision(type_probs_TP, type_probs_FP,annotation_type_conversion[type])
+        pred_prob_vs_precision(type_probs_TP, type_probs_FP,annotation_type_conversion[type],kingdom, type ,attention_dir+kingdom+'_type_prob'+str(types[type])+'.png')
         # #Calculate the attention localization
         #aa_area, attention_area = get_attention_distribution(type_enc_dec_attention)
         #Plot
@@ -274,7 +282,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             P_CS = np.array(P_CS)
             #Get all pred positive CSs from the true positives (all the other will be wrong)
             P_CS_pred = []
-            P_annotations_pred = type_annotations
+            P_annotations_pred = type_annotations_TP
             for i in range(len(P_annotations_pred)):
                 P_CS_pred.append(np.argwhere(P_annotations_pred[i]==annotation_type_conversion[type])[-1,0])
             P_CS_pred = np.array(P_CS_pred)
@@ -285,7 +293,6 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #Get the mapping to the type TPs
             CS_TP =type_TP[CS_TP]
             CS_FP = np.setdiff1d(type_pred_P,CS_TP)
-            pdb.set_trace()
 
             #Get the calculated attention localization for the TP CSs
             #Plot
