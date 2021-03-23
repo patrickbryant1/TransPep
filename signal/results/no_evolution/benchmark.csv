@@ -71,3 +71,33 @@ SPEPlip,Gram-positive bacteria,Sec/SPI,350,720,198
 SCOPTOCUS,Gram-positive bacteria,Sec/SPI,100,880,77
 TOPCONS2,Gram-positive bacteria,Sec/SPI,71,440,39
 TransPep,Gram-positive bacteria,Sec/SPI,661,680,500
+SignalP 5.0,Archaea,Sec/SPII,910,895,944
+LipoP,Archaea,Sec/SPII,755,737,824
+PRED-LIPO,Archaea,Sec/SPII,743,632,923
+SPEPlip,Archaea,Sec/SPII,n.d.,n.d.,n.d.
+TransPep,Archaea,Sec/SPII,878,842,941
+SignalP 5.0,Gram-negative bacteria,Sec/SPII,946,968,975
+LipoP,Gram-negative bacteria,Sec/SPII,833,862,972
+PRED-LIPO,Gram-negative bacteria,Sec/SPII,707,719,972
+SPEPlip,Gram-negative bacteria,Sec/SPII,884,914,971
+TransPep,Gram-negative bacteria,Sec/SPII,938,948,944
+SignalP 5.0,Gram-positive bacteria,Sec/SPII,923,925,959
+LipoP,Gram-positive bacteria,Sec/SPII,822,831,944
+PRED-LIPO,Gram-positive bacteria,Sec/SPII,775,816,921
+SPEPlip,Gram-positive bacteria,Sec/SPII,843,876,936
+TransPep,Gram-positive bacteria,Sec/SPII,907,905,905
+SignalP 5.0,Archaea,Tat/SPI,948,773,727
+PRED-TAT,Archaea,Tat/SPI,948,636,636
+TatP,Archaea,Tat/SPI,667,500,423
+TATFIND,Archaea,Tat/SPI,902,n.d.,n.d.
+TransPep,Archaea,Tat/SPI,880,636,560
+SignalP 5.0,Gram-negative bacteria,Tat/SPI,965,776,760
+PRED-TAT,Gram-negative bacteria,Tat/SPI,948,806,782
+TatP,Gram-negative bacteria,Tat/SPI,689,40,460
+TATFIND,Gram-negative bacteria,Tat/SPI,910,n.d.,n.d.
+TransPep,Gram-negative bacteria,Tat/SPI,875,582,548
+SignalP 5.0,Gram-positive bacteria,Tat/SPI,889,689,794
+PRED-TAT,Gram-positive bacteria,Tat/SPI,853,689,654
+TatP,Gram-positive bacteria,Tat/SPI,680,581,462
+TATFIND,Gram-positive bacteria,Tat/SPI,800,n.d.,n.d.
+TransPep,Gram-positive bacteria,Tat/SPI,810,405,455
