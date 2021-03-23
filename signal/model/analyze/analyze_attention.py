@@ -234,7 +234,7 @@ def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,
     except:
         print('No precision above 0.99')
 
-    plt.xlabel('Prob. sum cutoff')
+    ax1.set_xlabel('Prob. sum cutoff')
     ax1.set_ylabel('Precision',color='tab:blue')
     ax2.set_ylabel('%TP',color='mediumseagreen')
     plt.title(kingdom+' '+type)
