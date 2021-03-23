@@ -185,7 +185,7 @@ def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,
     '''Compare the prediction probability of the TP and FP across the signal peptide region.
     '''
 
-    if type!=3: #3=NO_SP
+    if type_index!=3: #3=NO_SP
         TP_activation = np.sum(type_probs_TP[:,:,type_index],axis=1)
         FP_activation = np.sum(type_probs_FP[:,:,type_index],axis=1)
     else:
