@@ -181,7 +181,7 @@ def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,out
     plt.close()
 
 
-def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,outname):
+def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,outname1, outname2):
     '''Compare the prediction probability of the TP and FP across the signal peptide region.
     '''
 
@@ -192,6 +192,7 @@ def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,
         TP_activation = np.sum(np.sum(type_probs_TP[:,:,type_index:],axis=1),axis=1)
         FP_activation = np.sum(np.sum(type_probs_FP[:,:,type_index:],axis=1),axis=1)
 
+    #Distribution
     fig,ax = plt.subplots(figsize=(4.5/2.54,4.5/2.54))
     sns.distplot(TP_activation,label='TP')
     sns.distplot(FP_activation, label='FP')
@@ -202,8 +203,32 @@ def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,
     plt.xlabel('Probability sum')
     plt.ylabel('Density')
     plt.tight_layout()
-    plt.savefig(outname,format='png',dpi=300)
+    plt.savefig(outname1,format='png',dpi=300)
     plt.close()
+
+    #Precision vs probability cutoff
+    all_probs = np.concatenate([TP_activation,FP_activation])
+    precision = []
+    percent_TP = []
+    for i in np.arange(0,max(all_probs),1):
+        TP_above = len(np.argwhere(TP_activation>=i))
+        FP_above = len(np.argwhere(FP_activation>=i))
+        precision.append(TP_above/(TP_above+FP_above))
+        percent_TP.append(TP_above/len(TP_activation))
+
+    fig,ax1 = plt.subplots(figsize=(6/2.54,4.5/2.54))
+    ax2 = ax1.twinx()
+    ax1.plot(np.arange(0,max(all_probs),1),precision,color='tab:blue')
+    ax2.plot(np.arange(0,max(all_probs),1),percent_TP,color='mediumseagreen')
+    ax1.spines['top'].set_visible(False)
+    plt.xlabel('Prob. sum cutoff')
+    ax1.set_ylabel('Precision')
+    ax2.set_ylabel('%TP')
+    plt.title(kingdom+' '+type)
+    plt.tight_layout()
+    plt.savefig(outname2,format='png',dpi=300)
+    plt.close()
+    pdb.set_trace()
 
 def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
     '''Plot the encoder-decoder matrix
@@ -263,7 +288,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_probs_FP = pred_annotation_probs[type_FP]
 
         #Plot type probabilities
-        pred_prob_vs_precision(type_probs_TP, type_probs_FP,annotation_type_conversion[type],kingdom, type ,attention_dir+kingdom+'_type_prob'+str(types[type])+'.png')
+        pred_prob_vs_precision(type_probs_TP, type_probs_FP,annotation_type_conversion[type],kingdom, type ,attention_dir+kingdom+'_type_prob'+str(types[type])+'.png',attention_dir+kingdom+'_type_precision'+str(types[type])+'.png')
         continue
         # #Calculate the attention localization
         #aa_area, attention_area = get_attention_distribution(type_enc_dec_attention)
