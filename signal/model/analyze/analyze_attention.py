@@ -345,14 +345,20 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         plt.savefig(attention_dir+kingdom+'_aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
         #annotation
-        fig,ax = plt.subplots(figsize=(figsize[1]/2.54,figsize[1]/2.54))
-        attention_logo = logomaker.Logo(annotation_attention_df, color_scheme=annotation_color_scheme)
         if type!='NO_SP':
-            attention_logo.ax.axvline(4.5, color='k', linewidth=1, linestyle=':')
+            fig,ax = plt.subplots(1,1,figsize=[2,2])
+            annotation_logo = logomaker.Logo(annotation_attention_df,ax=ax, color_scheme=annotation_color_scheme)
+            annotation_logo.ax.axvline(4.5, color='k', linewidth=1, linestyle=':')
+        else:
+            fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
+            annotation_logo = logomaker.Logo(annotation_attention_df, color_scheme=annotation_color_scheme)
+
         plt.xticks([])
         plt.ylabel('log2 Attention')
+        annotation_logo.fig.tight_layout()
         plt.savefig(attention_dir+kingdom+'_annotation_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
+        pdb.set_trace()
 
 def analyze_attention(seqs, kingdoms, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir):
     '''Analyze the activations per type
