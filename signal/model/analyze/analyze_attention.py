@@ -199,7 +199,7 @@ def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,
     plt.legend()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    plt.xlabel('Probability')
+    plt.xlabel('Probability sum')
     plt.ylabel('Density')
     plt.tight_layout()
     plt.savefig(outname,format='png',dpi=300)
@@ -264,6 +264,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
         #Plot type probabilities
         pred_prob_vs_precision(type_probs_TP, type_probs_FP,annotation_type_conversion[type],kingdom, type ,attention_dir+kingdom+'_type_prob'+str(types[type])+'.png')
+        continue
         # #Calculate the attention localization
         #aa_area, attention_area = get_attention_distribution(type_enc_dec_attention)
         #Plot
@@ -315,7 +316,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                 ur_len = min(70-P_CS[i],20)
                 ordered_type_enc_dec_attention_TP[i,:10,40-ur_len:]=type_enc_dec_attention_TP[i,P_CS[i]-5:P_CS[i]+5,P_CS[i]:ur]
 
-
+            type_enc_dec_attention_TP = ordered_type_enc_dec_attention_TP
             figsize=(9,4.5)
 
             #Plot attention matrix
