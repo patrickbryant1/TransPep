@@ -115,7 +115,7 @@ def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
     '''
     #Plot activation matrix around the CS/or the whole matrix if no CS for the TP
     fig,ax = plt.subplots(figsize=figsize)
-    im = plt.imshow(np.average(attention_matrix,axis=0)) #In seqs on x, out annotations on y
+    im = plt.imshow(np.average(attention_matrix,axis=0),cmap='viridis') #In seqs on x, out annotations on y
     if attention_matrix.shape[2]==40:
         plt.axvline(19.5, color='y', linewidth=1, linestyle=':')
         plt.axhline(4.5, color='y', linewidth=1, linestyle=':')
@@ -154,10 +154,10 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
     polar = 'darkgray'
     neg = 'magenta'
     pos = 'royalblue'
-    AA_color_scheme = { 'A':small,'R':pos,'N':polar,'D':neg,'C':polar,'E':neg,
+    AA_color_scheme = { 'A':hp,'R':pos,'N':polar,'D':neg,'C':polar,'E':neg,
                     'Q':polar,'G':small,'H':pos,'I':hp,'L':hp,'K':pos,
                     'M':hp,'F':hp,'P':hp,'S':polar,'T':polar,'W':hp,
-                    'Y':hp,'V':small,'X':'k'
+                    'Y':hp,'V':hp,'X':'k'
                   }
     #Go through all types
     for type in types:
@@ -222,16 +222,16 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
             #Plot attention matrix
             #TP
-            #plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
+            plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
 
 
 
         #Plot attention matrix
         #TP
-        #plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54))
+        plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54))
         #FP
         #plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_FP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_FP.png',(9/2.54,9/2.54))
-
+        continue
         #Get aa attention
         aa_attention = np.zeros((type_enc_dec_attention_TP.shape[2],21))
         for i in range(len(aa_attention)):
@@ -272,14 +272,14 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         plt.ylabel('log2 Attention')
         plt.xticks([])
         if type!='NO_SP':
-            aa_logo.ax.axvline(19.5, color='k', linewidth=1, linestyle=':')
+            aa_logo.ax.axvline(19.5, color='k', linewidth=2, linestyle=':')
         plt.savefig(attention_dir+kingdom+'_aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
         #annotation
         if type!='NO_SP':
             fig,ax = plt.subplots(1,1,figsize=[2.5,2.5])
             annotation_logo = logomaker.Logo(annotation_attention_df,ax=ax, color_scheme=annotation_color_scheme)
-            annotation_logo.ax.axvline(4.5, color='k', linewidth=1, linestyle=':')
+            annotation_logo.ax.axvline(4.5, color='k', linewidth=2, linestyle=':')
         else:
             fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
             annotation_logo = logomaker.Logo(annotation_attention_df, color_scheme=annotation_color_scheme)
@@ -289,7 +289,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         annotation_logo.fig.tight_layout()
         plt.savefig(attention_dir+kingdom+'_annotation_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
-        pdb.set_trace()
+
 
 def analyze_attention(seqs, kingdoms, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir):
     '''Analyze the activations per type
@@ -310,7 +310,7 @@ def analyze_attention(seqs, kingdoms, true_types, true_annotations, pred_types,p
             types = {'NO_SP':0,'Sec/SPI':1}
         get_kingdom_attention(seqs[kingdom_indices], true_types[kingdom_indices], true_annotations[kingdom_indices], pred_types[kingdom_indices],
         pred_annotations[kingdom_indices],pred_annotation_probs[kingdom_indices], enc_dec_attention[kingdom_indices], attention_dir+key+'/', types, key)
-
+        pdb.set_trace()
 
 
 
