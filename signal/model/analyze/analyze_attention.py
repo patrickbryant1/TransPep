@@ -123,6 +123,10 @@ def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
         plt.yticks(ticks=np.arange(attention_matrix.shape[1]),labels=[-5,-4,-3,-2,-1,1,2,3,4,5])
     plt.xlabel('Sequence position')
     plt.ylabel('Annotation position')
+    if kingdom == 'NEGATIVE':
+        kingdom = 'Gram-negative bacteria'
+    if kingdom == 'POSITIVE':
+        kingdom = 'Gram-positive bacteria'
     plt.title(kingdom+' '+type)
     plt.tight_layout()
     divider = make_axes_locatable(ax)
@@ -310,7 +314,7 @@ def analyze_attention(seqs, kingdoms, true_types, true_annotations, pred_types,p
             types = {'NO_SP':0,'Sec/SPI':1}
         get_kingdom_attention(seqs[kingdom_indices], true_types[kingdom_indices], true_annotations[kingdom_indices], pred_types[kingdom_indices],
         pred_annotations[kingdom_indices],pred_annotation_probs[kingdom_indices], enc_dec_attention[kingdom_indices], attention_dir+key+'/', types, key)
-        pdb.set_trace()
+
 
 
 

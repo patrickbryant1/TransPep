@@ -1,11 +1,11 @@
 #Bench
-montage Sec_SPI_MCC.png Sec_SPI_Recall.png Sec_SPI_Precision.png -tile 1x3 -geometry +2+2 Sec_SPI_bench.png
-montage Sec_SPII_MCC.png Sec_SPII_Recall.png Sec_SPII_Precision.png -tile 1x3 -geometry +2+2 Sec_SPII_bench.png
-montage Tat_SPI_MCC.png Tat_SPI_Recall.png Tat_SPI_Precision.png -tile 1x3 -geometry +2+2 Tat_SPI_bench.png
-montage Sec_SPI_bench.png Sec_SPII_bench.png Tat_SPI_bench.png -tile 3x1 -geometry +2+2 all_bench.png
-montage legend.png all_bench.png -tile 1x2 -geometry +2+2 all_bench.png
+# montage Sec_SPI_MCC.png Sec_SPI_Recall.png Sec_SPI_Precision.png -tile 1x3 -geometry +2+2 Sec_SPI_bench.png
+# montage Sec_SPII_MCC.png Sec_SPII_Recall.png Sec_SPII_Precision.png -tile 1x3 -geometry +2+2 Sec_SPII_bench.png
+# montage Tat_SPI_MCC.png Tat_SPI_Recall.png Tat_SPI_Precision.png -tile 1x3 -geometry +2+2 Tat_SPI_bench.png
+# montage Sec_SPI_bench.png Sec_SPII_bench.png Tat_SPI_bench.png -tile 3x1 -geometry +2+2 all_bench.png
+# montage legend.png all_bench.png -tile 1x2 -geometry +2+2 all_bench.png
 #LOGOS
-#montage /home/patrick/results/protein_translation/attention/ARCHAEA/attention_logo1.png /home/patrick/results/protein_translation/attention/EUKARYA/attention_logo1.png /home/patrick/results/protein_translation/attention/NEGATIVE/attention_logo1.png /home/patrick/results/protein_translation/attention/POSITIVE/attention_logo1.png -tile 2x2 -geometry +2+2 attention_logo1.png
+montage /home/patrick/results/protein_translation/attention/ARCHAEA/attention_logo1.png /home/patrick/results/protein_translation/attention/EUKARYA/attention_logo1.png /home/patrick/results/protein_translation/attention/NEGATIVE/attention_logo1.png /home/patrick/results/protein_translation/attention/POSITIVE/attention_logo1.png -tile 2x2 -geometry +2+2 attention_logo1.png
 
 #Probability cutoffs
 #montage /home/patrick/results/protein_translation/attention/ARCHAEA/type_probs.png /home/patrick/results/protein_translation/attention/EUKARYA/type_probs.png /home/patrick/results/protein_translation/attention/NEGATIVE/type_probs.png /home/patrick/results/protein_translation/attention/POSITIVE/type_probs.png -tile 1x4 -geometry +2+2 type_probs.png
