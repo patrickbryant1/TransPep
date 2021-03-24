@@ -149,6 +149,16 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
     annotation_color_scheme = {'S' : 'tab:blue','T' : 'tab:pink', 'L' : 'tab:purple',
                                 'I': 'gray', 'M': 'k', 'O':'tab:gray'}
 
+    hp = 'tab:gray' #hydrophobic color
+    small = 'mediumseagreen'
+    polar = 'darkgray'
+    neg = 'magenta'
+    pos = 'royalblue'
+    AA_color_scheme = { 'A':small,'R':pos,'N':polar,'D':neg,'C':polar,'E':neg,
+                    'Q':polar,'G':small,'H':pos,'I':hp,'L':hp,'K':pos,
+                    'M':hp,'F':hp,'P':hp,'S':polar,'T':polar,'W':hp,
+                    'Y':hp,'V':small,'X':'k'
+                  }
     #Go through all types
     for type in types:
         figsize=(9,9)
@@ -246,7 +256,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                 #Where row==at
                 at_row_pos = np.argwhere(row==at)
                 #Get corresponding enc-dec attention
-                at_row_attention = np.max(type_enc_dec_attention_TP[at_row_pos,j,:]) #axis 0 = row in np, 1=col
+                at_row_attention = np.average(type_enc_dec_attention_TP[at_row_pos,j,:]) #axis 0 = row in np, 1=col
                 annotation_attention[j,at]= at_row_attention
 
 
@@ -258,7 +268,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #Logos
         #aa
         fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
-        aa_logo = logomaker.Logo(aa_attention_df, color_scheme='hydrophobicity')
+        aa_logo = logomaker.Logo(aa_attention_df, color_scheme=AA_color_scheme)
         plt.ylabel('log2 Attention')
         plt.xticks([])
         if type!='NO_SP':
@@ -279,7 +289,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         annotation_logo.fig.tight_layout()
         plt.savefig(attention_dir+kingdom+'_annotation_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
-
+        pdb.set_trace()
 
 def analyze_attention(seqs, kingdoms, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir):
     '''Analyze the activations per type
