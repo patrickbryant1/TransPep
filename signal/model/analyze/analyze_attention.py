@@ -47,139 +47,6 @@ def get_pred_types(pred_annotations):
 
     return np.array(pred_types)
 
-def plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, outname):
-    '''Plot the attention vs amino acid area
-    '''
-    #Plot
-    fig,ax = plt.subplots(figsize=(4.5/2.54,4.5/2.54))
-
-    for i in range(len(aa_area)):
-        if type_pred_P[i] in type_TP:
-            color = 'b'
-            alpha=0.2
-        else:
-            color='r'
-            alpha=0.5
-        plt.plot(aa_area[i],attention_area[i],color=color,alpha=alpha,linewidth=1)
-
-    plt.title(kingdom+' '+type)
-    plt.xlabel('Number of columns')
-    plt.ylabel('% Attention')
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    plt.tight_layout()
-    plt.savefig(outname,format='png',dpi=300)
-    plt.close()
-
-
-def get_attention_distribution(attention_matrix):
-    '''Check how the distribution of the total attention varies btw TP and FP.
-    '''
-
-    n_cols = []
-    fetched_attention = []
-    for i in range(len(attention_matrix)):
-        sample = attention_matrix[i]
-        total_sample_attention = np.sum(sample)
-        col_sums = np.sum(sample,axis=0)
-        max_col = np.argmax(col_sums)
-
-        #Search the area around the max attention and see how far away you have to go to obtain 90 % of the attention
-        fetched_sample_attention = [col_sums[max_col]/total_sample_attention]
-        n_sample_cols = [1]
-        m=1 #minus change
-        p=1 #plus change
-        if max_col-m<0:
-            p+=1
-        if max_col+p>len(col_sums):
-            m+=1
-        li = max(max_col-m,0) #Left index
-        ri = min(max_col+p,len(col_sums)) #Right index
-
-        while li>0 or ri<len(col_sums):
-            fetched_sample_attention.append(np.sum(col_sums[li:ri])/total_sample_attention)
-            n_sample_cols.append(ri+1-li)
-            if max_col-m<=0:
-                p+=1
-            if max_col+p>=len(col_sums):
-                m+=1
-            #Increase index
-            m+=1
-            p+=1
-            li = max(max_col-m,0) #Left index
-            ri = min(max_col+p,len(col_sums)) #Right index
-
-            if n_sample_cols[-1]-n_sample_cols[-2]!=2:
-                pdb.set_trace()
-        n_cols.append(np.array(n_sample_cols))
-        fetched_attention.append(np.array(fetched_sample_attention))
-
-    return np.array(n_cols), np.array(fetched_attention)
-
-def calc_best_percentage_split(aa_area, attention_area, type_TP,kingdom,type,outname):
-    '''Go through all distances in steps of 2 aa and search for the best attention % cutoff.
-    '''
-
-
-    pos_included_95 = []
-    percentage_95 = []
-    pos_included_90 = []
-    percentage_90 = []
-    pos_included_85 = []
-    percentage_85 = []
-
-    for i in range(aa_area.shape[1]):
-        attention_area_i = attention_area[:,i]
-        perc_above_cutoff = [] #Percent of all curves above the cutoff
-        precision_above_cutoff = [] #Percent TP above cutoff
-        for p in np.arange(min(attention_area_i),max(attention_area_i),0.01):
-            #Get above cutoff
-            above_cutoff = np.argwhere(attention_area_i>=p)[:,0]
-            if len(above_cutoff)<1:
-                continue
-
-            #Get overlap with TP
-            n_overlap = np.intersect1d(above_cutoff,type_TP).shape[0]
-            precision_above_cutoff.append(n_overlap/len(above_cutoff))
-
-            #How many TP of all TP above cutoff?
-            perc_above_cutoff.append(n_overlap/len(type_TP))
-
-        #Plot
-        #Get cutoff where precision is 95 %
-        best_cutoff_pos = np.argwhere(np.array(precision_above_cutoff)>=0.95)
-        if len(best_cutoff_pos)>0:
-            percentage_95.append(perc_above_cutoff[best_cutoff_pos[0][0]])
-            pos_included_95.append(aa_area[0,i])
-
-        #Get cutoff where precision is 90 %
-        best_cutoff_pos = np.argwhere(np.array(precision_above_cutoff)>=0.90)
-        if len(best_cutoff_pos)>0:
-            percentage_90.append(perc_above_cutoff[best_cutoff_pos[0][0]])
-            pos_included_90.append(aa_area[0,i])
-
-        #Get cutoff where precision is 85 %
-        best_cutoff_pos = np.argwhere(np.array(precision_above_cutoff)>=0.85)
-        if len(best_cutoff_pos)>0:
-            percentage_85.append(perc_above_cutoff[best_cutoff_pos[0][0]])
-            pos_included_85.append(aa_area[0,i])
-
-    #Plot
-    fig,ax = plt.subplots(figsize=(4.5/2.54,4.5/2.54))
-    plt.plot(pos_included_95,np.array(percentage_95)*100,label='95%',color='tab:blue',alpha=0.5)
-    plt.plot(pos_included_90,np.array(percentage_90)*100, label='90%',color='tab:green',alpha=0.5)
-    plt.plot(pos_included_85,np.array(percentage_85)*100, label='85%',color='tab:gray',alpha=0.5)
-    plt.legend(title='Precision')
-    plt.xlabel('Number of columns',fontsize=7)
-    plt.ylabel('% TP selected',fontsize=7)
-    plt.title(kingdom + ' ' +type)
-    plt.ylim([0,110])
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    plt.tight_layout()
-    plt.savefig(outname,format='png',dpi=300)
-    plt.close()
-
 
 def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,outname1, outname2):
     '''Compare the prediction probability of the TP and FP across the signal peptide region.
@@ -301,15 +168,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_probs_FP = pred_annotation_probs[type_FP]
 
         #Plot type probabilities
-        pred_prob_vs_precision(type_probs_TP, type_probs_FP,annotation_type_conversion[type],kingdom, type ,attention_dir+kingdom+'_type_prob'+str(types[type])+'.png',attention_dir+kingdom+'_type_precision'+str(types[type])+'.png')
-        continue
-        # #Calculate the attention localization
-        #aa_area, attention_area = get_attention_distribution(type_enc_dec_attention)
-        #Plot
-        #plot_attention_distribution(aa_area, attention_area, type_pred_P, type_TP, type_FP, kingdom, type, attention_dir+kingdom+'_attention_area_type'+str(types[type])+'.png')
+        #pred_prob_vs_precision(type_probs_TP, type_probs_FP,annotation_type_conversion[type],kingdom, type ,attention_dir+kingdom+'_type_prob'+str(types[type])+'.png',attention_dir+kingdom+'_type_precision'+str(types[type])+'.png')
 
-        #Get the best percentage split
-        #calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,type_TP))[:,0],kingdom,type,attention_dir+kingdom+'_precision_type'+str(types[type])+'.png')
 
         if type!='NO_SP':
 
@@ -332,13 +192,6 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #Get the mapping to the type TPs
             CS_TP =type_TP[CS_TP]
             CS_FP = np.setdiff1d(type_pred_P,CS_TP)
-
-            #Get the calculated attention localization for the TP CSs
-            #Plot
-            #plot_attention_distribution(aa_area, attention_area, type_pred_P, CS_TP, CS_FP, kingdom, type+' CS', attention_dir+kingdom+'_attention_area_CS'+str(types[type])+'.png')
-
-            #Get the best percentage split
-            #calc_best_percentage_split(aa_area, attention_area, np.argwhere(np.isin(type_pred_P,CS_TP))[:,0],kingdom,type+' CS',attention_dir+kingdom+'_precision_CS'+str(types[type])+'.png')
 
             #Order the attention matrix properly
             ordered_type_enc_dec_attention_TP = np.zeros((len(type_enc_dec_attention_TP),10,40))
@@ -380,7 +233,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                 #Where col==aa
                 aa_col_pos = np.argwhere(col==aa)
                 #Get corresponding enc-dec attention
-                aa_col_attention = np.max(type_enc_dec_attention_TP[aa_col_pos,:,i]) #axis 0 = row in np, 1=col
+                aa_col_attention = np.average(type_enc_dec_attention_TP[aa_col_pos,:,i]) #axis 0 = row in np, 1=col
                 aa_attention[i,aa]=aa_col_attention
 
         #Get annotation attention
@@ -405,7 +258,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #Logos
         #aa
         fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
-        aa_logo = logomaker.Logo(aa_attention_df, color_scheme='skylign_protein')
+        aa_logo = logomaker.Logo(aa_attention_df, color_scheme='hydrophobicity')
         plt.ylabel('log2 Attention')
         plt.xticks([])
         if type!='NO_SP':
