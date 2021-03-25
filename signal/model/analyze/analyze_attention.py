@@ -259,23 +259,24 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #TP
             plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
 
-            #Convert and save the sequences to build a logo
-            aa_freqs_type_TP = convert_TP_seqs(type_seqs_TP)
-            #Convert to df
-            aa_seq_df = pd.DataFrame(aa_freqs_type_TP,columns = [*AMINO_ACIDS.keys()])
-            #Transform
-            aa_seq_df =logomaker.transform_matrix(aa_seq_df,from_type='probability',to_type='information')
 
-            #Logo
-            fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
-            aa_logo = logomaker.Logo(aa_seq_df, color_scheme=AA_color_scheme)
-            plt.ylabel('log2 Frequency')
-            plt.xticks([])
+
+        #Convert and save the sequences to build a logo
+        aa_freqs_type_TP = convert_TP_seqs(type_seqs_TP)
+        #Convert to df
+        aa_seq_df = pd.DataFrame(aa_freqs_type_TP,columns = [*AMINO_ACIDS.keys()])
+        #Transform
+        aa_seq_df =logomaker.transform_matrix(aa_seq_df,from_type='probability',to_type='information')
+
+        #Logo
+        fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
+        aa_logo = logomaker.Logo(aa_seq_df, color_scheme=AA_color_scheme)
+        plt.ylabel('Information')
+        plt.xticks([])
+        if type!='NO_SP':
             aa_logo.ax.axvline(19.5, color='k', linewidth=2, linestyle=':')
-            plt.savefig(attention_dir+kingdom+'_aa_seq_logo_'+str(types[type])+'.png',format='png',dpi=300)
-            plt.close()
-
-        continue
+        plt.savefig(attention_dir+kingdom+'_aa_seq_logo_'+str(types[type])+'.png',format='png',dpi=300)
+        plt.close()
 
         #Plot attention matrix
         #TP
@@ -315,6 +316,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
         #Convert to dfs
         aa_attention_df = pd.DataFrame(aa_attention,columns = [*AMINO_ACIDS.keys()])
+        #Transform
+        aa_attention_df =logomaker.transform_matrix(aa_attention_df,from_type='probability',to_type='information')
         annotation_attention = annotation_attention[::-1,:]
         annotation_attention_df = pd.DataFrame(annotation_attention,columns = [*annotation_conversion.keys()])
         #Logos
