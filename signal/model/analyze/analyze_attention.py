@@ -271,10 +271,12 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #Logo
         fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
         aa_logo = logomaker.Logo(aa_seq_df, color_scheme=AA_color_scheme)
-        plt.ylabel('Information')
+        plt.ylabel('Information (bits)')
         plt.xticks([])
         if type!='NO_SP':
             aa_logo.ax.axvline(19.5, color='k', linewidth=2, linestyle=':')
+        plt.title(type+' sequence')
+        plt.tight_layout()
         plt.savefig(attention_dir+kingdom+'_aa_seq_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
 
@@ -324,10 +326,12 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #aa
         fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
         aa_logo = logomaker.Logo(aa_attention_df, color_scheme=AA_color_scheme)
-        plt.ylabel('log2 Attention')
+        plt.ylabel('Information (bits)')
         plt.xticks([])
         if type!='NO_SP':
             aa_logo.ax.axvline(19.5, color='k', linewidth=2, linestyle=':')
+        plt.title(type+' sequence')
+        plt.tight_layout()
         plt.savefig(attention_dir+kingdom+'_aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
         #annotation
@@ -340,7 +344,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             annotation_logo = logomaker.Logo(annotation_attention_df, color_scheme=annotation_color_scheme)
 
         plt.xticks([])
-        plt.ylabel('log2 Attention')
+        plt.ylabel('Information (bits)')
         annotation_logo.fig.tight_layout()
         plt.savefig(attention_dir+kingdom+'_annotation_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
