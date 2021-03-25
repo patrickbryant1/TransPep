@@ -260,9 +260,6 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #TP
             plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
 
-
-        else:
-            continue
         #Convert and save the sequences to build a logo
         aa_freqs_type_TP = convert_TP_seqs(type_seqs_TP)
         aa_freqs_type_TP+=0.0001
