@@ -136,6 +136,23 @@ def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
     plt.savefig(outname,format='png',dpi=300)
     plt.close()
 
+def convert_TP_seqs(type_seqs_TP):
+    '''Convert the TP sequences back to AA to build a logo
+    '''
+    conv_seqs = []
+    AMINO_ACIDS_back = { 0:'A',1:'R',2:'N',3:'D',4:'C',5:'E',
+                    6:'Q',7:'G',8:'H',9:'I',10:'L',11:'K',
+                    12:'M',13:'F',14:'P',15:'S',16:'T',17:'W',
+                    18:'Y',19:'V',20:'X'
+                  }
+    for seq in type_seqs_TP:
+        conv_seq = ''
+        for aa in seq:
+            conv_seq+=AMINO_ACIDS_back[aa]
+        conv_seqs.append(conv_seq)
+
+    return np.array(conv_seqs)
+
 
 def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir, types, kingdom):
     '''Analyze the attention for a certain kingdom
@@ -176,6 +193,9 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_enc_dec_attention_TP = enc_dec_attention[type_TP]
         #seqs and annotations of TP
         type_seqs_TP = seqs[type_TP]
+        #Convert and save the sequences to build a logo
+        #conv_type_seqs_TP = convert_TP_seqs(type_seqs_TP)
+
         type_annotations_TP = pred_annotations[type_TP]
         #Probabilities
         type_probs_TP = pred_annotation_probs[type_TP]
@@ -207,21 +227,27 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             CS_TP =type_TP[CS_TP]
             CS_FP = np.setdiff1d(type_pred_P,CS_TP)
 
-            #Order the attention matrix properly
+            #Order the attention matrix and seqs around the CS properly
             ordered_type_enc_dec_attention_TP = np.zeros((len(type_enc_dec_attention_TP),10,40))
+            ordered_type_seqs_TP = np.zeros((len(type_seqs_TP),40))
+
             for i in range(len(type_enc_dec_attention_TP)):
 
                 #Upper left
-                ul = max(P_CS[i]-20,0)
+                ul = max(P_CS[i]-19,1) #The CS is the last position with SP. The cleavages will thus happen directly after this position
                 ul_len = min(P_CS[i],20)
-                ordered_type_enc_dec_attention_TP[i,:10,20-ul_len:20]=type_enc_dec_attention_TP[i,P_CS[i]-5:P_CS[i]+5,ul:P_CS[i]]
+                ordered_type_enc_dec_attention_TP[i,:10,20-ul_len:20]=type_enc_dec_attention_TP[i,P_CS[i]-4:P_CS[i]+6,ul:P_CS[i]+1]
+                ordered_type_seqs_TP[i,20-ul_len:20]=type_seqs_TP[i,ul:P_CS[i]+1]
 
                 #Upper right
-                ur = min(P_CS[i]+20,70)
-                ur_len = min(70-P_CS[i],20)
-                ordered_type_enc_dec_attention_TP[i,:10,40-ur_len:]=type_enc_dec_attention_TP[i,P_CS[i]-5:P_CS[i]+5,P_CS[i]:ur]
+                ur = min(P_CS[i]+1+20,70) #P_CS is the last position with SP
+                ur_len = min(70-(P_CS[i]+1),20) #P_CS[i]+1, since zero indexed
+                ordered_type_enc_dec_attention_TP[i,:10,40-ur_len:]=type_enc_dec_attention_TP[i,P_CS[i]-4:P_CS[i]+6,P_CS[i]+1:ur]
+                ordered_type_seqs_TP[i,40-ur_len:]=type_seqs_TP[i,P_CS[i]+1:ur]
 
+            #Reassign
             type_enc_dec_attention_TP = ordered_type_enc_dec_attention_TP
+            type_seqs_TP = ordered_type_seqs_TP
             figsize=(9,4.5)
 
             #Plot attention matrix
@@ -229,17 +255,16 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
 
 
-
         #Plot attention matrix
         #TP
         plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54))
         #FP
         #plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_FP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_FP.png',(9/2.54,9/2.54))
-        continue
+
         #Get aa attention
         aa_attention = np.zeros((type_enc_dec_attention_TP.shape[2],21))
         for i in range(len(aa_attention)):
-            col = type_seqs_TP[:,i]
+            col = type_seqs_TP[:,i] #These have to be ordered just like the attention around the CS
             #Go through all amino acids
             for aa in range(21):
                 if aa not in col:
@@ -295,6 +320,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         plt.close()
 
 
+
 def analyze_attention(seqs, kingdoms, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir):
     '''Analyze the activations per type
     {'NO_SP':0,'SP':1,'TAT':2,'LIPO':3}
@@ -314,7 +340,7 @@ def analyze_attention(seqs, kingdoms, true_types, true_annotations, pred_types,p
             types = {'NO_SP':0,'Sec/SPI':1}
         get_kingdom_attention(seqs[kingdom_indices], true_types[kingdom_indices], true_annotations[kingdom_indices], pred_types[kingdom_indices],
         pred_annotations[kingdom_indices],pred_annotation_probs[kingdom_indices], enc_dec_attention[kingdom_indices], attention_dir+key+'/', types, key)
-
+        pdb.set_trace()
 
 
 

@@ -7,11 +7,15 @@
 #LOGOS
 #montage /home/patrick/results/protein_translation/attention/ARCHAEA/attention_logo1.png /home/patrick/results/protein_translation/attention/EUKARYA/attention_logo1.png /home/patrick/results/protein_translation/attention/NEGATIVE/attention_logo1.png /home/patrick/results/protein_translation/attention/POSITIVE/attention_logo1.png -tile 2x2 -geometry +2+2 attention_logo1.png
 
-montage /home/patrick/results/protein_translation/attention/ARCHAEA/attention_logo2.png /home/patrick/results/protein_translation/attention/NEGATIVE/attention_logo2.png /home/patrick/results/protein_translation/attention/POSITIVE/attention_logo2.png -tile 1x3 -geometry +2+2 attention_logo2.png
-montage /home/patrick/results/protein_translation/attention/ARCHAEA/attention_logo3.png /home/patrick/results/protein_translation/attention/NEGATIVE/attention_logo3.png /home/patrick/results/protein_translation/attention/POSITIVE/attention_logo3.png -tile 1x3 -geometry +2+2 attention_logo3.png
-montage attention_logo2.png  attention_logo3.png -tile 2x3 -geometry +2+2  attention_logo2_3.png
+# montage /home/patrick/results/protein_translation/attention/ARCHAEA/attention_logo2.png /home/patrick/results/protein_translation/attention/NEGATIVE/attention_logo2.png /home/patrick/results/protein_translation/attention/POSITIVE/attention_logo2.png -tile 1x3 -geometry +2+2 attention_logo2.png
+# montage /home/patrick/results/protein_translation/attention/ARCHAEA/attention_logo3.png /home/patrick/results/protein_translation/attention/NEGATIVE/attention_logo3.png /home/patrick/results/protein_translation/attention/POSITIVE/attention_logo3.png -tile 1x3 -geometry +2+2 attention_logo3.png
+# montage attention_logo2.png  attention_logo3.png -tile 2x3 -geometry +2+2  attention_logo2_3.png
 
 #Probability cutoffs
 #montage /home/patrick/results/protein_translation/attention/ARCHAEA/type_probs.png /home/patrick/results/protein_translation/attention/EUKARYA/type_probs.png /home/patrick/results/protein_translation/attention/NEGATIVE/type_probs.png /home/patrick/results/protein_translation/attention/POSITIVE/type_probs.png -tile 1x4 -geometry +2+2 type_probs.png
 #Precision
 #montage /home/patrick/results/protein_translation/attention/ARCHAEA/type_precisions.png /home/patrick/results/protein_translation/attention/EUKARYA/EUKARYA_type_precision1.png /home/patrick/results/protein_translation/attention/NEGATIVE/type_precisions.png /home/patrick/results/protein_translation/attention/POSITIVE/type_precisions.png -tile 1x4 -geometry +2+2 type_precisions.png
+
+
+#TP total attention distribution
+montage /home/patrick/results/protein_translation/attention/ARCHAEA/TP_attention_type.png /home/patrick/results/protein_translation/attention/EUKARYA/EUKARYA_enc_dec_attention_1_TP.png /home/patrick/results/protein_translation/attention/NEGATIVE/TP_attention_type.png /home/patrick/results/protein_translation/attention/POSITIVE/TP_attention_type.png -tile 1x4 -geometry +2+2 attention_TP.png
