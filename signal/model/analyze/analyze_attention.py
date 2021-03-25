@@ -139,19 +139,25 @@ def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
 def convert_TP_seqs(type_seqs_TP):
     '''Convert the TP sequences back to AA to build a logo
     '''
-    conv_seqs = []
-    AMINO_ACIDS_back = { 0:'A',1:'R',2:'N',3:'D',4:'C',5:'E',
-                    6:'Q',7:'G',8:'H',9:'I',10:'L',11:'K',
-                    12:'M',13:'F',14:'P',15:'S',16:'T',17:'W',
-                    18:'Y',19:'V',20:'X'
-                  }
-    for seq in type_seqs_TP:
-        conv_seq = ''
-        for aa in seq:
-            conv_seq+=AMINO_ACIDS_back[aa]
-        conv_seqs.append(conv_seq)
 
-    return np.array(conv_seqs)
+    #Get df for logo
+    aa_freqs = np.zeros((type_seqs_TP.shape[1],21))
+    #Go through all cols:
+    for i in range(type_seqs_TP.shape[1]):
+        col = type_seqs_TP[:,i] #These have to be ordered just like the attention around the CS
+                                #Make sure this has been done!
+        #Go through all amino acids
+        for aa in range(21):
+            if aa not in col:
+                continue
+            else:
+                #Where col==aa
+                aa_col_pos = np.argwhere(col==aa)
+                #Get freq
+                aa_freqs[i,aa]=aa_col_pos.shape[0]/len(col)
+
+
+    return aa_freqs
 
 
 def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir, types, kingdom):
@@ -193,8 +199,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_enc_dec_attention_TP = enc_dec_attention[type_TP]
         #seqs and annotations of TP
         type_seqs_TP = seqs[type_TP]
-        #Convert and save the sequences to build a logo
-        #conv_type_seqs_TP = convert_TP_seqs(type_seqs_TP)
+
 
         type_annotations_TP = pred_annotations[type_TP]
         #Probabilities
@@ -254,7 +259,9 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #TP
             plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
 
-
+            #Convert and save the sequences to build a logo
+            aa_freqs_type_TP = convert_TP_seqs(type_seqs_TP)
+            pdb.set_trace()
         #Plot attention matrix
         #TP
         plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54))
@@ -269,11 +276,12 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             for aa in range(21):
                 if aa not in col:
                     continue
-                #Where col==aa
-                aa_col_pos = np.argwhere(col==aa)
-                #Get corresponding enc-dec attention
-                aa_col_attention = np.average(type_enc_dec_attention_TP[aa_col_pos,:,i]) #axis 0 = row in np, 1=col
-                aa_attention[i,aa]=aa_col_attention
+                else:
+                    #Where col==aa
+                    aa_col_pos = np.argwhere(col==aa)
+                    #Get corresponding enc-dec attention
+                    aa_col_attention = np.average(type_enc_dec_attention_TP[aa_col_pos,:,i]) #axis 0 = row in np, 1=col
+                    aa_attention[i,aa]=aa_col_attention
 
         #Get annotation attention
         annotation_attention = np.zeros((type_enc_dec_attention_TP.shape[1],6))
@@ -282,18 +290,18 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             for at in range(6):
                 if at not in row:
                     continue
-                #Where row==at
-                at_row_pos = np.argwhere(row==at)
-                #Get corresponding enc-dec attention
-                at_row_attention = np.average(type_enc_dec_attention_TP[at_row_pos,j,:]) #axis 0 = row in np, 1=col
-                annotation_attention[j,at]= at_row_attention
+                else:
+                    #Where row==at
+                    at_row_pos = np.argwhere(row==at)
+                    #Get corresponding enc-dec attention
+                    at_row_attention = np.average(type_enc_dec_attention_TP[at_row_pos,j,:]) #axis 0 = row in np, 1=col
+                    annotation_attention[j,at]= at_row_attention
 
 
         #Convert to dfs
         aa_attention_df = pd.DataFrame(aa_attention,columns = [*AMINO_ACIDS.keys()])
         annotation_attention = annotation_attention[::-1,:]
         annotation_attention_df = pd.DataFrame(annotation_attention,columns = [*annotation_conversion.keys()])
-
         #Logos
         #aa
         fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
@@ -340,7 +348,7 @@ def analyze_attention(seqs, kingdoms, true_types, true_annotations, pred_types,p
             types = {'NO_SP':0,'Sec/SPI':1}
         get_kingdom_attention(seqs[kingdom_indices], true_types[kingdom_indices], true_annotations[kingdom_indices], pred_types[kingdom_indices],
         pred_annotations[kingdom_indices],pred_annotation_probs[kingdom_indices], enc_dec_attention[kingdom_indices], attention_dir+key+'/', types, key)
-        pdb.set_trace()
+
 
 
 
