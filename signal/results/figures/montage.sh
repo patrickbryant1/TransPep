@@ -30,3 +30,12 @@ for TYPE in ARCHAEA NEGATIVE POSITIVE
     montage $BASE'/'$TYPE'/'$TYPE'_aa_enc_dec_attention_logo_'$i'.png' $BASE'/'$TYPE'/'$TYPE'_aa_seq_logo_'$i'.png' -tile 1x2 -geometry +2+2 $TYPE'_'$i'_attention_freq.png'
   done
   done
+
+#Eukarya
+TYPE=EUKARYA
+i=1
+montage $BASE'/'$TYPE'/'$TYPE'_aa_enc_dec_attention_logo_'$i'.png' $BASE'/'$TYPE'/'$TYPE'_aa_seq_logo_'$i'.png' -tile 1x2 -geometry +2+2 $TYPE'_'$i'_attention_freq.png'
+
+#Together
+#Sec/SPI
+montage ARCHAEA_1_attention_freq.png EUKARYA_1_attention_freq.png NEGATIVE_1_attention_freq.png POSITIVE_1_attention_freq.png -tile 2x2 -geometry +2+2 logos1.png

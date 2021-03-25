@@ -116,10 +116,10 @@ def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
     #Plot activation matrix around the CS/or the whole matrix if no CS for the TP
     fig,ax = plt.subplots(figsize=figsize)
     im = plt.imshow(np.average(attention_matrix,axis=0),cmap='viridis') #In seqs on x, out annotations on y
-    if attention_matrix.shape[2]==40:
-        plt.axvline(19.5, color='y', linewidth=1, linestyle=':')
+    if attention_matrix.shape[2]==60:
+        plt.axvline(29.5, color='y', linewidth=1, linestyle=':')
         plt.axhline(4.5, color='y', linewidth=1, linestyle=':')
-        plt.xticks(ticks=np.arange(attention_matrix.shape[2]),labels=[-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
+        #plt.xticks(ticks=np.arange(attention_matrix.shape[2]),labels=[-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
         plt.yticks(ticks=np.arange(attention_matrix.shape[1]),labels=[-5,-4,-3,-2,-1,1,2,3,4,5])
     plt.xlabel('Sequence position')
     plt.ylabel('Annotation position')
@@ -233,22 +233,23 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             CS_FP = np.setdiff1d(type_pred_P,CS_TP)
 
             #Order the attention matrix and seqs around the CS properly
-            ordered_type_enc_dec_attention_TP = np.zeros((len(type_enc_dec_attention_TP),10,40))
-            ordered_type_seqs_TP = np.zeros((len(type_seqs_TP),40))
+            cs_area = 60
+            ordered_type_enc_dec_attention_TP = np.zeros((len(type_enc_dec_attention_TP),10,cs_area))
+            ordered_type_seqs_TP = np.zeros((len(type_seqs_TP),cs_area))
 
             for i in range(len(type_enc_dec_attention_TP)):
 
                 #Upper left
-                ul = max(P_CS[i]-19,1) #The CS is the last position with SP. The cleavages will thus happen directly after this position
-                ul_len = min(P_CS[i],20)
-                ordered_type_enc_dec_attention_TP[i,:10,20-ul_len:20]=type_enc_dec_attention_TP[i,P_CS[i]-4:P_CS[i]+6,ul:P_CS[i]+1]
-                ordered_type_seqs_TP[i,20-ul_len:20]=type_seqs_TP[i,ul:P_CS[i]+1]
+                ul = max(P_CS[i]-int(cs_area/2-1),1) #The CS is the last position with SP. The cleavages will thus happen directly after this position
+                ul_len = min(P_CS[i],int(cs_area/2))
+                ordered_type_enc_dec_attention_TP[i,:10,int(cs_area/2)-ul_len:int(cs_area/2)]=type_enc_dec_attention_TP[i,P_CS[i]-4:P_CS[i]+6,ul:P_CS[i]+1]
+                ordered_type_seqs_TP[i,int(cs_area/2)-ul_len:int(cs_area/2)]=type_seqs_TP[i,ul:P_CS[i]+1]
 
                 #Upper right
-                ur = min(P_CS[i]+1+20,70) #P_CS is the last position with SP
-                ur_len = min(70-(P_CS[i]+1),20) #P_CS[i]+1, since zero indexed
-                ordered_type_enc_dec_attention_TP[i,:10,40-ur_len:]=type_enc_dec_attention_TP[i,P_CS[i]-4:P_CS[i]+6,P_CS[i]+1:ur]
-                ordered_type_seqs_TP[i,40-ur_len:]=type_seqs_TP[i,P_CS[i]+1:ur]
+                ur = min(P_CS[i]+1+int(cs_area/2),70) #P_CS is the last position with SP
+                ur_len = min(70-(P_CS[i]+1),int(cs_area/2)) #P_CS[i]+1, since zero indexed
+                ordered_type_enc_dec_attention_TP[i,:10,cs_area-ur_len:]=type_enc_dec_attention_TP[i,P_CS[i]-4:P_CS[i]+6,P_CS[i]+1:ur]
+                ordered_type_seqs_TP[i,cs_area-ur_len:]=type_seqs_TP[i,P_CS[i]+1:ur]
 
             #Reassign
             type_enc_dec_attention_TP = ordered_type_enc_dec_attention_TP
@@ -260,9 +261,11 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
 
 
-
+        else:
+            continue
         #Convert and save the sequences to build a logo
         aa_freqs_type_TP = convert_TP_seqs(type_seqs_TP)
+        aa_freqs_type_TP+=0.0001
         #Convert to df
         aa_seq_df = pd.DataFrame(aa_freqs_type_TP,columns = [*AMINO_ACIDS.keys()])
         #Transform
@@ -274,8 +277,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         plt.ylabel('Information (bits)')
         plt.xticks([])
         if type!='NO_SP':
-            aa_logo.ax.axvline(19.5, color='k', linewidth=2, linestyle=':')
-        plt.title(type+' sequence')
+            aa_logo.ax.axvline(cs_area/2-0.5, color='k', linewidth=2, linestyle=':')
+        plt.title(kingdom + ' ' +type+' sequence')
         plt.tight_layout()
         plt.savefig(attention_dir+kingdom+'_aa_seq_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
@@ -317,6 +320,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
 
         #Convert to dfs
+        #Add pseudocount to aa_attention
+        aa_attention+=0.0001
         aa_attention_df = pd.DataFrame(aa_attention,columns = [*AMINO_ACIDS.keys()])
         #Transform
         aa_attention_df =logomaker.transform_matrix(aa_attention_df,from_type='probability',to_type='information')
@@ -329,8 +334,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         plt.ylabel('Information (bits)')
         plt.xticks([])
         if type!='NO_SP':
-            aa_logo.ax.axvline(19.5, color='k', linewidth=2, linestyle=':')
-        plt.title(type+' sequence')
+            aa_logo.ax.axvline(cs_area/2-0.5, color='k', linewidth=2, linestyle=':')
+        plt.title(kingdom + ' ' +type+' attention')
         plt.tight_layout()
         plt.savefig(attention_dir+kingdom+'_aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
