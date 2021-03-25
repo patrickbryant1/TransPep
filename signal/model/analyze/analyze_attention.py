@@ -263,6 +263,9 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             aa_freqs_type_TP = convert_TP_seqs(type_seqs_TP)
             #Convert to df
             aa_seq_df = pd.DataFrame(aa_freqs_type_TP,columns = [*AMINO_ACIDS.keys()])
+            #Transform
+            aa_seq_df =logomaker.transform_matrix(aa_seq_df,from_type='probability',to_type='information')
+
             #Logo
             fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
             aa_logo = logomaker.Logo(aa_seq_df, color_scheme=AA_color_scheme)
