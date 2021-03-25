@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import time
 from collections import Counter
-#Preprocessing and evaluation
+#Preprocessing 
 from process_data import parse_and_format
 #Keras
 import tensorflow as tf
