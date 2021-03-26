@@ -127,7 +127,7 @@ def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
         kingdom = 'Gram-negative bacteria'
     if kingdom == 'POSITIVE':
         kingdom = 'Gram-positive bacteria'
-    plt.title(kingdom+' '+type)
+    #plt.title(kingdom+' '+type)
     plt.tight_layout()
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -171,7 +171,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                   }
     annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
     annotation_type_conversion = {'Sec/SPI': 0, 'Tat/SPI': 1, 'Sec/SPII': 2, 'NO_SP':3}
-    title_conversion = {'ARCHAEA':'Archaea','EUKARYA':'Eukarya','NEGATIVE':'Negative','POSITIVE':'Positive'}
+    title_conversion = {'ARCHAEA':'Archaea','EUKARYA':'Eukarya','NEGATIVE':'Gram-negative bacteria','POSITIVE':'Gram-positive bacteria'}
     # create color scheme
     annotation_color_scheme = {'S' : 'tab:blue','T' : 'tab:pink', 'L' : 'tab:purple',
                                 'I': 'gray', 'M': 'k', 'O':'tab:gray'}
@@ -186,12 +186,14 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                     'M':hp,'F':hp,'P':hp,'S':polar,'T':polar,'W':hp,
                     'Y':hp,'V':hp,'X':'k'
                   }
+    frac_TP = []
     #Go through all types
     for type in types:
         figsize=(9,9)
         type_P = np.argwhere(true_types==types[type])
         type_pred_P = np.argwhere(pred_types==types[type])[:,0]
         type_TP = np.intersect1d(type_P,type_pred_P)
+        frac_TP.append(len(type_TP)/len(type_P))
         type_FP = np.setdiff1d(type_pred_P,type_TP)
         #Attention of pred pos
         type_enc_dec_attention = enc_dec_attention[type_pred_P]
@@ -227,6 +229,23 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
             #Get TP CS
             CS_diff = P_CS-P_CS_pred
+            #Percent within 10 residues
+            p10 = np.argwhere(np.absolute(CS_diff)<=10).shape[0]/len(CS_diff)
+            #Plot CS diff
+            fig,ax = plt.subplots(figsize=(4.5/2.54,4.5/2.54))
+            plt.hist(CS_diff,color='cornflowerblue',label=str(np.round(p10,2)))
+            plt.title(title_conversion[kingdom]+ ' ' +type+' CS error', fontsize=5)
+            plt.xticks([-10,0,10])
+            plt.legend()
+            plt.xlabel('Error')
+            plt.ylabel('Count')
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            plt.tight_layout()
+            plt.savefig(attention_dir+kingdom+'_CS_diff_'+str(types[type])+'.png',format='png',dpi=300)
+            plt.close()
+            continue
+
             CS_TP = np.argwhere(np.absolute(CS_diff)<=3)[:,0]
             #Get the mapping to the type TPs
             CS_TP =type_TP[CS_TP]
@@ -260,6 +279,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #TP
             plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
 
+        else:
+            continue
         #Convert and save the sequences to build a logo
         aa_freqs_type_TP = convert_TP_seqs(type_seqs_TP)
         aa_freqs_type_TP+=0.0001
@@ -352,6 +373,11 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         annotation_logo.fig.tight_layout()
         plt.savefig(attention_dir+kingdom+'_annotation_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
+
+    #Print the frac TP
+    print(kingdom)
+    print(frac_TP)
+    pdb.set_trace()
 
 
 
