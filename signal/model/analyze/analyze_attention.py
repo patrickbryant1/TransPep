@@ -171,7 +171,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                   }
     annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
     annotation_type_conversion = {'Sec/SPI': 0, 'Tat/SPI': 1, 'Sec/SPII': 2, 'NO_SP':3}
-
+    title_conversion = {'ARCHAEA':'Archaea','EUKARYA':'Eukarya','NEGATIVE':'Negative','POSITIVE':'Positive'}
     # create color scheme
     annotation_color_scheme = {'S' : 'tab:blue','T' : 'tab:pink', 'L' : 'tab:purple',
                                 'I': 'gray', 'M': 'k', 'O':'tab:gray'}
@@ -275,7 +275,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         plt.xticks([])
         if type!='NO_SP':
             aa_logo.ax.axvline(cs_area/2-0.5, color='k', linewidth=2, linestyle=':')
-        plt.title(kingdom + ' ' +type+' sequence')
+        plt.title(title_conversion[kingdom] + ' ' +type+' sequence')
         plt.tight_layout()
         plt.savefig(attention_dir+kingdom+'_aa_seq_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
@@ -320,10 +320,12 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #Add pseudocount to aa_attention
         aa_attention+=0.0001
         aa_attention_df = pd.DataFrame(aa_attention,columns = [*AMINO_ACIDS.keys()])
+        annotation_attention = annotation_attention[::-1,:] #Reverse order for plotting
+        annotation_attention_df = pd.DataFrame(annotation_attention,columns = [*annotation_conversion.keys()])
         #Transform
         aa_attention_df =logomaker.transform_matrix(aa_attention_df,from_type='probability',to_type='information')
-        annotation_attention = annotation_attention[::-1,:]
-        annotation_attention_df = pd.DataFrame(annotation_attention,columns = [*annotation_conversion.keys()])
+        annotation_attention_df =logomaker.transform_matrix(annotation_attention_df,from_type='probability',to_type='information')
+
         #Logos
         #aa
         fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
@@ -332,7 +334,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         plt.xticks([])
         if type!='NO_SP':
             aa_logo.ax.axvline(cs_area/2-0.5, color='k', linewidth=2, linestyle=':')
-        plt.title(kingdom + ' ' +type+' attention')
+        plt.title(title_conversion[kingdom] + ' ' +type+' attention')
         plt.tight_layout()
         plt.savefig(attention_dir+kingdom+'_aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
