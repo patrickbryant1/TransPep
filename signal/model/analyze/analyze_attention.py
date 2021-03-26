@@ -234,7 +234,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #Plot CS diff
             fig,ax = plt.subplots(figsize=(4.5/2.54,4.5/2.54))
             plt.hist(CS_diff,color='cornflowerblue',label=str(np.round(p10,2)))
-            plt.title(title_conversion[kingdom]+ ' ' +type+' CS error', fontsize=5)
+            plt.title(title_conversion[kingdom]+ ' ' +type, fontsize=5)
             plt.xticks([-10,0,10])
             plt.legend()
             plt.xlabel('Error')
@@ -244,7 +244,6 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             plt.tight_layout()
             plt.savefig(attention_dir+kingdom+'_CS_diff_'+str(types[type])+'.png',format='png',dpi=300)
             plt.close()
-            continue
 
             CS_TP = np.argwhere(np.absolute(CS_diff)<=3)[:,0]
             #Get the mapping to the type TPs
@@ -253,7 +252,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
             #Order the attention matrix and seqs around the CS properly
             cs_area = 60
-            ordered_type_enc_dec_attention_TP = np.zeros((len(type_enc_dec_attention_TP),10,cs_area))
+            ordered_type_enc_dec_attention_TP = np.zeros((len(type_enc_dec_attention_TP),20,cs_area))
             ordered_type_seqs_TP = np.zeros((len(type_seqs_TP),cs_area))
 
             for i in range(len(type_enc_dec_attention_TP)):
@@ -261,13 +260,13 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                 #Upper left
                 ul = max(P_CS[i]-int(cs_area/2-1),1) #The CS is the last position with SP. The cleavages will thus happen directly after this position
                 ul_len = min(P_CS[i],int(cs_area/2))
-                ordered_type_enc_dec_attention_TP[i,:10,int(cs_area/2)-ul_len:int(cs_area/2)]=type_enc_dec_attention_TP[i,P_CS[i]-4:P_CS[i]+6,ul:P_CS[i]+1]
+                ordered_type_enc_dec_attention_TP[i,:20,int(cs_area/2)-ul_len:int(cs_area/2)]=type_enc_dec_attention_TP[i,P_CS[i]-19:P_CS[i]+21,ul:P_CS[i]+1]
                 ordered_type_seqs_TP[i,int(cs_area/2)-ul_len:int(cs_area/2)]=type_seqs_TP[i,ul:P_CS[i]+1]
 
                 #Upper right
                 ur = min(P_CS[i]+1+int(cs_area/2),70) #P_CS is the last position with SP
                 ur_len = min(70-(P_CS[i]+1),int(cs_area/2)) #P_CS[i]+1, since zero indexed
-                ordered_type_enc_dec_attention_TP[i,:10,cs_area-ur_len:]=type_enc_dec_attention_TP[i,P_CS[i]-4:P_CS[i]+6,P_CS[i]+1:ur]
+                ordered_type_enc_dec_attention_TP[i,:20,cs_area-ur_len:]=type_enc_dec_attention_TP[i,P_CS[i]-19:P_CS[i]+21,P_CS[i]+1:ur]
                 ordered_type_seqs_TP[i,cs_area-ur_len:]=type_seqs_TP[i,P_CS[i]+1:ur]
 
             #Reassign
@@ -279,8 +278,6 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #TP
             plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
 
-        else:
-            continue
         #Convert and save the sequences to build a logo
         aa_freqs_type_TP = convert_TP_seqs(type_seqs_TP)
         aa_freqs_type_TP+=0.0001
@@ -377,7 +374,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
     #Print the frac TP
     print(kingdom)
     print(frac_TP)
-    pdb.set_trace()
+
 
 
 
