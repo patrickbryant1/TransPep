@@ -22,34 +22,34 @@
 
 
 #montage sequence frequency and attention Logos
-# BASE=/home/patrick/results/protein_translation/attention/
-# for TYPE in ARCHAEA NEGATIVE POSITIVE
-#   do
-#   for i in 1 2 3
-#   do
-#     montage $BASE'/'$TYPE'/'$TYPE'_aa_enc_dec_attention_logo_'$i'.png' $BASE'/'$TYPE'/'$TYPE'_aa_seq_logo_'$i'.png' -tile 1x2 -geometry +2+2 $TYPE'_'$i'_attention_freq.png'
-#   done
-#   done
-#
-# #Eukarya
-# TYPE=EUKARYA
-# i=1
-# montage $BASE'/'$TYPE'/'$TYPE'_aa_enc_dec_attention_logo_'$i'.png' $BASE'/'$TYPE'/'$TYPE'_aa_seq_logo_'$i'.png' -tile 1x2 -geometry +2+2 $TYPE'_'$i'_attention_freq.png'
-#
-# #Together
-# #Sec/SPI
-# montage ARCHAEA_1_attention_freq.png EUKARYA_1_attention_freq.png NEGATIVE_1_attention_freq.png POSITIVE_1_attention_freq.png -tile 2x2 -geometry +2+2 logos1.png
-# #Tat/SPI
-# montage ARCHAEA_2_attention_freq.png NEGATIVE_2_attention_freq.png POSITIVE_2_attention_freq.png -tile 1x3 -geometry +2+2 logos2.png
-# #Sec/SPII
-# montage ARCHAEA_3_attention_freq.png NEGATIVE_3_attention_freq.png POSITIVE_3_attention_freq.png -tile 1x3 -geometry +2+2 logos3.png
-# #2 and 3 together
-# montage logos2.png logos3.png -tile 2x1 -geometry +2+2 logos_2_3.png
+BASE=/home/patrick/results/protein_translation/attention/
+for TYPE in ARCHAEA NEGATIVE POSITIVE
+  do
+  for i in 1 2 3
+  do
+    montage $BASE'/'$TYPE'/'$TYPE'_aa_enc_dec_attention_logo_'$i'.png' $BASE'/'$TYPE'/'$TYPE'_aa_seq_logo_'$i'.png' -tile 1x2 -geometry +2+2 $TYPE'_'$i'_attention_freq.png'
+  done
+  done
+
+#Eukarya
+TYPE=EUKARYA
+i=1
+montage $BASE'/'$TYPE'/'$TYPE'_aa_enc_dec_attention_logo_'$i'.png' $BASE'/'$TYPE'/'$TYPE'_aa_seq_logo_'$i'.png' -tile 1x2 -geometry +2+2 $TYPE'_'$i'_attention_freq.png'
+
+#Together
+#Sec/SPI
+montage ARCHAEA_1_attention_freq.png EUKARYA_1_attention_freq.png NEGATIVE_1_attention_freq.png POSITIVE_1_attention_freq.png -tile 2x2 -geometry +2+2 logos1.png
+#Tat/SPI
+montage ARCHAEA_2_attention_freq.png NEGATIVE_2_attention_freq.png POSITIVE_2_attention_freq.png -tile 1x3 -geometry +2+2 logos2.png
+#Sec/SPII
+montage ARCHAEA_3_attention_freq.png NEGATIVE_3_attention_freq.png POSITIVE_3_attention_freq.png -tile 1x3 -geometry +2+2 logos3.png
+#2 and 3 together
+montage logos2.png logos3.png -tile 2x1 -geometry +2+2 logos_2_3.png
 
 
 #Montage the CS error
-BASE=/home/patrick/results/protein_translation/attention/
-montage $BASE/ARCHAEA/ARCHAEA_CS_diff_1.png $BASE/EUKARYA/EUKARYA_CS_diff_1.png $BASE/NEGATIVE/NEGATIVE_CS_diff_1.png $BASE/POSITIVE/POSITIVE_CS_diff_1.png -tile 4x1 -geometry +2+2 CS_diff_1.png
-montage $BASE/ARCHAEA/ARCHAEA_CS_diff_2.png $BASE/NEGATIVE/NEGATIVE_CS_diff_2.png $BASE/POSITIVE/POSITIVE_CS_diff_2.png -tile 3x1 -geometry +2+2 CS_diff_2.png
-montage $BASE/ARCHAEA/ARCHAEA_CS_diff_3.png $BASE/NEGATIVE/NEGATIVE_CS_diff_3.png $BASE/POSITIVE/POSITIVE_CS_diff_3.png -tile 3x1 -geometry +2+2 CS_diff_3.png
-montage CS_diff_1.png CS_diff_2.png CS_diff_3.png -tile 1x3 -geometry +2+2 CS_diff.png
+# BASE=/home/patrick/results/protein_translation/attention/
+# montage $BASE/ARCHAEA/ARCHAEA_CS_diff_1.png $BASE/EUKARYA/EUKARYA_CS_diff_1.png $BASE/NEGATIVE/NEGATIVE_CS_diff_1.png $BASE/POSITIVE/POSITIVE_CS_diff_1.png -tile 4x1 -geometry +2+2 CS_diff_1.png
+# montage $BASE/ARCHAEA/ARCHAEA_CS_diff_2.png $BASE/NEGATIVE/NEGATIVE_CS_diff_2.png $BASE/POSITIVE/POSITIVE_CS_diff_2.png -tile 3x1 -geometry +2+2 CS_diff_2.png
+# montage $BASE/ARCHAEA/ARCHAEA_CS_diff_3.png $BASE/NEGATIVE/NEGATIVE_CS_diff_3.png $BASE/POSITIVE/POSITIVE_CS_diff_3.png -tile 3x1 -geometry +2+2 CS_diff_3.png
+# montage CS_diff_1.png CS_diff_2.png CS_diff_3.png -tile 1x3 -geometry +2+2 CS_diff.png

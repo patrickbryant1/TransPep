@@ -118,9 +118,9 @@ def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
     im = plt.imshow(np.average(attention_matrix,axis=0),cmap='viridis') #In seqs on x, out annotations on y
     if attention_matrix.shape[2]==60:
         plt.axvline(29.5, color='y', linewidth=1, linestyle=':')
-        plt.axhline(4.5, color='y', linewidth=1, linestyle=':')
+        plt.axhline(9.5, color='y', linewidth=1, linestyle=':')
         #plt.xticks(ticks=np.arange(attention_matrix.shape[2]),labels=[-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
-        plt.yticks(ticks=np.arange(attention_matrix.shape[1]),labels=[-5,-4,-3,-2,-1,1,2,3,4,5])
+        #plt.yticks(ticks=np.arange(attention_matrix.shape[1]),labels=[-5,-4,-3,-2,-1,1,2,3,4,5])
     plt.xlabel('Sequence position')
     plt.ylabel('Annotation position')
     if kingdom == 'NEGATIVE':
@@ -201,8 +201,6 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         type_enc_dec_attention_TP = enc_dec_attention[type_TP]
         #seqs and annotations of TP
         type_seqs_TP = seqs[type_TP]
-
-
         type_annotations_TP = pred_annotations[type_TP]
         #Probabilities
         type_probs_TP = pred_annotation_probs[type_TP]
@@ -229,6 +227,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
             #Get TP CS
             CS_diff = P_CS-P_CS_pred
+
             #Percent within 10 residues
             p10 = np.argwhere(np.absolute(CS_diff)<=10).shape[0]/len(CS_diff)
             #Plot CS diff
@@ -246,27 +245,36 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             plt.close()
 
             CS_TP = np.argwhere(np.absolute(CS_diff)<=3)[:,0]
+            #Select the true CS
+            P_CS = P_CS[CS_TP]
+            #Get seqs and annotations
+            type_seqs_TP = type_seqs_TP[CS_TP]
+            type_annotations_TP = type_annotations_TP[CS_TP]
             #Get the mapping to the type TPs
             CS_TP =type_TP[CS_TP]
             CS_FP = np.setdiff1d(type_pred_P,CS_TP)
 
             #Order the attention matrix and seqs around the CS properly
-            cs_area = 60
-            ordered_type_enc_dec_attention_TP = np.zeros((len(type_enc_dec_attention_TP),20,cs_area))
+            type_enc_dec_attention_TP = enc_dec_attention[CS_TP]
+            cs_area = 33
+            ordered_type_enc_dec_attention_TP = np.zeros((len(type_enc_dec_attention_TP),6,cs_area))
             ordered_type_seqs_TP = np.zeros((len(type_seqs_TP),cs_area))
 
             for i in range(len(type_enc_dec_attention_TP)):
 
                 #Upper left
-                ul = max(P_CS[i]-int(cs_area/2-1),1) #The CS is the last position with SP. The cleavages will thus happen directly after this position
-                ul_len = min(P_CS[i],int(cs_area/2))
-                ordered_type_enc_dec_attention_TP[i,:20,int(cs_area/2)-ul_len:int(cs_area/2)]=type_enc_dec_attention_TP[i,P_CS[i]-19:P_CS[i]+21,ul:P_CS[i]+1]
-                ordered_type_seqs_TP[i,int(cs_area/2)-ul_len:int(cs_area/2)]=type_seqs_TP[i,ul:P_CS[i]+1]
+                ul = max(P_CS[i]-(cs_area-3)+1,0) #The CS is the last position with SP. The cleavages will thus happen directly after this position
+                ul_len = min(P_CS[i]+1,cs_area-3)
+                try:
+                    ordered_type_enc_dec_attention_TP[i,:6,cs_area-3-ul_len:cs_area-3]=type_enc_dec_attention_TP[i,P_CS[i]-2:P_CS[i]+4,ul:P_CS[i]+1]
+                except:
+                    pdb.set_trace()
+                ordered_type_seqs_TP[i,cs_area-3-ul_len:cs_area-3]=type_seqs_TP[i,ul:P_CS[i]+1]
 
                 #Upper right
-                ur = min(P_CS[i]+1+int(cs_area/2),70) #P_CS is the last position with SP
-                ur_len = min(70-(P_CS[i]+1),int(cs_area/2)) #P_CS[i]+1, since zero indexed
-                ordered_type_enc_dec_attention_TP[i,:20,cs_area-ur_len:]=type_enc_dec_attention_TP[i,P_CS[i]-19:P_CS[i]+21,P_CS[i]+1:ur]
+                ur = min(P_CS[i]+1+3,70) #P_CS is the last position with SP
+                ur_len = min(70-(P_CS[i]+1),3) #P_CS[i]+1, since zero indexed
+                ordered_type_enc_dec_attention_TP[i,:6,cs_area-ur_len:]=type_enc_dec_attention_TP[i,P_CS[i]-2:P_CS[i]+4,P_CS[i]+1:ur]
                 ordered_type_seqs_TP[i,cs_area-ur_len:]=type_seqs_TP[i,P_CS[i]+1:ur]
 
             #Reassign
@@ -278,6 +286,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #TP
             plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
 
+        else:
+            continue
         #Convert and save the sequences to build a logo
         aa_freqs_type_TP = convert_TP_seqs(type_seqs_TP)
         aa_freqs_type_TP+=0.0001
@@ -292,7 +302,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         plt.ylabel('Information (bits)')
         plt.xticks([])
         if type!='NO_SP':
-            aa_logo.ax.axvline(cs_area/2-0.5, color='k', linewidth=2, linestyle=':')
+            aa_logo.ax.axvline(cs_area-3.5, color='k', linewidth=2, linestyle=':')
         plt.title(title_conversion[kingdom] + ' ' +type+' sequence')
         plt.tight_layout()
         plt.savefig(attention_dir+kingdom+'_aa_seq_logo_'+str(types[type])+'.png',format='png',dpi=300)
@@ -351,16 +361,16 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         plt.ylabel('Information (bits)')
         plt.xticks([])
         if type!='NO_SP':
-            aa_logo.ax.axvline(cs_area/2-0.5, color='k', linewidth=2, linestyle=':')
+            aa_logo.ax.axvline(cs_area-3.5, color='k', linewidth=2, linestyle=':')
         plt.title(title_conversion[kingdom] + ' ' +type+' attention')
         plt.tight_layout()
         plt.savefig(attention_dir+kingdom+'_aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
         #annotation
         if type!='NO_SP':
-            fig,ax = plt.subplots(1,1,figsize=[2.5,2.5])
+            fig,ax = plt.subplots(1,1,figsize=[4.5,2.5])
             annotation_logo = logomaker.Logo(annotation_attention_df,ax=ax, color_scheme=annotation_color_scheme)
-            annotation_logo.ax.axvline(4.5, color='k', linewidth=2, linestyle=':')
+            annotation_logo.ax.axvline(2.5, color='k', linewidth=2, linestyle=':')
         else:
             fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
             annotation_logo = logomaker.Logo(annotation_attention_df, color_scheme=annotation_color_scheme)
