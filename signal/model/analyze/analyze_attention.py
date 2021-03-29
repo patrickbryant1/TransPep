@@ -110,24 +110,20 @@ def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,
     plt.close()
 
 
-def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
+def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize,title_conversion):
     '''Plot the encoder-decoder matrix
     '''
     #Plot activation matrix around the CS/or the whole matrix if no CS for the TP
     fig,ax = plt.subplots(figsize=figsize)
     im = plt.imshow(np.average(attention_matrix,axis=0),cmap='viridis') #In seqs on x, out annotations on y
-    if attention_matrix.shape[2]==60:
-        plt.axvline(29.5, color='y', linewidth=1, linestyle=':')
-        plt.axhline(9.5, color='y', linewidth=1, linestyle=':')
-        #plt.xticks(ticks=np.arange(attention_matrix.shape[2]),labels=[-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20])
-        #plt.yticks(ticks=np.arange(attention_matrix.shape[1]),labels=[-5,-4,-3,-2,-1,1,2,3,4,5])
+    if attention_matrix.shape[2]==28:
+        plt.axvline(24.5, color='y', linewidth=1, linestyle=':')
+        plt.axhline(2.5, color='y', linewidth=1, linestyle=':')
+        plt.xticks(ticks=np.arange(attention_matrix.shape[2]),labels=[-25,-24,-23,-22,-21,-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3])
+        plt.yticks(ticks=np.arange(attention_matrix.shape[1]),labels=[-3,-2,-1,1,2,3])
     plt.xlabel('Sequence position')
     plt.ylabel('Annotation position')
-    if kingdom == 'NEGATIVE':
-        kingdom = 'Gram-negative bacteria'
-    if kingdom == 'POSITIVE':
-        kingdom = 'Gram-positive bacteria'
-    #plt.title(kingdom+' '+type)
+    plt.title(title_conversion[kingdom]+' '+type)
     plt.tight_layout()
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -135,6 +131,19 @@ def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize):
     plt.tight_layout()
     plt.savefig(outname,format='png',dpi=300)
     plt.close()
+
+
+    fig,ax = plt.subplots(figsize=(17/2.54,4.5/2.54))
+    ax.bar(np.arange(attention_matrix.shape[2]),np.sum(np.average(attention_matrix,axis=0),axis=0),color='tab:blue')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    plt.xticks(ticks=np.arange(attention_matrix.shape[2]),labels=[-25,-24,-23,-22,-21,-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3])
+    plt.ylabel('Attention sum')
+    plt.tight_layout()
+    plt.savefig(outname[:-4]+'_bar.png',format='png',dpi=300)
+
+
 
 def convert_TP_seqs(type_seqs_TP):
     '''Convert the TP sequences back to AA to build a logo
@@ -284,8 +293,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
             #Plot attention matrix
             #TP
-            plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',figsize)
-
+            plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',(18/2.54,6/2.54),title_conversion)
+            continue
         else:
             continue
         #Convert and save the sequences to build a logo
@@ -310,7 +319,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
         #Plot attention matrix
         #TP
-        plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54))
+        plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54),title_conversion)
         #FP
         #plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_FP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_FP.png',(9/2.54,9/2.54))
 
