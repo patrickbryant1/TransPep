@@ -44,8 +44,10 @@ OUTDIR=/home/patrick/results/protein_translation/attention/
 
 #Analyze attention
 ATTENTIONDIR=$OUTDIR
-python3 analyze_attention.py --attention_dir $ATTENTIONDIR
+#python3 analyze_attention.py --attention_dir $ATTENTIONDIR
 
+#Search motifs
+python3 search_motifs.py --datadir $DATADIR
 
 #Analyze the benchmark results
 BENCHCSV=../../results/no_evolution/benchmark.csv
