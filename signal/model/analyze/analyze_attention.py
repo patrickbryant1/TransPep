@@ -256,7 +256,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
             #Order the attention matrix and seqs around the CS properly
             type_enc_dec_attention_TP = enc_dec_attention[CS_TP]
-            cs_area = 33
+            cs_area = 28
             ordered_type_enc_dec_attention_TP = np.zeros((len(type_enc_dec_attention_TP),6,cs_area))
             ordered_type_seqs_TP = np.zeros((len(type_seqs_TP),cs_area))
 

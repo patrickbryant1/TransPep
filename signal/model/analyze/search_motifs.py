@@ -64,7 +64,7 @@ args = parser.parse_args()
 datadir = args.datadir[0]
 type = args.type[0]
 kingdom = args.kingdom[0]
-nmotif = args.nmotif[0]
+nmotif = args.nmotif[0].split(',')
 cmotif = args.cmotif[0]
 bench_meta = pd.read_csv(datadir+'bench_meta.csv')
 bench_seqs = np.load(datadir+'bench_seqs.npy',allow_pickle=True)
@@ -73,19 +73,14 @@ bench_annotations = np.load(datadir+'bench_annotations.npy',allow_pickle=True)
 #Convert to character format
 conv_seqs = convert_bench_seqs(bench_seqs)
 #Get data
-non_type_data = bench_meta.loc[(bench_meta.Type=='NO_SP') & (bench_meta.Kingdom==kingdom)]
+non_type_data = bench_meta.loc[(bench_meta.Type!=type) & (bench_meta.Kingdom==kingdom)]
 non_type_seqs = conv_seqs[non_type_data.index]
 type_data = bench_meta.loc[(bench_meta.Type==type) & (bench_meta.Kingdom==kingdom)]
 type_seqs = conv_seqs[type_data.index]
 #search seqs
-pattern=nmotif+'.'*24+cmotif
+pattern=''.join(nmotif)+'.'*20+cmotif
+print(pattern)
 nt_matches = search_motifs(non_type_seqs,pattern)
 t_matches = search_motifs(type_seqs,pattern)
 print('N & C-terminal')
 print('NO_SP',nt_matches,',',type,t_matches)
-#C-terminal
-nt_matches = search_motifs(non_type_seqs,cmotif)
-t_matches = search_motifs(type_seqs,cmotif)
-print('C-terminal')
-print('NO_SP',nt_matches,',',type,t_matches)
-pdb.set_trace()

@@ -44,13 +44,8 @@ OUTDIR=/home/patrick/results/protein_translation/attention/
 
 #Analyze attention
 ATTENTIONDIR=$OUTDIR
-#python3 analyze_attention.py --attention_dir $ATTENTIONDIR
+python3 analyze_attention.py --attention_dir $ATTENTIONDIR
 
-#Search motifs
-#kingdom_conversion = {'ARCHAEA':0,'EUKARYA':1,'NEGATIVE':2,'POSITIVE':3}
-NMOTIF='(R|K)(D|T|M|R)(K|S|M|Q)'
-CMOTIF='(I|F|V|T|S|A).(S|A)'
-python3 search_motifs.py --datadir $DATADIR --kingdom 0 --type 'SP' --nmotif $NMOTIF --cmotif $CMOTIF
 
 #Analyze the benchmark results
 BENCHCSV=../../results/no_evolution/benchmark.csv
