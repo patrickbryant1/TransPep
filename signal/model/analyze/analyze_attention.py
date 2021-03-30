@@ -52,12 +52,13 @@ def pred_prob_vs_precision(probs_TP, probs_FP,type_index,kingdom,type,outname1, 
     '''Compare the prediction probability of the TP and FP across the signal peptide region.
     '''
 
-    if type_index!=3: #3=NO_SP
-        TP_activation = np.sum(probs_TP[:,:,type_index],axis=1)
-        FP_activation = np.sum(probs_FP[:,:,type_index],axis=1)
+
+    #Average the prob in the predicted CS area
+    TP_activation = np.average(probs_TP[:,:,type_index],axis=1)
+    if len(probs_FP)>1:
+        FP_activation = np.average(probs_FP[:,:,type_index],axis=1)
     else:
-        TP_activation = np.sum(np.sum(probs_TP[:,:,type_index:],axis=1),axis=1)
-        FP_activation = np.sum(np.sum(probs_FP[:,:,type_index:],axis=1),axis=1)
+        FP_activation = np.zeros(1)
 
     #Distribution
     fig,ax = plt.subplots(figsize=(4.5/2.54,4.5/2.54))
@@ -218,7 +219,6 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #Plot type probabilities
         #pred_prob_vs_precision(type_probs_TP, type_probs_FP,annotation_type_conversion[type],kingdom, type ,attention_dir+kingdom+'_type_prob'+str(types[type])+'.png',attention_dir+kingdom+'_type_precision'+str(types[type])+'.png')
 
-
         if type!='NO_SP':
 
             #Get all positive CSs that have TP type
@@ -227,7 +227,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             for i in range(len(P_annotations)):
                 P_CS.append(np.argwhere(P_annotations[i]==annotation_type_conversion[type])[-1,0])
             P_CS = np.array(P_CS)
-            #Get all pred positive CSs from the true positives (all the other will be wrong)
+            #Get all pred positive CSs from the type true positives (all the other will be wrong)
             P_CS_pred = []
             P_annotations_pred = type_annotations_TP
             for i in range(len(P_annotations_pred)):
@@ -236,36 +236,22 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
             #Get TP CS
             CS_diff = P_CS-P_CS_pred
-
-            #Percent within 10 residues
-            p10 = np.argwhere(np.absolute(CS_diff)<=10).shape[0]/len(CS_diff)
-            #Plot CS diff
-            fig,ax = plt.subplots(figsize=(4.5/2.54,4.5/2.54))
-            plt.hist(CS_diff,color='cornflowerblue',label=str(np.round(p10,2)))
-            plt.title(title_conversion[kingdom]+ ' ' +type, fontsize=5)
-            plt.xticks([-10,0,10])
-            plt.legend()
-            plt.xlabel('Error')
-            plt.ylabel('Count')
-            ax.spines['top'].set_visible(False)
-            ax.spines['right'].set_visible(False)
-            plt.tight_layout()
-            plt.savefig(attention_dir+kingdom+'_CS_diff_'+str(types[type])+'.png',format='png',dpi=300)
-            plt.close()
-
             CS_TP = np.argwhere(np.absolute(CS_diff)<=3)[:,0]
+            CS_FP = np.argwhere(np.absolute(CS_diff)>3)[:,0]
+            CS_preds_TP = P_CS_pred[CS_TP]
+            CS_preds_FP = P_CS_pred[CS_FP]
             #Select the true CS
             P_CS = P_CS[CS_TP]
             #Get seqs and annotations
             type_seqs_TP = type_seqs_TP[CS_TP]
             type_annotations_TP = type_annotations_TP[CS_TP]
-
             #Get the mapping to the type TPs
             CS_TP =type_TP[CS_TP]
-            CS_FP = np.setdiff1d(type_pred_P,CS_TP)
-            #Get the TP and FP probabilities
+            CS_FP =type_TP[CS_FP]
+            #Get the TP and FP probabilities - using only the TP type predictions
             CS_probs_TP = pred_annotation_probs[CS_TP]
             CS_probs_FP = pred_annotation_probs[CS_FP]
+
 
             #Order the attention matrix and seqs around the CS properly
             type_enc_dec_attention_TP = enc_dec_attention[CS_TP]
@@ -278,10 +264,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                 #Upper left
                 ul = max(P_CS[i]-(cs_area-3)+1,0) #The CS is the last position with SP. The cleavages will thus happen directly after this position
                 ul_len = min(P_CS[i]+1,cs_area-3)
-                try:
-                    ordered_type_enc_dec_attention_TP[i,:6,cs_area-3-ul_len:cs_area-3]=type_enc_dec_attention_TP[i,P_CS[i]-2:P_CS[i]+4,ul:P_CS[i]+1]
-                except:
-                    pdb.set_trace()
+                ordered_type_enc_dec_attention_TP[i,:6,cs_area-3-ul_len:cs_area-3]=type_enc_dec_attention_TP[i,P_CS[i]-2:P_CS[i]+4,ul:P_CS[i]+1]
                 ordered_type_seqs_TP[i,cs_area-3-ul_len:cs_area-3]=type_seqs_TP[i,ul:P_CS[i]+1]
 
                 #Upper right
@@ -300,9 +283,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',(18/2.54,6/2.54),title_conversion)
 
             #Plot type probabilities
-            pred_prob_vs_precision(CS_probs_TP, CS_probs_FP,annotation_type_conversion[type],kingdom, type ,attention_dir+kingdom+'_CS_prob'+str(types[type])+'.png',attention_dir+kingdom+'_CS_precision'+str(types[type])+'.png')
+            #pred_prob_vs_precision(CS_probs_TP, CS_probs_FP,annotation_type_conversion[type],kingdom, type ,attention_dir+kingdom+'_CS_prob'+str(types[type])+'.png',attention_dir+kingdom+'_CS_precision'+str(types[type])+'.png')
 
-            continue
         else:
             continue
         #Convert and save the sequences to build a logo
@@ -311,23 +293,23 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #Convert to df
         aa_seq_df = pd.DataFrame(aa_freqs_type_TP,columns = [*AMINO_ACIDS.keys()])
         #Transform
-        aa_seq_df =logomaker.transform_matrix(aa_seq_df,from_type='probability',to_type='information')
-
-        #Logo
-        fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
-        aa_logo = logomaker.Logo(aa_seq_df, color_scheme=AA_color_scheme)
-        plt.ylabel('Information (bits)')
-        plt.xticks([])
-        if type!='NO_SP':
-            aa_logo.ax.axvline(cs_area-3.5, color='k', linewidth=2, linestyle=':')
-        plt.title(title_conversion[kingdom] + ' ' +type+' sequence')
-        plt.tight_layout()
-        plt.savefig(attention_dir+kingdom+'_aa_seq_logo_'+str(types[type])+'.png',format='png',dpi=300)
-        plt.close()
+        # aa_seq_df =logomaker.transform_matrix(aa_seq_df,from_type='probability',to_type='information')
+        #
+        # #Logo
+        # fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
+        # aa_logo = logomaker.Logo(aa_seq_df, color_scheme=AA_color_scheme)
+        # plt.ylabel('Information (bits)')
+        # plt.xticks([])
+        # if type!='NO_SP':
+        #     aa_logo.ax.axvline(cs_area-3.5, color='k', linewidth=2, linestyle=':')
+        # plt.title(title_conversion[kingdom] + ' ' +type+' sequence')
+        # plt.tight_layout()
+        # plt.savefig(attention_dir+kingdom+'_aa_seq_logo_'+str(types[type])+'.png',format='png',dpi=300)
+        # plt.close()
 
         #Plot attention matrix
         #TP
-        plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54),title_conversion)
+        #plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_TP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP.png',(9/2.54,9/2.54),title_conversion)
         #FP
         #plot_attention_matrix(type_enc_dec_attention[np.argwhere(np.isin(type_pred_P,type_FP))[:,0]],type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_FP.png',(9/2.54,9/2.54))
 
@@ -343,7 +325,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
                     #Where col==aa
                     aa_col_pos = np.argwhere(col==aa)
                     #Get corresponding enc-dec attention
-                    aa_col_attention = np.average(type_enc_dec_attention_TP[aa_col_pos,:,i]) #axis 0 = row in np, 1=col
+                    aa_col_attention = np.max(type_enc_dec_attention_TP[aa_col_pos,:,i]) #axis 0 = row in np, 1=col
                     aa_attention[i,aa]=aa_col_attention
 
         #Get annotation attention
@@ -368,9 +350,8 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         annotation_attention = annotation_attention[::-1,:] #Reverse order for plotting
         annotation_attention_df = pd.DataFrame(annotation_attention,columns = [*annotation_conversion.keys()])
         #Transform
-        aa_attention_df =logomaker.transform_matrix(aa_attention_df,from_type='probability',to_type='information')
+        aa_attention_df =logomaker.transform_matrix(aa_attention_df,from_type='probability',to_type='information',normalize_values=False)
         annotation_attention_df =logomaker.transform_matrix(annotation_attention_df,from_type='probability',to_type='information')
-
         #Logos
         #aa
         fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
@@ -397,6 +378,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         annotation_logo.fig.tight_layout()
         plt.savefig(attention_dir+kingdom+'_annotation_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
         plt.close()
+
 
     #Print the frac TP
     print(kingdom)
