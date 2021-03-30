@@ -17,6 +17,18 @@ parser.add_argument('--meta', nargs=1, type= str, default=sys.stdin, help = '''P
 #####################FUNCTIONS#####################
 
 
+
 ######################MAIN######################
 args = parser.parse_args()
-meta = pd.read_csv(args.meta[0])
+meta = pd.read_csv(args.meta[0],sep='\t')
+
+pdb.set_trace()
+
+#['Entry', 'Entry name', 'Status', 'Protein names', 'Gene names',
+#'Organism', 'Length', 'Organism ID', 'Signal peptide']
+
+#Fraction SP
+non_sp = meta['Signal peptide'].dropna().shape
+sp = len(meta)-non_sp
+print('Num SP',sp,'Fraction SP',np.round(sp/len(meta),3))
+#meta.Organism.unique().shape: (1841,)
