@@ -48,16 +48,16 @@ def get_pred_types(pred_annotations):
     return np.array(pred_types)
 
 
-def pred_prob_vs_precision(type_probs_TP, type_probs_FP,type_index,kingdom,type,outname1, outname2):
+def pred_prob_vs_precision(probs_TP, probs_FP,type_index,kingdom,type,outname1, outname2):
     '''Compare the prediction probability of the TP and FP across the signal peptide region.
     '''
 
     if type_index!=3: #3=NO_SP
-        TP_activation = np.sum(type_probs_TP[:,:,type_index],axis=1)
-        FP_activation = np.sum(type_probs_FP[:,:,type_index],axis=1)
+        TP_activation = np.sum(probs_TP[:,:,type_index],axis=1)
+        FP_activation = np.sum(probs_FP[:,:,type_index],axis=1)
     else:
-        TP_activation = np.sum(np.sum(type_probs_TP[:,:,type_index:],axis=1),axis=1)
-        FP_activation = np.sum(np.sum(type_probs_FP[:,:,type_index:],axis=1),axis=1)
+        TP_activation = np.sum(np.sum(probs_TP[:,:,type_index:],axis=1),axis=1)
+        FP_activation = np.sum(np.sum(probs_FP[:,:,type_index:],axis=1),axis=1)
 
     #Distribution
     fig,ax = plt.subplots(figsize=(4.5/2.54,4.5/2.54))
@@ -259,9 +259,13 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #Get seqs and annotations
             type_seqs_TP = type_seqs_TP[CS_TP]
             type_annotations_TP = type_annotations_TP[CS_TP]
+
             #Get the mapping to the type TPs
             CS_TP =type_TP[CS_TP]
             CS_FP = np.setdiff1d(type_pred_P,CS_TP)
+            #Get the TP and FP probabilities
+            CS_probs_TP = pred_annotation_probs[CS_TP]
+            CS_probs_FP = pred_annotation_probs[CS_FP]
 
             #Order the attention matrix and seqs around the CS properly
             type_enc_dec_attention_TP = enc_dec_attention[CS_TP]
@@ -293,7 +297,11 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
             #Plot attention matrix
             #TP
-            plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',(18/2.54,6/2.54),title_conversion)
+            #plot_attention_matrix(ordered_type_enc_dec_attention_TP,type,kingdom,attention_dir+kingdom+'_enc_dec_attention_'+str(types[type])+'_TP_CS_area.png',(18/2.54,6/2.54),title_conversion)
+
+            #Plot type probabilities
+            pred_prob_vs_precision(CS_probs_TP, CS_probs_FP,annotation_type_conversion[type],kingdom, type ,attention_dir+kingdom+'_CS_prob'+str(types[type])+'.png',attention_dir+kingdom+'_CS_precision'+str(types[type])+'.png')
+
             continue
         else:
             continue
