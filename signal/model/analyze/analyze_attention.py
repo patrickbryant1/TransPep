@@ -117,11 +117,11 @@ def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize,title_co
     #Plot activation matrix around the CS/or the whole matrix if no CS for the TP
     fig,ax = plt.subplots(figsize=figsize)
     im = plt.imshow(np.average(attention_matrix,axis=0),cmap='viridis') #In seqs on x, out annotations on y
-    if attention_matrix.shape[2]==28:
-        plt.axvline(24.5, color='y', linewidth=1, linestyle=':')
-        plt.axhline(2.5, color='y', linewidth=1, linestyle=':')
-        plt.xticks(ticks=np.arange(attention_matrix.shape[2]),labels=[-25,-24,-23,-22,-21,-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3])
-        plt.yticks(ticks=np.arange(attention_matrix.shape[1]),labels=[-3,-2,-1,1,2,3])
+    # if attention_matrix.shape[2]==28:
+    #     plt.axvline(24.5, color='y', linewidth=1, linestyle=':')
+    #     plt.axhline(2.5, color='y', linewidth=1, linestyle=':')
+    #     plt.xticks(ticks=np.arange(attention_matrix.shape[2]),labels=[-25,-24,-23,-22,-21,-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3])
+    #     plt.yticks(ticks=np.arange(attention_matrix.shape[1]),labels=[-3,-2,-1,1,2,3])
     plt.xlabel('Sequence position')
     plt.ylabel('Annotation position')
     plt.title(title_conversion[kingdom]+' '+type)
@@ -255,7 +255,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
             #Order the attention matrix and seqs around the CS properly
             type_enc_dec_attention_TP = enc_dec_attention[CS_TP]
-            cs_area = 28
+            cs_area = int(np.median(P_CS+1))+3
             ordered_type_enc_dec_attention_TP = np.zeros((len(type_enc_dec_attention_TP),6,cs_area))
             ordered_type_seqs_TP = np.zeros((len(type_seqs_TP),cs_area))
 
@@ -293,19 +293,20 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         #Convert to df
         aa_seq_df = pd.DataFrame(aa_freqs_type_TP,columns = [*AMINO_ACIDS.keys()])
         #Transform
-        # aa_seq_df =logomaker.transform_matrix(aa_seq_df,from_type='probability',to_type='information')
-        #
-        # #Logo
-        # fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
-        # aa_logo = logomaker.Logo(aa_seq_df, color_scheme=AA_color_scheme)
-        # plt.ylabel('Information (bits)')
-        # plt.xticks([])
-        # if type!='NO_SP':
-        #     aa_logo.ax.axvline(cs_area-3.5, color='k', linewidth=2, linestyle=':')
-        # plt.title(title_conversion[kingdom] + ' ' +type+' sequence')
-        # plt.tight_layout()
-        # plt.savefig(attention_dir+kingdom+'_aa_seq_logo_'+str(types[type])+'.png',format='png',dpi=300)
-        # plt.close()
+        aa_seq_df =logomaker.transform_matrix(aa_seq_df,from_type='probability',to_type='information')
+
+        #Logo
+        fig,ax = plt.subplots(figsize=(figsize[0]/2.54,figsize[1]/2.54))
+        aa_logo = logomaker.Logo(aa_seq_df, color_scheme=AA_color_scheme)
+        plt.ylabel('Information (bits)')
+        plt.xticks([])
+        if type!='NO_SP':
+            aa_logo.ax.axvline(cs_area-3.5, color='k', linewidth=2, linestyle=':')
+            plt.xticks(np.arange(cs_area),np.concatenate([np.arange(-cs_area+3,0),np.array([1,2,3])]))
+        plt.title(title_conversion[kingdom] + ' ' +type+' sequence')
+        plt.tight_layout()
+        plt.savefig(attention_dir+kingdom+'_aa_seq_logo_'+str(types[type])+'.png',format='png',dpi=300)
+        plt.close()
 
         #Plot attention matrix
         #TP
@@ -345,7 +346,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
 
         #Convert to dfs
         #Add pseudocount to aa_attention
-        aa_attention+=0.0001
+        #aa_attention+=0.0001
         aa_attention_df = pd.DataFrame(aa_attention,columns = [*AMINO_ACIDS.keys()])
         annotation_attention = annotation_attention[::-1,:] #Reverse order for plotting
         annotation_attention_df = pd.DataFrame(annotation_attention,columns = [*annotation_conversion.keys()])
@@ -360,6 +361,7 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
         plt.xticks([])
         if type!='NO_SP':
             aa_logo.ax.axvline(cs_area-3.5, color='k', linewidth=2, linestyle=':')
+            plt.xticks(np.arange(cs_area),np.concatenate([np.arange(-cs_area+3,0),np.array([1,2,3])]))
         plt.title(title_conversion[kingdom] + ' ' +type+' attention')
         plt.tight_layout()
         plt.savefig(attention_dir+kingdom+'_aa_enc_dec_attention_logo_'+str(types[type])+'.png',format='png',dpi=300)
