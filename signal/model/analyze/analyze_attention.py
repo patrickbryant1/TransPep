@@ -139,7 +139,6 @@ def plot_attention_matrix(attention_matrix,type,kingdom,outname,figsize,title_co
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['bottom'].set_visible(False)
-    plt.xticks(ticks=np.arange(attention_matrix.shape[2]),labels=[-25,-24,-23,-22,-21,-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3])
     plt.ylabel('Attention sum')
     plt.tight_layout()
     plt.savefig(outname[:-4]+'_bar.png',format='png',dpi=300)
@@ -169,6 +168,20 @@ def convert_TP_seqs(type_seqs_TP):
 
     return aa_freqs
 
+def translate_seq(seq):
+    '''Translate int seq back to char
+    '''
+    AMINO_ACIDS = { 0:'A',1:'R',2:'N',3:'D',4:'C',5:'E',
+                    6:'Q',7:'G',8:'H',9:'I',10:'L',11:'K',
+                    12:'M',13:'F',14:'P',15:'S',16:'T',17:'W',
+                    18:'Y',19:'V',20:'X'
+                  }
+
+    tr_seq =''
+    for i in seq:
+        tr_seq+=AMINO_ACIDS[i]
+
+    return tr_seq
 
 def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_annotations,pred_annotation_probs, enc_dec_attention, attention_dir, types, kingdom):
     '''Analyze the attention for a certain kingdom
@@ -276,6 +289,13 @@ def get_kingdom_attention(seqs, true_types, true_annotations, pred_types,pred_an
             #Reassign
             type_enc_dec_attention_TP = ordered_type_enc_dec_attention_TP
             type_seqs_TP = ordered_type_seqs_TP
+
+            #Look at K
+            #K occurrence
+            K_seqs = type_seqs_TP[np.argwhere(type_seqs_TP[:,-4]==11)][:,0,:]
+            s1 = translate_seq(K_seqs[0])
+            s2 = translate_seq(K_seqs[1])
+            pdb.set_trace()
             figsize=(9,4.5)
 
             #Plot attention matrix
@@ -402,7 +422,7 @@ def analyze_attention(seqs, kingdoms, true_types, true_annotations, pred_types,p
     types = {'NO_SP':0,'Sec/SPI':1,'Tat/SPI':2,'Sec/SPII':3}
     kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1}
 
-    for key in kingdom_conversion:
+    for key in ['EUKARYA']: #kingdom_conversion:
         kingdom_indices = np.argwhere(kingdoms==kingdom_conversion[key])[:,0]
         if key=='EUKARYA':
             types = {'NO_SP':0,'Sec/SPI':1}
