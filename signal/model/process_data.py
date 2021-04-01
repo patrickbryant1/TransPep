@@ -36,7 +36,7 @@ def parse_and_format(filename):
     Annotations = []
     #Conversions
     kingdom_conversion = {'ARCHAEA':0,'EUKARYA':1,'NEGATIVE':2,'POSITIVE':3}
-    annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
+    annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5,'C':6}
     AMINO_ACIDS = { 'A':0,'R':1,'N':2,'D':3,'C':4,'E':5,
                     'Q':6,'G':7,'H':8,'I':9,'L':10,'K':11,
                     'M':12,'F':13,'P':14,'S':15,'T':16,'W':17,
@@ -106,7 +106,10 @@ def parse_and_format(filename):
     for i in range(len(Annotations)):
 
         if min(Annotations[i])<3:
-            CSs.append(np.where(Annotations[i]<3)[0][-1])
+            cs_i = np.where(Annotations[i]<3)[0][-1]
+            CSs.append(cs_i)
+            #Replace with C=6
+            Annotations[i][cs_i]=6
         else:
             CSs.append(0)
 
