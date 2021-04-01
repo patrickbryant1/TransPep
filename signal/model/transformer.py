@@ -97,11 +97,11 @@ class DecoderBlock(layers.Layer):
         #Self-attention
         attn_output1,attn_weights1 = self.att(in_q,in_q,in_q) #The weights are needed for downstream analysis
         attn_output1 = self.dropout1(attn_output1, training=training)
-        out1 = self.layernorm1(in_v + attn_output1)
+        out1 = self.layernorm1(in_q + attn_output1)
         #Encoder-decoder attention
         attn_output2,attn_weights2 = self.att(out1,in_k,in_v) #The weights are needed for downstream analysis
         attn_output2 = self.dropout1(attn_output2, training=training)
-        out2 = self.layernorm1(attn_output2 + attn_output1)
+        out2 = self.layernorm1(attn_output2 + out1)
         ffn_output = self.ffn(out2)
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out2 + ffn_output), attn_weights2
