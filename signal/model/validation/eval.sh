@@ -2,10 +2,10 @@
 
 #Evaluate the loss
 DATADIR=../../data/
-RESULTSDIR=../../results/
+RESULTSDIR=../../results/focus/
 VARIABLE_PARAMS=../param_combos.csv
-#./eval_loss.py --resultsdir $RESULTSDIR --datadir $DATADIR --variable_params $VARIABLE_PARAMS
+./eval_loss.py --resultsdir $RESULTSDIR --datadir $DATADIR --variable_params $VARIABLE_PARAMS
 
 #Evaluate the validation
-RESULTSDIR=../../results/
+RESULTSDIR=../../results/focus/
 ./eval_valid.py --resultsdir $RESULTSDIR
