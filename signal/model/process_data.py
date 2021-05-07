@@ -108,8 +108,6 @@ def parse_and_format(filename):
         if min(Annotations[i])<3:
             cs_i = np.where(Annotations[i]<3)[0][-1]
             CSs.append(cs_i)
-            #Replace with C=6
-            Annotations[i][cs_i]=6
         else:
             CSs.append(0)
 

@@ -116,7 +116,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
 
     ##Embeddings
     embedding_layer1 = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 7, embed_dim+4) #Need to add 4 so that x1 and x2 match
+    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 6, embed_dim+4) #Need to add 4 so that x1 and x2 match
     x1 = embedding_layer1(seq_input)
     #Add kingdom input
     x1 = layers.Concatenate()([x1,kingdom_input])
@@ -134,13 +134,13 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
         for k in range(num_layers):
             x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
-        x2 = layers.Dense(7, activation="softmax")(x2) #Annotate
+        x2 = layers.Dense(6, activation="softmax")(x2) #Annotate
         x_rs = layers.Reshape((maxlen,7))(x2)
         x2 = tf.math.argmax(x_rs,axis=-1) #Needed for iterative training
         x2 = embedding_layer2(x2)
 
     x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
-    preds = layers.Dense(7, activation="softmax")(x2) #Annotate
+    preds = layers.Dense(6, activation="softmax")(x2) #Annotate
     #preds = layers.Reshape((maxlen,6),name='annotation')(x2)
     #pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
     #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
@@ -214,7 +214,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_train_kingdoms = train_kingdoms[train_i]
     x_train_kingdoms = np.repeat(np.expand_dims(x_train_kingdoms,axis=1),70,axis=1)
     #Random annotations are added as input
-    x_train_target_inp = np.random.randint(7,size=(len(train_i),maxlen))
+    x_train_target_inp = np.random.randint(6,size=(len(train_i),maxlen))
     x_train = [x_train_seqs,x_train_target_inp,x_train_kingdoms] #inp seq, target annoation, kingdom
     y_train = train_annotations[train_i] #,train_types[train_i]]
     #valid
@@ -222,7 +222,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_valid_kingdoms = train_kingdoms[valid_i]
     x_valid_kingdoms = np.repeat(np.expand_dims(x_valid_kingdoms,axis=1),70,axis=1)
     #Random annotations
-    x_valid_target_inp =  np.random.randint(7,size=(len(valid_i),maxlen))
+    x_valid_target_inp =  np.random.randint(6,size=(len(valid_i),maxlen))
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_kingdoms]
     y_valid = train_annotations[valid_i] #,train_types[valid_i]]
     #Model
