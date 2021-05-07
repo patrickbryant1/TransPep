@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import time
 from collections import Counter
-#Preprocessing 
+#Preprocessing
 from process_data import parse_and_format
 #Keras
 import tensorflow as tf
@@ -103,7 +103,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
 
     ##Embeddings
     embedding_layer1 = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 6, embed_dim+4) #Need to add 4 so that x1 and x2 match
+    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 7, embed_dim+4) #Need to add 4 so that x1 and x2 match
     x1 = embedding_layer1(seq_input)
     #Add kingdom input
     x1 = layers.Concatenate()([x1,kingdom_input])
@@ -121,13 +121,13 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
         for k in range(num_layers):
             x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
-        x2 = layers.Dense(6, activation="softmax")(x2) #Annotate
-        x_rs = layers.Reshape((maxlen,6))(x2)
+        x2 = layers.Dense(7, activation="softmax")(x2) #Annotate
+        x_rs = layers.Reshape((maxlen,7))(x2)
         x2 = tf.math.argmax(x_rs,axis=-1) #Needed for iterative training
         x2 = embedding_layer2(x2)
 
     x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
-    preds = layers.Dense(6, activation="softmax")(x2) #Annotate
+    preds = layers.Dense(7, activation="softmax")(x2) #Annotate
     #preds = layers.Reshape((maxlen,6),name='annotation')(x2)
     #pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
     #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
@@ -192,7 +192,7 @@ def get_data(datadir, valid_partition, maxlen):
     x_valid_kingdoms = train_kingdoms[valid_i]
     x_valid_kingdoms = np.repeat(np.expand_dims(x_valid_kingdoms,axis=1),70,axis=1)
     #Random annotations
-    x_valid_target_inp =  np.random.randint(6,size=(len(valid_i),maxlen))
+    x_valid_target_inp =  np.random.randint(7,size=(len(valid_i),maxlen))
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_kingdoms]
     y_valid = [train_annotations[valid_i],train_types[valid_i]]
 
@@ -286,18 +286,17 @@ def eval_type_cs(pred_annotations,pred_annotation_probs,pred_types,true_annotati
         type_annotation = Signal_type_annotations[type_name]
         #Get all true positive CSs
         P_annotations = true_annotations[np.intersect1d(P,pred_P)]
-        P_CS = []
-        for i in range(len(P_annotations)):
-            P_CS.append(np.argwhere(P_annotations[i]==type_annotation)[-1,0])
-
+        #P_CS = []
+        #for i in range(len(P_annotations)):
+            #P_CS.append(np.argwhere(P_annotations[i]==type_annotation)[-1,0])
+        P_CS = np.argwhere(P_annotations==6)[:,1]
         #Get all pred positive CSs from the true positives (all the other will be wrong)
         P_CS_pred = []
         P_annotations_pred = pred_annotations[np.intersect1d(P,pred_P)]
         P_annotation_probs_pred = pred_annotation_probs[np.intersect1d(P,pred_P)]
         for i in range(len(P_annotations_pred)):
             try:
-                pdb.set_trace()
-                P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
+                P_CS_pred.append(np.argwhere(P_annotations_pred[i]==6)[-1,0])
             except:
                 P_CS_pred.append(0)
 
@@ -335,7 +334,6 @@ def eval_type_cs(pred_annotations,pred_annotation_probs,pred_types,true_annotati
         Precisions.append([*CS_precision.values()])
         Recalls.append([*CS_recall.values()])
 
-
     return fetched_types, MCCs, Precisions, Recalls
 
 
@@ -360,6 +358,7 @@ all_kingdoms = []
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #weights
     weights=glob.glob(checkpointdir+'vp'+str(valid_partition)+'/*.hdf5')
+
     if len(weights)<1:
         continue
     #model
