@@ -174,8 +174,6 @@ checkpoint = bool(args.checkpoint[0])
 num_epochs = args.num_epochs[0]
 outdir = args.outdir[0]
 
-#Get data
-parse_and_format(datadir+'targetp.fasta')
 #Params
 net_params = variable_params.loc[param_combo-1]
 test_partition = int(net_params['test_partition'])
@@ -183,8 +181,10 @@ test_partition = int(net_params['test_partition'])
 vocab_size = 21  #Amino acids and unknown (X)
 maxlen = 200  # Only consider the first 70 amino acids
 
-#Load data
+#Get data
 data = np.load(datadir+'targetp_data.npz') #'x', 'y_cs', 'y_type', 'len_seq', 'org', 'fold', 'ids'
+parse_and_format(datadir+'targetp.fasta',data)
+
 folds = data['fold']
 #Get data
 #Run through all by taking as input
