@@ -77,5 +77,11 @@ def parse_and_format(filename,data):
     #Get sequences
     Seqs = []
     [Seqs.append(np.array(seq)) for seq in merged.Sequence]
+    #Drop sequences from merged
+    merged = merged.drop(columns=['Sequence'])
 
-    return merged, np.array(Seqs), annotations
+    #Get organisms
+    #Protein organism (org) defines whether the protein is from plant 1 or non-plant 0.
+    Orgs = np.eye(2)[merged.Org.values]
+
+    return merged, np.array(Seqs), annotations, Orgs

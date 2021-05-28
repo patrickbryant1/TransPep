@@ -181,44 +181,36 @@ test_partition = int(net_params['test_partition'])
 vocab_size = 21  #Amino acids and unknown (X)
 maxlen = 200  # Only consider the first 70 amino acids
 
+
 #Get data
-data = np.load(datadir+'targetp_data.npz') #'x', 'y_cs', 'y_type', 'len_seq', 'org', 'fold', 'ids'
-meta, annotations, sequences = parse_and_format(datadir+'targetp.fasta',data)
-pdb.set_trace()
-#Save
-meta.to_csv(datadir+'meta.csv',index=False)
-np.save(datadir+'annotations.npy',annotations)
-np.save(datadir+'sequences.npy',sequences)
-folds = data['fold']
+try:
+    meta = pd.read_csv(datadir+'meta.csv')
+    annotations = np.load(datadir+'annotations.npy', allow_pickle=True)
+    sequences = np.load(datadir+'sequences.npy', allow_pickle=True)
+    organisms = np.load(datadir+'organisms.npy', allow_pickle=True)
+except:
+    data = np.load(datadir+'targetp_data.npz') #'x', 'y_cs', 'y_type', 'len_seq', 'org', 'fold', 'ids'
+    meta, annotations, sequences, organisms = parse_and_format(datadir+'targetp.fasta',data)
+    #Save
+    meta.to_csv(datadir+'meta.csv',index=False)
+    np.save(datadir+'annotations.npy',annotations)
+    np.save(datadir+'sequences.npy',sequences)
+    np.save(datadir+'organisms.npy',organisms)
+
+
 #Get data
 #Run through all by taking as input
 # Nested cross-validation loop with 5 folds from https://github.com/JJAlmagro/TargetP-2.0/blob/master/train.py
-test_i = np.where(folds ==test_partition)[0]
+test_i = np.where(meta.Fold ==test_partition)[0]
 train_losses = []
 valid_losses = []
 inner_partitions_interval = np.setdiff1d(np.arange(5),test_partition)
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     print('Validation partition',valid_partition)
-    valid_i = np.where(folds ==valid_partition)[0]
-    train_i = np.setdiff1d(np.arange(len(folds)),np.concatenate([test_i,valid_i]))
+    valid_i = np.where(meta.Fold==valid_partition)[0]
+    train_i = np.setdiff1d(np.arange(len(meta)),np.concatenate([test_i,valid_i]))
 
-    # Load training data
-    x_train = data['x'][train_i] #x_train.shape (7796, 200, 20) - 200 longx20 onehot enc aa
-    y_train = data['y_cs'][train_i] #y_train.shape (7796, 200) - 200 long, CS marked with a 1, rest 0
+    #Training data
 
-
-    len_train = data['len_seq'][train_i]
-    org_train = data['org'][train_i]
-    #5 classes of transit peptides
-    #0=no targeting peptide, 1=sp: signal peptide, 2=mt:mitochondrial transit peptide,
-    #3=ch:chloroplast transit peptide, 4=th:thylakoidal lumen composite transit peptide
-    tp_train = data['y_type'][train_i]
-
-    # Load validation data
-    x_val = data['x'][valid_i]
-    y_val = data['y_cs'][valid_i]
-    len_val = data['len_seq'][valid_i]
-    org_val = data['org'][valid_i]
-    tp_val = data['y_type'][valid_i]
 
     pdb.set_trace()
