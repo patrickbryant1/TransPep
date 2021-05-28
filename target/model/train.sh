@@ -7,5 +7,5 @@ CHECKPOINT=1
 NUM_EPOCHS=50
 OUTDIR=../results/
 
-TEST_PARTITION=0
-python3 ./transformer.py --datadir $DATADIR --test_partition $TEST_PARTITION --checkpointdir $CHECKPOINTDIR'TP'$TEST_PARTITION'/' --save_model $SAVE_MODEL --checkpoint $CHECKPOINT --num_epochs $NUM_EPOCHS --outdir $OUTDIR
+PARAM_COMBO=1
+python3 ./transformer.py --datadir $DATADIR --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR'TP'$TEST_PARTITION'/' --save_model $SAVE_MODEL --checkpoint $CHECKPOINT --num_epochs $NUM_EPOCHS --outdir $OUTDIR

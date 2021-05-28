@@ -18,7 +18,7 @@ def sparse_categorical_focal_loss(y_true, y_pred, gamma, *,
                                   class_weight: Optional[Any] = None,
                                   from_logits: bool = False, axis: int = -1
                                   ) -> tf.Tensor:
-    r"""Focal loss function for multiclass classification with integer labels.
+    """Focal loss function for multiclass classification with integer labels.
 
     This loss function generalizes multiclass softmax cross-entropy by
     introducing a hyperparameter called the *focusing parameter* that allows

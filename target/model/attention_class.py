@@ -1,5 +1,7 @@
 import tensorflow as tf
-from tensorflow import keras
+import tensorflow.keras as keras
+
+
 class MultiHeadSelfAttention(keras.layers.Layer):
     def __init__(self, embed_dim, num_heads=8):
         super(MultiHeadSelfAttention, self).__init__()
@@ -17,7 +19,7 @@ class MultiHeadSelfAttention(keras.layers.Layer):
     def attention(self, q, k, v):
         score = tf.matmul(q, k, transpose_b=True)
         dk = tf.cast(tf.shape(k)[-1], tf.float32)
-        scaled_score = score / tf.math.sqrt(dk)
+        scaled_score = score / tf.math.sqrt(dk) #Normalize - otherwise the gradients will quickly explode
         weights = tf.nn.softmax(scaled_score, axis=-1)
         output = tf.matmul(weights, v)
         return output, weights
@@ -26,12 +28,12 @@ class MultiHeadSelfAttention(keras.layers.Layer):
         x = tf.reshape(x, (batch_size, -1, self.num_heads, self.projection_dim))
         return tf.transpose(x, perm=[0, 2, 1, 3])
 
-    def call(self, x):
+    def call(self,x,y,z):
         # x.shape = [batch_size, seq_len, embedding_dim]
         batch_size = tf.shape(x)[0]
         q = self.wq(x)  # (batch_size, seq_len, embed_dim)
-        k = self.wk(x)  # (batch_size, seq_len, embed_dim)
-        v = self.wv(x)  # (batch_size, seq_len, embed_dim)
+        k = self.wk(y)  # (batch_size, seq_len, embed_dim)
+        v = self.wv(z)  # (batch_size, seq_len, embed_dim)
         q = self.separate_heads(
             q, batch_size
         )  # (batch_size, num_heads, seq_len, projection_dim)
@@ -51,4 +53,4 @@ class MultiHeadSelfAttention(keras.layers.Layer):
         output = self.combine_heads(
             concat_attention
         )  # (batch_size, seq_len, embed_dim)
-        return output
+        return output, weights
