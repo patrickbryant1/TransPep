@@ -187,15 +187,15 @@ try:
     meta = pd.read_csv(datadir+'meta.csv')
     annotations = np.load(datadir+'annotations.npy', allow_pickle=True)
     sequences = np.load(datadir+'sequences.npy', allow_pickle=True)
-    organisms = np.load(datadir+'organisms.npy', allow_pickle=True)
+
 except:
     data = np.load(datadir+'targetp_data.npz') #'x', 'y_cs', 'y_type', 'len_seq', 'org', 'fold', 'ids'
-    meta, annotations, sequences, organisms = parse_and_format(datadir+'targetp.fasta',data)
+    meta,  sequences, annotations = parse_and_format(datadir+'targetp.fasta',data)
     #Save
     meta.to_csv(datadir+'meta.csv',index=False)
     np.save(datadir+'annotations.npy',annotations)
     np.save(datadir+'sequences.npy',sequences)
-    np.save(datadir+'organisms.npy',organisms)
+
 
 
 #Get data
@@ -211,6 +211,19 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     train_i = np.setdiff1d(np.arange(len(meta)),np.concatenate([test_i,valid_i]))
 
     #Training data
+    x_train_seqs = sequences[train_i]
+    x_train_orgs = np.repeat(np.expand_dims(meta.Org[train_i],axis=1),maxlen,axis=1)
+    #Random annotations are added as input
+    x_train_target_inp = np.random.randint(5,size=(len(train_i),maxlen))
+    x_train = [x_train_seqs,x_train_target_inp,x_train_orgs] #inp seq, target annoation, organism
+    y_train = annotations[train_i] #,train_types[train_i]]
 
+    #Validation data
+    x_valid_seqs = sequences[valid_i]
+    x_valid_orgs = np.repeat(np.expand_dims(meta.Org[valid_i],axis=1),maxlen,axis=1)
+    #Random annotations are added as input
+    x_valid_target_inp = np.random.randint(5,size=(len(valid_i),maxlen))
+    x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_orgs] #inp seq, target annoation, organism
+    y_valid = annotations[valid_i] #,train_types[train_i]]
 
     pdb.set_trace()
