@@ -19,6 +19,8 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 #visualization
 from tensorflow.keras.callbacks import TensorBoard
 
+#Custom
+from process_data import parse_and_format
 from attention_class import MultiHeadSelfAttention
 #from lr_finder import LRFinder
 
@@ -27,7 +29,6 @@ import pdb
 #Arguments for argparse module:
 parser = argparse.ArgumentParser(description = '''A Transformer Neural Network for sorting peptides.''')
 
-parser.add_argument('--train_data', nargs=1, type= str, default=sys.stdin, help = 'Path to training data in fasta format.')
 parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = 'Path to data directory.')
 parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with variable params.')
 parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
@@ -166,52 +167,54 @@ args = parser.parse_args()
 datadir = args.datadir[0]
 #Get parameters
 variable_params=pd.read_csv(args.variable_params[0])
+param_combo = args.param_combo[0]
 checkpointdir = args.checkpointdir[0]
 save_model = bool(args.save_model[0])
 checkpoint = bool(args.checkpoint[0])
 num_epochs = args.num_epochs[0]
 outdir = args.outdir[0]
 
+#Get data
+parse_and_format(datadir+'targetp.fasta')
+#Params
+net_params = variable_params.loc[param_combo-1]
+test_partition = int(net_params['test_partition'])
+#Fixed params
+vocab_size = 21  #Amino acids and unknown (X)
+maxlen = 200  # Only consider the first 70 amino acids
+
 #Load data
-data = np.load(datadir+'targetp_data.npz')
+data = np.load(datadir+'targetp_data.npz') #'x', 'y_cs', 'y_type', 'len_seq', 'org', 'fold', 'ids'
 folds = data['fold']
 #Get data
 #Run through all by taking as input
 # Nested cross-validation loop with 5 folds from https://github.com/JJAlmagro/TargetP-2.0/blob/master/train.py
-partitions_interval = np.arange(5)
-for test_partition in partitions_interval:
-    inner_partitions_interval = partitions_interval[partitions_interval != test_partition]
-    # Inner cross-validation
-    for val_partition in inner_partitions_interval:
-        # Create directory to store the model
-        try:
-            os.mkdir('%spartition_%i_%i' % (outdir, test_partition, val_partition))
-        except:
-            print('%spartition_%i_%i' % (outdir, test_partition, val_partition),'exists')
-        model_file = "%spartition_%i_%i/model" % (outdir, test_partition, val_partition)
+test_i = np.where(folds ==test_partition)[0]
+train_losses = []
+valid_losses = []
+inner_partitions_interval = np.setdiff1d(np.arange(5),test_partition)
+for valid_partition in np.setdiff1d(np.arange(5),test_partition):
+    print('Validation partition',valid_partition)
+    valid_i = np.where(folds ==valid_partition)[0]
+    train_i = np.setdiff1d(np.arange(len(folds)),np.concatenate([test_i,valid_i]))
 
-        # Define train and validation splits
-        train_partition = inner_partitions_interval[inner_partitions_interval != val_partition]
-        train_set = np.in1d(folds.ravel(), train_partition).reshape(folds.shape)
-        val_set = np.where(folds == val_partition)
-
-        # Load training data
-        x_train = data['x'][train_set] #x_train.shape (7796, 200, 20) - 200 longx20 onehot enc aa
-        y_train = data['y_cs'][train_set] #y_train.shape (7796, 200) - 200 long, CS marked with a 1, rest 0
+    # Load training data
+    x_train = data['x'][train_i] #x_train.shape (7796, 200, 20) - 200 longx20 onehot enc aa
+    y_train = data['y_cs'][train_i] #y_train.shape (7796, 200) - 200 long, CS marked with a 1, rest 0
 
 
-        len_train = data['len_seq'][train_set]
-        org_train = data['org'][train_set]
-        #5 classes of transit peptides
-        #0=no targeting peptide, 1=sp: signal peptide, 2=mt:mitochondrial transit peptide,
-        #3=ch:chloroplast transit peptide, 4=th:thylakoidal lumen composite transit peptide
-        tp_train = data['y_type'][train_set]
+    len_train = data['len_seq'][train_i]
+    org_train = data['org'][train_i]
+    #5 classes of transit peptides
+    #0=no targeting peptide, 1=sp: signal peptide, 2=mt:mitochondrial transit peptide,
+    #3=ch:chloroplast transit peptide, 4=th:thylakoidal lumen composite transit peptide
+    tp_train = data['y_type'][train_i]
 
-        # Load validation data
-        x_val = data['x'][val_set]
-        y_val = data['y_cs'][val_set]
-        len_val = data['len_seq'][val_set]
-        org_val = data['org'][val_set]
-        tp_val = data['y_type'][val_set]
+    # Load validation data
+    x_val = data['x'][valid_i]
+    y_val = data['y_cs'][valid_i]
+    len_val = data['len_seq'][valid_i]
+    org_val = data['org'][valid_i]
+    tp_val = data['y_type'][valid_i]
 
-        pdb.set_trace()
+    pdb.set_trace()
