@@ -135,7 +135,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
             x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
         x2 = layers.Dense(6, activation="softmax")(x2) #Annotate
-        x_rs = layers.Reshape((maxlen,7))(x2)
+        x_rs = layers.Reshape((maxlen,6))(x2)
         x2 = tf.math.argmax(x_rs,axis=-1) #Needed for iterative training
         x2 = embedding_layer2(x2)
 

@@ -112,19 +112,19 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
 
     seq_input = layers.Input(shape=(maxlen,)) #Input aa sequences
     seq_target = layers.Input(shape=(maxlen,)) #Targets - annotations
-    kingdom_input = layers.Input(shape=(maxlen,4)) #4 kingdoms, Archaea, Eukarya, Gram +, Gram -
+    org_input = layers.Input(shape=(maxlen,2)) #2 Organisms plant/not
 
     ##Embeddings
     embedding_layer1 = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 6, embed_dim+4) #Need to add 4 so that x1 and x2 match
+    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 5, embed_dim+2) #5 annotation classes. Need to add 4 so that x1 and x2 match
     x1 = embedding_layer1(seq_input)
     #Add kingdom input
-    x1 = layers.Concatenate()([x1,kingdom_input])
+    x1 = layers.Concatenate()([x1,org_input])
     x2 = embedding_layer2(seq_target)
 
     #Define the transformer
-    encoder = EncoderBlock(embed_dim+4, num_heads, ff_dim)
-    decoder = DecoderBlock(embed_dim+4, num_heads, ff_dim)
+    encoder = EncoderBlock(embed_dim+2, num_heads, ff_dim)
+    decoder = DecoderBlock(embed_dim+2, num_heads, ff_dim)
     #Iterate
     for i in range(num_iterations):
         #Encode
@@ -134,19 +134,16 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
         for k in range(num_layers):
             x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
-        x2 = layers.Dense(6, activation="softmax")(x2) #Annotate
-        x_rs = layers.Reshape((maxlen,7))(x2)
+        x2 = layers.Dense(5, activation="softmax")(x2) #Annotate
+        x_rs = layers.Reshape((maxlen,5))(x2)
         x2 = tf.math.argmax(x_rs,axis=-1) #Needed for iterative training
         x2 = embedding_layer2(x2)
 
     x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
-    preds = layers.Dense(6, activation="softmax")(x2) #Annotate
-    #preds = layers.Reshape((maxlen,6),name='annotation')(x2)
-    #pred_type = layers.Dense(4, activation="softmax",name='type')(x) #Type of protein
-    #pred_cs = layers.Dense(1, activation="elu", name='pred_cs')(x)
+    preds = layers.Dense(5, activation="softmax")(x2) #Annotate
 
 
-    model = keras.Model(inputs=[seq_input,seq_target,kingdom_input], outputs=preds)
+    model = keras.Model(inputs=[seq_input,seq_target,org_input], outputs=preds)
     #Optimizer
     initial_learning_rate = 0.001
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
@@ -212,7 +209,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
     #Training data
     x_train_seqs = sequences[train_i]
-    x_train_orgs = np.repeat(np.expand_dims(meta.Org[train_i],axis=1),maxlen,axis=1)
+    x_train_orgs = np.repeat(np.expand_dims(np.eye(2)[meta.Org[train_i]],axis=1),maxlen,axis=1)
     #Random annotations are added as input
     x_train_target_inp = np.random.randint(5,size=(len(train_i),maxlen))
     x_train = [x_train_seqs,x_train_target_inp,x_train_orgs] #inp seq, target annoation, organism
@@ -220,10 +217,51 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
     #Validation data
     x_valid_seqs = sequences[valid_i]
-    x_valid_orgs = np.repeat(np.expand_dims(meta.Org[valid_i],axis=1),maxlen,axis=1)
+    x_valid_orgs = np.repeat(np.expand_dims(np.eye(2)[meta.Org[valid_i]],axis=1),maxlen,axis=1)
     #Random annotations are added as input
     x_valid_target_inp = np.random.randint(5,size=(len(valid_i),maxlen))
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_orgs] #inp seq, target annoation, organism
     y_valid = annotations[valid_i] #,train_types[train_i]]
 
-    pdb.set_trace()
+    #Model
+    #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
+    #Variable params
+    embed_dim = int(net_params['embed_dim']) #32  # Embedding size for each token
+    num_heads = int(net_params['num_heads']) #1  # Number of attention heads
+    ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
+    num_layers = int(net_params['num_layers']) #1  # Number of attention heads
+    batch_size = int(net_params['batch_size']) #32
+    num_iterations = int(net_params['num_iterations'])
+
+    #Create model
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
+
+    #Summary of model
+    print(model.summary())
+    #Checkpoint
+    if checkpoint == True:
+        #Make dir
+        try:
+            os.mkdir(checkpointdir+'vp'+str(valid_partition))
+        except:
+            print('Checkpoint directory exists...')
+
+        checkpoint_path=checkpointdir+'vp'+str(valid_partition)+"/weights_{epoch:02d}.hdf5"
+        checkpointer = tf.keras.callbacks.ModelCheckpoint(
+        checkpoint_path, monitor='val_loss', verbose=0, save_best_only=True,
+        save_weights_only=True, mode='auto', save_freq='epoch')
+
+        #Callbacks
+        callbacks=[checkpointer]
+    else:
+        callbacks = []
+
+    history = model.fit(
+        x_train, y_train, batch_size=batch_size, epochs=num_epochs,
+        validation_data=(x_valid, y_valid),
+        callbacks=callbacks
+    )
+
+    #Save loss
+    train_losses.append(history.history['loss'])
+    valid_losses.append(history.history['val_loss'])
