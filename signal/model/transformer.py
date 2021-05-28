@@ -34,7 +34,6 @@ parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = '
 parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with variable params.')
 parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
 parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = 'Path to checpoint directory. Include /in end')
-parser.add_argument('--save_model', nargs=1, type= int, default=sys.stdin, help = 'If to save model or not: 1= True, 0 = False')
 parser.add_argument('--checkpoint', nargs=1, type= int, default=sys.stdin, help = 'If to checkpoint or not: 1= True, 0 = False')
 parser.add_argument('--num_epochs', nargs=1, type= int, default=sys.stdin, help = 'Num epochs (int)')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'Path to output directory. Include /in end')
@@ -180,7 +179,6 @@ except:
 variable_params=pd.read_csv(args.variable_params[0])
 param_combo=args.param_combo[0]
 checkpointdir = args.checkpointdir[0]
-save_model = bool(args.save_model[0])
 checkpoint = bool(args.checkpoint[0])
 num_epochs = args.num_epochs[0]
 outdir = args.outdir[0]
