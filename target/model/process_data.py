@@ -1,6 +1,7 @@
 
 import pdb
 import pandas as pd
+import numpy as np
 ###########FUNTIONS###########
 def parse_and_format(filename,data):
     '''Parse and format the data:
@@ -26,6 +27,14 @@ def parse_and_format(filename,data):
                 current_seq = []
                 for char in line:
                     current_seq.append(AMINO_ACIDS[char])
+                #Pad or cut
+                if len(current_seq)>200:
+                    current_seq = current_seq[:200]
+                else:
+                    pad = np.zeros(200)
+                    pad = 20 #Unknown/unusual
+                    pad[:len(current_seq)]=current_seq
+                    current_seq = pad
                 Seqs.append(current_seq)
 
 
@@ -35,11 +44,23 @@ def parse_and_format(filename,data):
 
     #Get the partitions and annotations from data
     ['x', 'y_cs', 'y_type', 'len_seq', 'org', 'fold', 'ids']
+    #CS
     CS = data['y_cs']
+    CS_num = np.zeros(len(CS)) #Number in sequence
+    CS_pos = np.argwhere(CS==1) #Which seqs have CS and where
+    CS_num[CS_pos[:,0]]=CS_pos[:,1] #Assign
+    #Types
     Types = data['y_type']
     Orgs = data['org']
     Folds = data['fold']
     IDs = data['ids']
+    #Annotation df
     annotation_df = pd.DataFrame()
-    annotation_df['CS'] = CS
+    annotation_df['CS'] = CS_num
+    annotation_df['Type'] = Types
+    annotation_df['Org'] = Orgs
+    annotation_df['Fold'] = Folds
+    annotation_df['ID'] = IDs
+    #Merge
+    merged = pd.merge(annotation_df,fasta_df,on='ID')
     pdb.set_trace()
