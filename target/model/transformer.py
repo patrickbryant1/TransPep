@@ -183,8 +183,12 @@ maxlen = 200  # Only consider the first 70 amino acids
 
 #Get data
 data = np.load(datadir+'targetp_data.npz') #'x', 'y_cs', 'y_type', 'len_seq', 'org', 'fold', 'ids'
-parse_and_format(datadir+'targetp.fasta',data)
-
+meta, annotations, sequences = parse_and_format(datadir+'targetp.fasta',data)
+pdb.set_trace()
+#Save
+meta.to_csv(datadir+'meta.csv',index=False)
+np.save(datadir+'annotations.npy',annotations)
+np.save(datadir+'sequences.npy',sequences)
 folds = data['fold']
 #Get data
 #Run through all by taking as input

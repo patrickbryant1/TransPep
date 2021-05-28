@@ -32,7 +32,7 @@ def parse_and_format(filename,data):
                     current_seq = current_seq[:200]
                 else:
                     pad = np.zeros(200)
-                    pad = 20 #Unknown/unusual
+                    pad[:] = 20 #Unknown/unusual
                     pad[:len(current_seq)]=current_seq
                     current_seq = pad
                 Seqs.append(current_seq)
@@ -63,4 +63,19 @@ def parse_and_format(filename,data):
     annotation_df['ID'] = IDs
     #Merge
     merged = pd.merge(annotation_df,fasta_df,on='ID')
-    pdb.set_trace()
+
+    #Create annotations
+    #5 classes of transit peptides
+    #0=no targeting peptide, 1=sp: signal peptide, 2=mt:mitochondrial transit peptide,
+    #3=ch:chloroplast transit peptide, 4=th:thylakoidal lumen composite transit peptide
+    annotations = np.zeros((len(merged),200))
+    for i in range(len(merged)):
+        row = merged.loc[i]
+        annotations[i,:int(row.CS)]=row.Type
+
+
+    #Get sequences
+    Seqs = []
+    [Seqs.append(np.array(seq)) for seq in merged.Sequence]
+
+    return merged, np.array(Seqs), annotations
