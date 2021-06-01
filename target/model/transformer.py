@@ -240,11 +240,11 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     if checkpoint == True:
         #Make dir
         try:
-            os.mkdir(checkpointdir+'vp'+str(valid_partition))
+            os.mkdir(checkpointdir+'tp'+str(test_partition)+'/vp'+str(valid_partition))
         except:
             print('Checkpoint directory exists...')
 
-        checkpoint_path=checkpointdir+'vp'+str(valid_partition)+"/weights_{epoch:02d}.hdf5"
+        checkpoint_path=checkpointdir+'tp'+str(test_partition)+'/vp'+str(valid_partition)+"/weights_"+str(param_combo)+"_{epoch:02d}.hdf5"
         checkpointer = tf.keras.callbacks.ModelCheckpoint(
         checkpoint_path, monitor='val_loss', verbose=0, save_best_only=True,
         save_weights_only=True, mode='auto', save_freq='epoch')
