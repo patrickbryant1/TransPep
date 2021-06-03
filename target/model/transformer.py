@@ -46,7 +46,6 @@ parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'P
 #set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 #####FUNCTIONS and CLASSES#####
-#####FUNCTIONS and CLASSES#####
 class TokenAndPositionEmbedding(layers.Layer):
     def __init__(self, maxlen, vocab_size, embed_dim):
         super(TokenAndPositionEmbedding, self).__init__()
