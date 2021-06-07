@@ -179,7 +179,11 @@ def get_data(datadir, valid_partition, maxlen, vocab_size):
     x_valid_target_inp = np.random.randint(5,size=(len(valid_i),maxlen))
     y_valid = annotations[valid_i] #,train_types[train_i]]
 
-    return x_valid_seqs,x_valid_orgs, x_valid_target_inp, y_valid
+    #Get the true types and CS
+    true_types = meta.Type.values[valid_i]
+    true_CS = meta.CS.values[valid_i]
+
+    return x_valid_seqs,x_valid_orgs, x_valid_target_inp, y_valid, true_types, true_CS
 
 def run_model(model,x_valid):
     preds = model.predict(x_valid)
@@ -338,8 +342,11 @@ test_partition = int(net_params['test_partition'])
 vocab_size = 21  #Amino acids and unknown (X)
 maxlen = 200  # Only consider the first 70 amino acids
 
-#Load and run model
-#Get data for each valid partition
+#Load and run model for each valid partition
+all_pred_annotations = []
+all_true_annotations = []
+all_true_types = []
+all_true_CS = []
 
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #weights
@@ -347,22 +354,21 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #model
     model = load_model(net_params, vocab_size, maxlen, weights[0])
     #Get data
-    x_valid_seqs,x_valid_orgs, x_valid_target_inp, y_valid = get_data(datadir, valid_partition, maxlen, vocab_size)
+    x_valid_seqs,x_valid_orgs, x_valid_target_inp, y_valid, true_types, true_CS = get_data(datadir, valid_partition, maxlen, vocab_size)
     #Predict
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_orgs] #inp seq, target annoation, organism
     preds = run_model(model,x_valid)
-    pdb.set_trace()
-    #Fetch
-    pred_annotations = np.argmax(preds,axis=2)
-    true_annotations = y_valid[0]
-    true_types = y_valid[1]
-    kingdoms = np.argmax(x_valid_kingdoms[:,0,:],axis=1)
+
+    #Pred and true annotations
+    y_pred = np.argmax(preds,axis=2)
+
     #Save
-    all_pred_annotations.extend([*pred_annotations])
-    all_pred_annotation_probs.extend([*preds])
+    #Pred
+    all_pred_annotations.extend([*y_pred])
+    #True
+    all_true_annotations.extend([*y_valid])
     all_true_types.extend([*true_types])
-    all_true_annotations.extend([*true_annotations])
-    all_kingdoms.extend([*kingdoms])
+    all_true_CS.extend([*true_CS])
 
 
 
