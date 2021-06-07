@@ -242,7 +242,7 @@ def eval_type_cs(pred_annotations, pred_types, true_annotations, true_types, tru
 
     type_conversion = {0:'No target', 1:'SP', 2:'MT', 3:'CH', 4:'TH'}
     #Save
-    CS_recalls = {0:[],5:[]}
+    CS_recalls = {'0':[],'5':[]}
     type_recalls = []
     type_precisions = []
     F1s = []
@@ -259,10 +259,16 @@ def eval_type_cs(pred_annotations, pred_types, true_annotations, true_types, tru
         #Get the pred pos and neg
         pred_P = np.argwhere(pred_types==type)[:,0]
         pred_N = np.argwhere(pred_types!=type)[:,0]
-        pdb.set_trace()
+
         #TP and TN
         TP = np.intersect1d(P,pred_P).shape[0]
         if TP<1:
+            type_recalls.append(0)
+            type_precisions.append(0)
+            F1s.append(0)
+            MCCs.append(0)
+            CS_recalls['0'].append(0)
+            CS_recalls['5'].append(0)
             continue
         FP = len(pred_P)-TP
         TN = np.intersect1d(N,pred_N).shape[0]
@@ -277,6 +283,10 @@ def eval_type_cs(pred_annotations, pred_types, true_annotations, true_types, tru
         MCCs.append((TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN)))
 
         #CS metrics
+        if type==0: #NO CS
+            CS_recalls['0'].append(0)
+            CS_recalls['5'].append(0)
+            continue
         #Get all true positive CSs
         P_CS  = true_CS[np.intersect1d(P,pred_P)]
 
@@ -303,14 +313,13 @@ def eval_type_cs(pred_annotations, pred_types, true_annotations, true_types, tru
 
         #Calculate CS precision and recall
         for d in [0,5]:
-            CS_recalls[d] = TP_CS[d]/P.shape[0]
+            CS_recalls[str(d)].append(TP_CS[d]/P.shape[0])
 
-    pdb.set_trace()
     #Create df
     eval_df = pd.DataFrame()
     eval_df['Type']=[*type_conversion.values()]
-    eval_df['CS_recall_0'] = CS_recalls[0]
-    eval_df['CS_recall_5'] = CS_recalls[5]
+    eval_df['CS_recall_0'] = CS_recalls['0']
+    eval_df['CS_recall_5'] = CS_recalls['5']
     eval_df['Type_recall']=type_recalls
     eval_df['Type_precision']=type_precisions
     eval_df['Type_F1']=F1s
