@@ -224,7 +224,7 @@ def get_pred_types(pred_annotations):
     return np.array(pred_types)
 
 
-def eval_type_cs(pred_annotations, true_annotations, true_types, true_CS):
+def eval_type_cs(pred_annotations, pred_types, true_annotations, true_types, true_CS):
     '''
     5 classes of transit peptides
     0=no targeting peptide, 1=sp: signal peptide, 2=mt:mitochondrial transit peptide,
@@ -242,22 +242,23 @@ def eval_type_cs(pred_annotations, true_annotations, true_types, true_CS):
 
     type_conversion = {0:'No target', 1:'SP', 2:'MT', 3:'CH', 4:'TH'}
     #Save
-    CS_recall = []
-    type_recall = []
+    CS_recalls = {0:[],5:[]}
+    type_recalls = []
     type_precisions = []
     F1s = []
     MCCs = []
 
 
     #Go through all types
-    for type in type_coversion:
+    for type in type_conversion:
 
+        #Type metrics
         P = np.argwhere(true_types==type)[:,0]
         N = np.argwhere(true_types!=type)[:,0]
         #Calc TP and FP
         #Get the pred pos and neg
-        pred_P = np.argwhere(pred_types==type_enc)[:,0]
-        pred_N = np.argwhere(pred_types!=type_enc)[:,0]
+        pred_P = np.argwhere(pred_types==type)[:,0]
+        pred_N = np.argwhere(pred_types!=type)[:,0]
         pdb.set_trace()
         #TP and TN
         TP = np.intersect1d(P,pred_P).shape[0]
@@ -266,64 +267,56 @@ def eval_type_cs(pred_annotations, true_annotations, true_types, true_CS):
         FP = len(pred_P)-TP
         TN = np.intersect1d(N,pred_N).shape[0]
         FN= len(pred_N)-TN
-        #MCC
-        MCC = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
 
-        #Get the CS
-        type_annotation = Signal_type_annotations[type_name]
+        #Precision and recall
+        type_recalls.append(TP/P.shape[0])
+        type_precisions.append(TP/(TP+FP))
+        #F1
+        F1s.append(2/(1/type_recalls[-1]+1/type_precisions[-1]))
+        #MCC
+        MCCs.append((TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN)))
+
+        #CS metrics
         #Get all true positive CSs
-        P_annotations = true_annotations[np.intersect1d(P,pred_P)]
-        P_CS = []
-        for i in range(len(P_annotations)):
-            P_CS.append(np.argwhere(P_annotations[i]==type_annotation)[-1,0])
+        P_CS  = true_CS[np.intersect1d(P,pred_P)]
 
         #Get all pred positive CSs from the true positives (all the other will be wrong)
         P_CS_pred = []
         P_annotations_pred = pred_annotations[np.intersect1d(P,pred_P)]
-        P_annotation_probs_pred = pred_annotation_probs[np.intersect1d(P,pred_P)]
         for i in range(len(P_annotations_pred)):
-            try:
-                pdb.set_trace()
-                P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type_annotation)[-1,0])
-            except:
-                P_CS_pred.append(0)
-
+            P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type)[-1,0])
 
         #Get the TP and FP CS
-        TP_CS = {0:0,1:0,2:0,3:0} #exact CS, +/-1 error, +/-2 error, +/-3 error
-        FP_CS = {0:0,1:0,2:0,3:0}
+        TP_CS = {0:0,5:0} #exact CS, +/-1 error, +/-2 error, +/-3 error
+        FP_CS = {0:0,5:0}
         for i in range(len(P_CS)):
             CS_diff = P_CS[i]-P_CS_pred[i]
-            for d in range(0,4):
+            for d in [0,5]:
                 if CS_diff<=d and CS_diff>=-d:
                     TP_CS[d]+=1
                 else:
                     FP_CS[d]+=1
 
         #Add the FPs from the wrong detection
-        for d in range(0,4):
+        for d in [0,5]:
             FP_CS[d] += FP
 
         #Calculate CS precision and recall
-        CS_precision = {}
-        CS_recall = {}
+        for d in [0,5]:
+            CS_recalls[d] = TP_CS[d]/P.shape[0]
 
-        for d in range(0,4):
-            try:
-                CS_precision[d]=TP_CS[d]/(TP_CS[d]+FP_CS[d])
-                CS_recall[d] = TP_CS[d]/P.shape[0]
-            except:
-                pdb.set_trace()
+    pdb.set_trace()
+    #Create df
+    eval_df = pd.DataFrame()
+    eval_df['Type']=[*type_conversion.values()]
+    eval_df['CS_recall_0'] = CS_recalls[0]
+    eval_df['CS_recall_5'] = CS_recalls[5]
+    eval_df['Type_recall']=type_recalls
+    eval_df['Type_precision']=type_precisions
+    eval_df['Type_F1']=F1s
+    eval_df['Type_MCC']=MCCs
 
-
-        #Save
-        fetched_types.append(type_name)
-        MCCs.append(MCC)
-        Precisions.append([*CS_precision.values()])
-        Recalls.append([*CS_recall.values()])
-
-
-    return fetched_types, MCCs, Precisions, Recalls
+    return eval_df
 
 
 ######################MAIN######################
@@ -381,15 +374,7 @@ all_true_types = np.array(all_true_types)
 all_true_CS = np.array(all_true_CS)
 
 #Eval
-Precisions, Recalls, F1s, MCCs = eval_type_cs(all_pred_annotations, all_true_annotations, all_true_types, all_true_CS)
+eval_df = eval_type_cs(all_pred_annotations, all_pred_types, all_true_annotations, all_true_types, all_true_CS)
 
-
-#Create df
-eval_df = pd.DataFrame()
-eval_df['Type']=all_true_types
-eval_df['Precision']=Precisions
-eval_df['Recall']=Recalls
-eval_df['F1s']=F1s
-eval_df['MCC']=MCCs
 eval_df.to_csv(outdir+'eval_df'+str(test_partition)+'.csv')
 print(eval_df)
