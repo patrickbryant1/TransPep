@@ -145,12 +145,8 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     return model
 
 
-def load_model(variable_params, param_combo, weights):
-    #Params
-    net_params = variable_params.loc[param_combo-1]
-    #Fixed params
-    vocab_size = 21  # Only consider the top 20k words
-    maxlen = 70  # Only consider the first 70 amino acids
+def load_model(net_params, vocab_size, maxlen, weights):
+
     #Variable params
     embed_dim = int(net_params['embed_dim']) #32  # Embedding size for each token
     num_heads = int(net_params['num_heads']) #1  # Number of attention heads
@@ -162,39 +158,31 @@ def load_model(variable_params, param_combo, weights):
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
     model.load_weights(weights)
 
-    #print(model.summary())
+    print(model.summary())
+
     return model
 
-def get_data(datadir, valid_partition, maxlen):
+def get_data(datadir, valid_partition, maxlen, vocab_size):
     '''Get the validation data
     '''
 
-    train_meta = pd.read_csv(datadir+'train_meta.csv')
-    train_seqs = np.load(datadir+'seqs.npy',allow_pickle=True)
-    train_annotations = np.load(datadir+'annotations.npy',allow_pickle=True)
+    meta = pd.read_csv(datadir+'meta.csv')
+    annotations = np.load(datadir+'annotations.npy', allow_pickle=True)
+    sequences = np.load(datadir+'sequences.npy', allow_pickle=True)
+    #Valid data
+    valid_i = np.where(meta.Fold==valid_partition)[0]
 
-    train_CS = train_meta.CS.values
-    train_kingdoms = train_meta.Kingdom.values
-    train_meta['Type'] = train_meta['Type'].replace({'NO_SP':0,'SP':1,'TAT':2,'LIPO':3})
-    train_types = train_meta.Type.values
-    #Onehot conversion
-    train_kingdoms = np.eye(4)[train_kingdoms]
+    #Validation data
+    x_valid_seqs = sequences[valid_i]
+    x_valid_orgs = np.repeat(np.expand_dims(np.eye(2)[meta.Org[valid_i]],axis=1),maxlen,axis=1)
+    #Random annotations are added as input
+    x_valid_target_inp = np.random.randint(5,size=(len(valid_i),maxlen))
+    y_valid = annotations[valid_i] #,train_types[train_i]]
 
-    #Get data
-    valid_i = train_meta[train_meta.Partition==valid_partition].index
-    #valid
-    x_valid_seqs = train_seqs[valid_i]
-    x_valid_kingdoms = train_kingdoms[valid_i]
-    x_valid_kingdoms = np.repeat(np.expand_dims(x_valid_kingdoms,axis=1),70,axis=1)
-    #Random annotations
-    x_valid_target_inp =  np.random.randint(6,size=(len(valid_i),maxlen))
-    x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_kingdoms]
-    y_valid = [train_annotations[valid_i],train_types[valid_i]]
+    return x_valid_seqs,x_valid_orgs, x_valid_target_inp, y_valid
 
-    return x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid
-
-def run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms):
-    preds = model.predict([x_valid_seqs,x_valid_target_inp,x_valid_kingdoms])
+def run_model(model,x_valid):
+    preds = model.predict(x_valid)
 
     return preds
 
@@ -336,34 +324,34 @@ def eval_type_cs(pred_annotations,pred_annotation_probs,pred_types,true_annotati
 
 ######################MAIN######################
 args = parser.parse_args()
+datadir = args.datadir[0]
 variable_params=pd.read_csv(args.variable_params[0])
 param_combo=args.param_combo[0]
 checkpointdir = args.checkpointdir[0]
-datadir = args.datadir[0]
-test_partition = args.test_partition[0]
 outdir = args.outdir[0]
 
-kingdom_conversion = {'ARCHAEA':0,'NEGATIVE':2,'POSITIVE':3,'EUKARYA':1}
-#Load and run model
-all_pred_annotations = []
-all_pred_annotation_probs = []
-all_true_annotations = []
-all_true_types = []
-all_kingdoms = []
+#Params
+net_params = variable_params.loc[param_combo-1]
+test_partition = int(net_params['test_partition'])
 
+#Fixed params
+vocab_size = 21  #Amino acids and unknown (X)
+maxlen = 200  # Only consider the first 70 amino acids
+
+#Load and run model
 #Get data for each valid partition
+
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #weights
-    weights=glob.glob(checkpointdir+'vp'+str(valid_partition)+'/*.hdf5')
-    if len(weights)<1:
-        continue
+    weights=glob.glob(checkpointdir+'VP'+str(valid_partition)+'/*.hdf5')
     #model
-    model = load_model(variable_params, param_combo, weights[0])
+    model = load_model(net_params, vocab_size, maxlen, weights[0])
     #Get data
-    x_valid_seqs,x_valid_target_inp,x_valid_kingdoms, y_valid = get_data(datadir, valid_partition,70)
+    x_valid_seqs,x_valid_orgs, x_valid_target_inp, y_valid = get_data(datadir, valid_partition, maxlen, vocab_size)
     #Predict
-    preds = run_model(model,x_valid_seqs,x_valid_target_inp,x_valid_kingdoms)
-
+    x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_orgs] #inp seq, target annoation, organism
+    preds = run_model(model,x_valid)
+    pdb.set_trace()
     #Fetch
     pred_annotations = np.argmax(preds,axis=2)
     true_annotations = y_valid[0]
