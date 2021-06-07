@@ -374,45 +374,20 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
 #Array conversions
 all_pred_annotations = np.array(all_pred_annotations) #The type will be fetched from the annotations
-all_pred_annotation_probs = np.array(all_pred_annotation_probs)
 all_true_annotations = np.array(all_true_annotations)
 all_true_types = np.array(all_true_types)
-all_kingdoms = np.array(all_kingdoms)
-#Get pred types based on pred annotations
-all_pred_types = get_pred_types(all_pred_annotations)
-#Evaluate per kingdom
-evaluated_kingdoms = []
-all_types = []
-all_MCCs = []
-all_precisions = []
-all_recalls = []
+all_true_CS = np.array(all_true_CS)
 
-for key in kingdom_conversion:
-    kingdom_indices = np.argwhere(all_kingdoms==kingdom_conversion[key])[:,0]
-    #Get pred
-    kingdom_pred_annotations = all_pred_annotations[kingdom_indices]
-    kingdom_pred_annotation_probs = all_pred_annotation_probs[kingdom_indices]
-    kingdom_pred_types = all_pred_types[kingdom_indices]
-    #Get true
-    kingdom_true_annotations = all_true_annotations[kingdom_indices]
-    kingdom_true_types = all_true_types[kingdom_indices]
-    #Eval
-    fetched_types, MCCs, Precisions, Recalls = eval_type_cs(kingdom_pred_annotations,kingdom_pred_annotation_probs,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
+#Eval
+Precisions, Recalls, F1s, MCCs = eval_type_cs(kingdom_pred_annotations,kingdom_pred_annotation_probs,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
 
-    #Save
-    evaluated_kingdoms.extend([key]*len(fetched_types))
-    all_types.extend(fetched_types)
-    all_MCCs.extend(MCCs)
-    all_precisions.extend(Precisions)
-    all_recalls.extend(Recalls)
 
 #Create df
 eval_df = pd.DataFrame()
-eval_df['Kingdom']=evaluated_kingdoms
-eval_df['Type']=all_types
-eval_df['MCC']=all_MCCs
-eval_df['Recall']=all_recalls
-eval_df['Precision']=all_precisions
-
+eval_df['Type']=all_true_types
+eval_df['Precision']=Precisions
+eval_df['Recall']=Recalls
+eval_df['F1s']=F1s
+eval_df['MCC']=MCCs
 eval_df.to_csv(outdir+'eval_df'+str(test_partition)+'.csv')
 print(eval_df)
