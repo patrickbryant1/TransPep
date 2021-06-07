@@ -158,7 +158,7 @@ def load_model(net_params, vocab_size, maxlen, weights):
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
     model.load_weights(weights)
 
-    print(model.summary())
+    #print(model.summary())
 
     return model
 
@@ -194,22 +194,26 @@ def get_pred_types(pred_annotations):
     '''Get the predicted types based on the annotations
     '''
 
-    annotation_type_conversion = {0:1,1:2,2:3} #S(0)=SP(1), T(1)=TAT(2),L(2)=LIPO(3) - all other 0 (No SP)
+    #5 classes of transit peptides
+    #0=no targeting peptide, 1=sp: signal peptide, 2=mt:mitochondrial transit peptide,
+    #3=ch:chloroplast transit peptide, 4=th:thylakoidal lumen composite transit peptide
+    type_conversion = {1:'SP', 2:'MT', 3:'CH', 4:'TH'}
+
     pred_types = []
     for i in range(len(pred_annotations)):
-        if (0 in pred_annotations[i]) or (1 in pred_annotations[i]) or (2 in pred_annotations[i]):
+        if (1 in pred_annotations[i]) or (2 in pred_annotations[i]) or (3 in pred_annotations[i]) or (4 in pred_annotations[i]):
             counts = Counter(pred_annotations[i])
             keys = [*counts.keys()]
 
             key_count=0 #Count the occurance of each annotation - take the max for the type
             key_type = 0
-            for key in annotation_type_conversion: #Got through all keys
+            for key in type_conversion: #Got through all keys
                 if key not in keys:
                     continue
                 else:
                     if counts[key]>key_count:
                         key_count=counts[key]
-                        key_type=annotation_type_conversion[key]
+                        key_type=key
 
             #Save
             pred_types.append(key_type)
@@ -220,45 +224,41 @@ def get_pred_types(pred_annotations):
     return np.array(pred_types)
 
 
-def eval_type_cs(pred_annotations,pred_annotation_probs,pred_types,true_annotations,true_types,kingdom):
-    '''Evaluate the capacity to predict the clevage site
-    annotation_conversion = {'S':0,'T':1,'L':2,'I':3,'M':4,'O':5}
-    annotation [S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide | I: cytoplasm | M: transmembrane | O: extracellular]
-    S: Sec/SPI signal peptide | T: Tat/SPI signal peptide | L: Sec/SPII signal peptide |
-    'NO_SP':0,'SP':1,'TAT':2,'LIPO':3
-    SP = Sec/SPI
-    TAT = Tat/SPI
-    LIPO = Sec/SPII
+def eval_type_cs(pred_annotations, true_annotations, true_types, true_CS):
+    '''
+    5 classes of transit peptides
+    0=no targeting peptide, 1=sp: signal peptide, 2=mt:mitochondrial transit peptide,
+    3=ch:chloroplast transit peptide, 4=th:thylakoidal lumen composite transit peptide
 
     Reported for CS:
     Recall, TPR = TP/P
-    Precision, PPV = TP/(TP+FP)
 
-    Reported for detection
+    Reported for detection (correct type)
+    Recall, TPR = TP/P
+    Precision, PPV = TP/(TP+FP)
+    F1 = 2/(1/Recall + 1/Precision)
     MCC = (TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
     '''
 
-    Types = {'SP':1,'LIPO':3,'TAT':2}
-    Signal_type_annotations = {'SP':0,'TAT':1,'LIPO':2} #S,T,L
+    type_conversion = {0:'No target', 1:'SP', 2:'MT', 3:'CH', 4:'TH'}
     #Save
-    fetched_types = []
+    CS_recall = []
+    type_recall = []
+    type_precisions = []
+    F1s = []
     MCCs = []
-    Recalls = []
-    Precisions = []
 
-    if kingdom == 'EUKARYA':
-        Types = {'SP':1} #Only one type in Eukarya
+
     #Go through all types
-    for type_name in Types:
-        type_enc = Types[type_name]
-        P = np.argwhere(true_types==type_enc)[:,0]
-        if len(P)<1:
-            continue
-        N = np.argwhere(true_types!=type_enc)[:,0]
+    for type in type_coversion:
+
+        P = np.argwhere(true_types==type)[:,0]
+        N = np.argwhere(true_types!=type)[:,0]
         #Calc TP and FP
         #Get the pred pos and neg
         pred_P = np.argwhere(pred_types==type_enc)[:,0]
         pred_N = np.argwhere(pred_types!=type_enc)[:,0]
+        pdb.set_trace()
         #TP and TN
         TP = np.intersect1d(P,pred_P).shape[0]
         if TP<1:
@@ -373,13 +373,15 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
 
 #Array conversions
-all_pred_annotations = np.array(all_pred_annotations) #The type will be fetched from the annotations
+all_pred_annotations = np.array(all_pred_annotations)
+#The type will be fetched from the annotations
+all_pred_types = get_pred_types(all_pred_annotations)
 all_true_annotations = np.array(all_true_annotations)
 all_true_types = np.array(all_true_types)
 all_true_CS = np.array(all_true_CS)
 
 #Eval
-Precisions, Recalls, F1s, MCCs = eval_type_cs(kingdom_pred_annotations,kingdom_pred_annotation_probs,kingdom_pred_types,kingdom_true_annotations,kingdom_true_types,key)
+Precisions, Recalls, F1s, MCCs = eval_type_cs(all_pred_annotations, all_true_annotations, all_true_types, all_true_CS)
 
 
 #Create df
