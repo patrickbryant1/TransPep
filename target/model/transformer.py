@@ -21,8 +21,7 @@ from tensorflow.keras.callbacks import TensorBoard
 
 #Custom
 from process_data import parse_and_format
-from transformer_classes import Transformer
-import time
+from attention_class import MultiHeadSelfAttention
 #from lr_finder import LRFinder
 
 
@@ -47,101 +46,65 @@ parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'P
 #set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 #####FUNCTIONS and CLASSES#####
-#Transformer implementation from https://www.tensorflow.org/text/tutorials/transformer
-def create_padding_mask(seq):
-  seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
+class TokenAndPositionEmbedding(layers.Layer):
+    def __init__(self, maxlen, vocab_size, embed_dim):
+        super(TokenAndPositionEmbedding, self).__init__()
+        self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
+        self.pos_emb = layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
 
-  # add extra dimensions to add the padding
-  # to the attention logits.
-  return seq[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1, 1, seq_len)
+    def call(self, x):
+        maxlen = tf.shape(x)[-1]
+        positions = tf.range(start=0, limit=maxlen, delta=1)
+        positions = self.pos_emb(positions)
+        x = self.token_emb(x)
+        return x + positions
 
-def create_look_ahead_mask(size):
-  mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
-  return mask  # (seq_len, seq_len)
+class EncoderBlock(layers.Layer):
+    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
+        super(EncoderBlock, self).__init__()
+        self.att = MultiHeadSelfAttention(embed_dim,num_heads)
+        self.ffn = keras.Sequential(
+            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
+        )
+        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
+        self.dropout1 = layers.Dropout(rate)
+        self.dropout2 = layers.Dropout(rate)
 
-def create_masks(inp, tar):
-  # Encoder padding mask
-  enc_padding_mask = create_padding_mask(inp)
+    def call(self, in_q,in_k,in_v, training): #Inputs is a list with [q,k,v]
+        attn_output,attn_weights = self.att(in_q,in_k,in_v) #The weights are needed for downstream analysis
+        attn_output = self.dropout1(attn_output, training=training)
+        out1 = self.layernorm1(in_q + attn_output)
+        ffn_output = self.ffn(out1)
+        ffn_output = self.dropout2(ffn_output, training=training)
+        return self.layernorm2(out1 + ffn_output), attn_weights
 
-  # Used in the 2nd attention block in the decoder.
-  # This padding mask is used to mask the encoder outputs.
-  dec_padding_mask = create_padding_mask(inp)
+class DecoderBlock(layers.Layer):
+    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
+        super(DecoderBlock, self).__init__()
+        self.att = MultiHeadSelfAttention(embed_dim,num_heads)
+        self.ffn = keras.Sequential(
+            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
+        )
+        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
+        self.dropout1 = layers.Dropout(rate)
+        self.dropout2 = layers.Dropout(rate)
 
-  # Used in the 1st attention block in the decoder.
-  # It is used to pad and mask future tokens in the input received by
-  # the decoder.
-  look_ahead_mask = create_look_ahead_mask(tf.shape(tar)[1])
-  dec_target_padding_mask = create_padding_mask(tar)
-  combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
+    def call(self, in_q,in_k,in_v, training): #Inputs is a list with [q,k,v]
+        #Self-attention
+        attn_output1,attn_weights1 = self.att(in_q,in_q,in_q) #The weights are needed for downstream analysis
+        attn_output1 = self.dropout1(attn_output1, training=training)
+        out1 = self.layernorm1(in_q + attn_output1)
+        #Encoder-decoder attention
+        attn_output2,attn_weights2 = self.att(out1,in_k,in_v) #The weights are needed for downstream analysis
+        attn_output2 = self.dropout1(attn_output2, training=training)
+        out2 = self.layernorm1(attn_output2 + out1)
+        ffn_output = self.ffn(out2)
+        ffn_output = self.dropout2(ffn_output, training=training)
+        return self.layernorm2(out2 + ffn_output), attn_weights2
 
-  return enc_padding_mask, combined_mask, dec_padding_mask
-
-class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
-  def __init__(self, d_model, warmup_steps=4000):
-    super(CustomSchedule, self).__init__()
-
-    self.d_model = d_model
-    self.d_model = tf.cast(self.d_model, tf.float32)
-
-    self.warmup_steps = warmup_steps
-
-  def __call__(self, step):
-    arg1 = tf.math.rsqrt(step)
-    arg2 = step * (self.warmup_steps ** -1.5)
-
-    return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
-
-def loss_function(real, pred):
-  mask = tf.math.logical_not(tf.math.equal(real, 0))
-  loss_ = loss_object(real, pred)
-
-  mask = tf.cast(mask, dtype=loss_.dtype)
-  loss_ *= mask
-
-  return tf.reduce_sum(loss_)/tf.reduce_sum(mask)
-
-
-def accuracy_function(real, pred):
-  accuracies = tf.equal(real, tf.argmax(pred, axis=2))
-
-  mask = tf.math.logical_not(tf.math.equal(real, 0))
-  accuracies = tf.math.logical_and(mask, accuracies)
-
-  accuracies = tf.cast(accuracies, dtype=tf.float32)
-  mask = tf.cast(mask, dtype=tf.float32)
-  return tf.reduce_sum(accuracies)/tf.reduce_sum(mask)
-
-# The @tf.function trace-compiles train_step into a TF graph for faster
-# execution. The function specializes to the precise shape of the argument
-# tensors. To avoid re-tracing due to the variable sequence lengths or variable
-# batch sizes (the last batch is smaller), use input_signature to specify
-# more generic shapes.
-@tf.function(input_signature=train_step_signature)
-train_step_signature = [
-    tf.TensorSpec(shape=(None, None), dtype=tf.int64),
-    tf.TensorSpec(shape=(None, None), dtype=tf.int64),
-]
-def train_step(inp, tar):
-  tar_inp = tar[:, :-1]
-  tar_real = tar[:, 1:]
-
-  enc_padding_mask, combined_mask, dec_padding_mask = create_masks(inp, tar_inp)
-
-  with tf.GradientTape() as tape:
-    predictions, _ = transformer(inp, tar_inp,
-                                 True,
-                                 enc_padding_mask,
-                                 combined_mask,
-                                 dec_padding_mask)
-    loss = loss_function(tar_real, predictions)
-
-  gradients = tape.gradient(loss, transformer.trainable_variables)
-  optimizer.apply_gradients(zip(gradients, transformer.trainable_variables))
-
-  train_loss(loss)
-  train_accuracy(accuracy_function(tar_real, predictions))
-
-def train_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
+def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations):
     '''Create the transformer model
     '''
 
@@ -149,50 +112,50 @@ def train_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     seq_target = layers.Input(shape=(maxlen,)) #Targets - annotations
     org_input = layers.Input(shape=(maxlen,2)) #2 Organisms plant/not
 
-    transformer = Transformer(num_layers=num_layers,d_model=embed_dim,num_heads=num_heads,
-                            dff=ff_dim, input_vocab_size=20,
-                            target_vocab_size=5,
-                            pe_input=maxlen, pe_target=maxlen, rate=0.5)
+    ##Embeddings
+    embedding_layer1 = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
+    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 5, embed_dim+2) #5 annotation classes. Need to add 2 so that x1 and x2 match - the organsims
+    x1 = embedding_layer1(seq_input)
+    #Add kingdom input
+    x1 = layers.Concatenate()([x1,org_input])
+    x2 = embedding_layer2(seq_target)
 
-    for epoch in range(EPOCHS):
-        start = time.time()
+    #Define the transformer
+    encoder = EncoderBlock(embed_dim+2, num_heads, ff_dim)
+    decoder = DecoderBlock(embed_dim+2, num_heads, ff_dim)
+    #Iterate
+    for i in range(num_iterations):
+        #Encode
+        for j in range(num_layers):
+            x1, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
+        #Decoder
+        for k in range(num_layers):
+            x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
-        train_loss.reset_states()
-        train_accuracy.reset_states()
+        x2 = layers.Dense(5, activation="softmax")(x2) #Annotate
+        x_rs = layers.Reshape((maxlen,5))(x2)
+        x2 = tf.math.argmax(x_rs,axis=-1) #Needed for iterative training
+        x2 = embedding_layer2(x2)
 
-        # inp -> portuguese, tar -> english
-        for (batch, (inp, tar)) in enumerate(train_batches):
-            train_step(inp, tar)
-
-        if batch % 50 == 0:
-            print(f'Epoch {epoch + 1} Batch {batch} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
-
-        if (epoch + 1) % 5 == 0:
-            ckpt_save_path = ckpt_manager.save()
-            print(f'Epoch {epoch + 1} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
-            print(f'Time taken for 1 epoch: {time.time() - start:.2f} secs\n')
-
-
-
-
-
-
+    x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
+    x2 = tf.math.argmax(x2,axis=-1) #Needed for iterative training
+    pred_CS = layers.Dense(1, activation="relu", name='CS')(x2) #Annotate
+    pred_type = layers.Dense(5, activation="softmax", name='Type')(x2) #Annotate
 
 
+    model = keras.Model(inputs=[seq_input,seq_target,org_input], outputs=[pred_CS,pred_type])
     #Optimizer
     initial_learning_rate = 0.001
-    learning_rate = CustomSchedule(d_model)
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate,
+    decay_steps=10000,
+    decay_rate=0.96,
+    staircase=True)
 
-    optimizer = tf.keras.optimizers.Adam(learning_rate, beta_1=0.9, beta_2=0.98,
-                                     epsilon=1e-9)
-
-    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
-
-    train_loss = tf.keras.metrics.Mean(name='train_loss')
-    train_accuracy = tf.keras.metrics.Mean(name='train_accuracy')
+    opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
 
     #Compile
-    model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
+    model.compile(optimizer = opt, loss= [tf.keras.losses.MeanAbsoluteError(),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
 
     return model
 
@@ -219,6 +182,8 @@ maxlen = 200  # Only consider the first 70 amino acids
 try:
     meta = pd.read_csv(datadir+'meta.csv')
     annotations = np.load(datadir+'annotations.npy', allow_pickle=True)
+    CS = meta.CS.values
+    Types = meta.Type.values
     sequences = np.load(datadir+'sequences.npy', allow_pickle=True)
 
 except:
@@ -249,7 +214,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Random annotations are added as input
     x_train_target_inp = np.random.randint(5,size=(len(train_i),maxlen))
     x_train = [x_train_seqs,x_train_target_inp,x_train_orgs] #inp seq, target annoation, organism
-    y_train = annotations[train_i] #,train_types[train_i]]
+    y_train = [CS[train_i],Types[train_i]]
 
     #Validation data
     x_valid_seqs = sequences[valid_i]
@@ -270,7 +235,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     num_iterations = int(net_params['num_iterations'])
 
     #Create model
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
 
     #Summary of model
     print(model.summary())
