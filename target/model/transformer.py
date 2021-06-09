@@ -22,6 +22,7 @@ from tensorflow.keras.callbacks import TensorBoard
 #Custom
 from process_data import parse_and_format
 from transformer_classes import Transformer
+import time
 #from lr_finder import LRFinder
 
 
@@ -58,6 +59,23 @@ def create_look_ahead_mask(size):
   mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
   return mask  # (seq_len, seq_len)
 
+def create_masks(inp, tar):
+  # Encoder padding mask
+  enc_padding_mask = create_padding_mask(inp)
+
+  # Used in the 2nd attention block in the decoder.
+  # This padding mask is used to mask the encoder outputs.
+  dec_padding_mask = create_padding_mask(inp)
+
+  # Used in the 1st attention block in the decoder.
+  # It is used to pad and mask future tokens in the input received by
+  # the decoder.
+  look_ahead_mask = create_look_ahead_mask(tf.shape(tar)[1])
+  dec_target_padding_mask = create_padding_mask(tar)
+  combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
+
+  return enc_padding_mask, combined_mask, dec_padding_mask
+
 class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
   def __init__(self, d_model, warmup_steps=4000):
     super(CustomSchedule, self).__init__()
@@ -93,7 +111,37 @@ def accuracy_function(real, pred):
   mask = tf.cast(mask, dtype=tf.float32)
   return tf.reduce_sum(accuracies)/tf.reduce_sum(mask)
 
-def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
+# The @tf.function trace-compiles train_step into a TF graph for faster
+# execution. The function specializes to the precise shape of the argument
+# tensors. To avoid re-tracing due to the variable sequence lengths or variable
+# batch sizes (the last batch is smaller), use input_signature to specify
+# more generic shapes.
+@tf.function(input_signature=train_step_signature)
+train_step_signature = [
+    tf.TensorSpec(shape=(None, None), dtype=tf.int64),
+    tf.TensorSpec(shape=(None, None), dtype=tf.int64),
+]
+def train_step(inp, tar):
+  tar_inp = tar[:, :-1]
+  tar_real = tar[:, 1:]
+
+  enc_padding_mask, combined_mask, dec_padding_mask = create_masks(inp, tar_inp)
+
+  with tf.GradientTape() as tape:
+    predictions, _ = transformer(inp, tar_inp,
+                                 True,
+                                 enc_padding_mask,
+                                 combined_mask,
+                                 dec_padding_mask)
+    loss = loss_function(tar_real, predictions)
+
+  gradients = tape.gradient(loss, transformer.trainable_variables)
+  optimizer.apply_gradients(zip(gradients, transformer.trainable_variables))
+
+  train_loss(loss)
+  train_accuracy(accuracy_function(tar_real, predictions))
+
+def train_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     '''Create the transformer model
     '''
 
@@ -104,10 +152,33 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     transformer = Transformer(num_layers=num_layers,d_model=embed_dim,num_heads=num_heads,
                             dff=ff_dim, input_vocab_size=20,
                             target_vocab_size=5,
-                            pe_input=1000, pe_target=1000, rate=0.5)
+                            pe_input=maxlen, pe_target=maxlen, rate=0.5)
+
+    for epoch in range(EPOCHS):
+        start = time.time()
+
+        train_loss.reset_states()
+        train_accuracy.reset_states()
+
+        # inp -> portuguese, tar -> english
+        for (batch, (inp, tar)) in enumerate(train_batches):
+            train_step(inp, tar)
+
+        if batch % 50 == 0:
+            print(f'Epoch {epoch + 1} Batch {batch} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
+
+        if (epoch + 1) % 5 == 0:
+            ckpt_save_path = ckpt_manager.save()
+            print(f'Epoch {epoch + 1} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
+            print(f'Time taken for 1 epoch: {time.time() - start:.2f} secs\n')
 
 
-    model = keras.Model(inputs=[seq_input,seq_target,org_input], outputs=preds)
+
+
+
+
+
+
     #Optimizer
     initial_learning_rate = 0.001
     learning_rate = CustomSchedule(d_model)
