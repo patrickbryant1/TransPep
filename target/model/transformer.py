@@ -58,8 +58,42 @@ def create_look_ahead_mask(size):
   mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
   return mask  # (seq_len, seq_len)
 
+class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
+  def __init__(self, d_model, warmup_steps=4000):
+    super(CustomSchedule, self).__init__()
 
-def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations):
+    self.d_model = d_model
+    self.d_model = tf.cast(self.d_model, tf.float32)
+
+    self.warmup_steps = warmup_steps
+
+  def __call__(self, step):
+    arg1 = tf.math.rsqrt(step)
+    arg2 = step * (self.warmup_steps ** -1.5)
+
+    return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
+
+def loss_function(real, pred):
+  mask = tf.math.logical_not(tf.math.equal(real, 0))
+  loss_ = loss_object(real, pred)
+
+  mask = tf.cast(mask, dtype=loss_.dtype)
+  loss_ *= mask
+
+  return tf.reduce_sum(loss_)/tf.reduce_sum(mask)
+
+
+def accuracy_function(real, pred):
+  accuracies = tf.equal(real, tf.argmax(pred, axis=2))
+
+  mask = tf.math.logical_not(tf.math.equal(real, 0))
+  accuracies = tf.math.logical_and(mask, accuracies)
+
+  accuracies = tf.cast(accuracies, dtype=tf.float32)
+  mask = tf.cast(mask, dtype=tf.float32)
+  return tf.reduce_sum(accuracies)/tf.reduce_sum(mask)
+
+def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     '''Create the transformer model
     '''
 
@@ -67,45 +101,24 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     seq_target = layers.Input(shape=(maxlen,)) #Targets - annotations
     org_input = layers.Input(shape=(maxlen,2)) #2 Organisms plant/not
 
-    ##Embeddings
-    embedding_layer1 = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 5, embed_dim+2) #5 annotation classes. Need to add 2 so that x1 and x2 match - the organsims
-    x1 = embedding_layer1(seq_input)
-    #Add kingdom input
-    x1 = layers.Concatenate()([x1,org_input])
-    x2 = embedding_layer2(seq_target)
-
-    #Define the transformer
-    encoder = EncoderBlock(embed_dim+2, num_heads, ff_dim)
-    decoder = DecoderBlock(embed_dim+2, num_heads, ff_dim)
-    #Iterate
-    for i in range(num_iterations):
-        #Encode
-        for j in range(num_layers):
-            x1, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
-        #Decoder
-        for k in range(num_layers):
-            x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
-
-        x2 = layers.Dense(5, activation="softmax")(x2) #Annotate
-        x_rs = layers.Reshape((maxlen,5))(x2)
-        x2 = tf.math.argmax(x_rs,axis=-1) #Needed for iterative training
-        x2 = embedding_layer2(x2)
-
-    x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
-    preds = layers.Dense(5, activation="softmax")(x2) #Annotate
+    transformer = Transformer(num_layers=num_layers,d_model=embed_dim,num_heads=num_heads,
+                            dff=ff_dim, input_vocab_size=20,
+                            target_vocab_size=5,
+                            pe_input=1000, pe_target=1000, rate=0.5)
 
 
     model = keras.Model(inputs=[seq_input,seq_target,org_input], outputs=preds)
     #Optimizer
     initial_learning_rate = 0.001
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate,
-    decay_steps=10000,
-    decay_rate=0.96,
-    staircase=True)
+    learning_rate = CustomSchedule(d_model)
 
-    opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
+    optimizer = tf.keras.optimizers.Adam(learning_rate, beta_1=0.9, beta_2=0.98,
+                                     epsilon=1e-9)
+
+    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
+
+    train_loss = tf.keras.metrics.Mean(name='train_loss')
+    train_accuracy = tf.keras.metrics.Mean(name='train_accuracy')
 
     #Compile
     model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
@@ -186,7 +199,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     num_iterations = int(net_params['num_iterations'])
 
     #Create model
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
 
     #Summary of model
     print(model.summary())
