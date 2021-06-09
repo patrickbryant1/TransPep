@@ -21,7 +21,7 @@ from tensorflow.keras.callbacks import TensorBoard
 
 #Custom
 from process_data import parse_and_format
-from attention_class import MultiHeadSelfAttention
+from transformer_classes import Transformer
 #from lr_finder import LRFinder
 
 
@@ -46,63 +46,18 @@ parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'P
 #set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 #####FUNCTIONS and CLASSES#####
-class TokenAndPositionEmbedding(layers.Layer):
-    def __init__(self, maxlen, vocab_size, embed_dim):
-        super(TokenAndPositionEmbedding, self).__init__()
-        self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
-        self.pos_emb = layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
+#Transformer implementation from https://www.tensorflow.org/text/tutorials/transformer
+def create_padding_mask(seq):
+  seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
 
-    def call(self, x):
-        maxlen = tf.shape(x)[-1]
-        positions = tf.range(start=0, limit=maxlen, delta=1)
-        positions = self.pos_emb(positions)
-        x = self.token_emb(x)
-        return x + positions
+  # add extra dimensions to add the padding
+  # to the attention logits.
+  return seq[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1, 1, seq_len)
 
-class EncoderBlock(layers.Layer):
-    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
-        super(EncoderBlock, self).__init__()
-        self.att = MultiHeadSelfAttention(embed_dim,num_heads)
-        self.ffn = keras.Sequential(
-            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
-        )
-        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
-        self.dropout1 = layers.Dropout(rate)
-        self.dropout2 = layers.Dropout(rate)
+def create_look_ahead_mask(size):
+  mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
+  return mask  # (seq_len, seq_len)
 
-    def call(self, in_q,in_k,in_v, training): #Inputs is a list with [q,k,v]
-        attn_output,attn_weights = self.att(in_q,in_k,in_v) #The weights are needed for downstream analysis
-        attn_output = self.dropout1(attn_output, training=training)
-        out1 = self.layernorm1(in_q + attn_output)
-        ffn_output = self.ffn(out1)
-        ffn_output = self.dropout2(ffn_output, training=training)
-        return self.layernorm2(out1 + ffn_output), attn_weights
-
-class DecoderBlock(layers.Layer):
-    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
-        super(DecoderBlock, self).__init__()
-        self.att = MultiHeadSelfAttention(embed_dim,num_heads)
-        self.ffn = keras.Sequential(
-            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
-        )
-        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
-        self.dropout1 = layers.Dropout(rate)
-        self.dropout2 = layers.Dropout(rate)
-
-    def call(self, in_q,in_k,in_v, training): #Inputs is a list with [q,k,v]
-        #Self-attention
-        attn_output1,attn_weights1 = self.att(in_q,in_q,in_q) #The weights are needed for downstream analysis
-        attn_output1 = self.dropout1(attn_output1, training=training)
-        out1 = self.layernorm1(in_q + attn_output1)
-        #Encoder-decoder attention
-        attn_output2,attn_weights2 = self.att(out1,in_k,in_v) #The weights are needed for downstream analysis
-        attn_output2 = self.dropout1(attn_output2, training=training)
-        out2 = self.layernorm1(attn_output2 + out1)
-        ffn_output = self.ffn(out2)
-        ffn_output = self.dropout2(ffn_output, training=training)
-        return self.layernorm2(out2 + ffn_output), attn_weights2
 
 def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations):
     '''Create the transformer model
