@@ -14,6 +14,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from categorical_focal_loss import SparseCategoricalFocalLoss
 from tensorflow.keras.callbacks import ModelCheckpoint
+import tensorflow_addons as tfa
 
 
 #visualization
@@ -104,7 +105,29 @@ class DecoderBlock(layers.Layer):
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out2 + ffn_output), attn_weights2
 
-def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations):
+
+#LR schedule
+class LRschedule(tf.keras.callbacks.Callback):
+    '''lr scheduel according to one-cycle policy.
+    '''
+    '''From https://www.tensorflow.org/text/tutorials/transformer (https://arxiv.org/abs/1706.03762)'''
+    def __init__(self, d_model, warmup_steps=4000):
+        self.d_model = d_model
+        self.d_model = tf.cast(self.d_model, tf.float32)
+        self.warmup_steps = warmup_steps
+
+
+    def on_train_batch_begin(self, batch, logs=None):
+        batch = tf.cast(batch, tf.float32)
+        arg1 = tf.math.rsqrt(batch)
+        arg2 = batch * (self.warmup_steps ** -1.5)
+        lr = tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
+        keras.backend.set_value(self.model.optimizer.lr, lr)
+
+
+
+
+def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,warmup_steps):
     '''Create the transformer model
     '''
 
@@ -114,7 +137,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
 
     ##Embeddings
     embedding_layer1 = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 5, embed_dim+2) #5 annotation classes. Need to add 2 so that x1 and x2 match - the organsims
+    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 1, embed_dim+2) #5 annotation classes. Need to add 2 so that x1 and x2 match - the organsims
     x1 = embedding_layer1(seq_input)
     #Add kingdom input
     x1 = layers.Concatenate()([x1,org_input])
@@ -123,41 +146,31 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     #Define the transformer
     encoder = EncoderBlock(embed_dim+2, num_heads, ff_dim)
     decoder = DecoderBlock(embed_dim+2, num_heads, ff_dim)
-    #Iterate
-    for i in range(num_iterations):
-        #Encode
-        for j in range(num_layers):
-            x1, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
-        #Decoder
-        for k in range(num_layers):
-            x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
-        x2 = layers.Dense(5, activation="softmax")(x2) #Annotate
-        x_rs = layers.Reshape((maxlen,5))(x2)
-        x2 = tf.math.argmax(x_rs,axis=-1) #Needed for iterative training
-        x2 = embedding_layer2(x2)
+    #Encode
+    for j in range(num_layers):
+        x1, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
+    #Decoder
+    for k in range(num_layers):
+        x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
-    x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
-    x2 = tf.keras.layers.GlobalAveragePooling1D( data_format='channels_first')(x2)
+    x2 = tf.keras.layers.GlobalMaxPooling1D( data_format='channels_first')(x2)
     pred_CS = layers.Dense(maxlen, activation="softmax", name='CS')(x2) # #CS
     pred_type = layers.Dense(5, activation="softmax", name='Type')(x2) #Type
 
 
     model = keras.Model(inputs=[seq_input,seq_target,org_input], outputs=[pred_CS,pred_type])
-    #Optimizer
-    initial_learning_rate = 0.001
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate,
-    decay_steps=10000,
-    decay_rate=0.96,
-    staircase=True)
 
-    opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
+
+    #Optimizer
+    opt = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=True)
 
     #Compile
-    model.compile(optimizer = opt, loss= [tf.keras.losses.SparseCategoricalCrossentropy(),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
+    model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
 
-    return model
+    #Lrate
+    lrate = LRschedule(ff_dim, warmup_steps)
+    return model, lrate
 
 ######################MAIN######################
 args = parser.parse_args()
@@ -212,7 +225,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_train_seqs = sequences[train_i]
     x_train_orgs = np.repeat(np.expand_dims(np.eye(2)[meta.Org[train_i]],axis=1),maxlen,axis=1)
     #Random annotations are added as input
-    x_train_target_inp = np.random.randint(5,size=(len(train_i),maxlen))
+    x_train_target_inp = np.random.randint(1,size=(len(train_i),maxlen))
     x_train = [x_train_seqs,x_train_target_inp,x_train_orgs] #inp seq, target annoation, organism
     y_train = [CS[train_i],Types[train_i]]
 
@@ -220,7 +233,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_valid_seqs = sequences[valid_i]
     x_valid_orgs = np.repeat(np.expand_dims(np.eye(2)[meta.Org[valid_i]],axis=1),maxlen,axis=1)
     #Random annotations are added as input
-    x_valid_target_inp = np.random.randint(5,size=(len(valid_i),maxlen))
+    x_valid_target_inp = np.random.randint(1,size=(len(valid_i),maxlen))
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_orgs] #inp seq, target annoation, organism
     y_valid = [CS[valid_i],Types[valid_i]]
 
@@ -232,14 +245,13 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
     num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
-    num_iterations = int(net_params['num_iterations'])
+    warmup_steps = int(1000/batch_size) # int(net_params['warmup_steps'])
 
     #Create model
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
+    model, lrate = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,warmup_steps)
 
     #Summary of model
     print(model.summary())
-    pdb.set_trace()
     #Checkpoint
     if checkpoint == True:
         #Make dir
@@ -254,9 +266,9 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
         save_weights_only=True, mode='auto', save_freq='epoch')
 
         #Callbacks
-        callbacks=[checkpointer]
+        callbacks=[checkpointer, lrate]
     else:
-        callbacks = []
+        callbacks = [lrate]
 
     history = model.fit(
         x_train, y_train, batch_size=batch_size, epochs=num_epochs,
