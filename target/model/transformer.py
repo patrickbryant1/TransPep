@@ -106,27 +106,6 @@ class DecoderBlock(layers.Layer):
         return self.layernorm2(out2 + ffn_output), attn_weights2
 
 
-#LR schedule
-class LRschedule(tf.keras.callbacks.Callback):
-    '''lr scheduel according to one-cycle policy.
-    '''
-    '''From https://www.tensorflow.org/text/tutorials/transformer (https://arxiv.org/abs/1706.03762)'''
-    def __init__(self, d_model, warmup_steps=4000):
-        self.d_model = d_model
-        self.d_model = tf.cast(self.d_model, tf.float32)
-        self.warmup_steps = warmup_steps
-
-
-    def on_train_batch_begin(self, batch, logs=None):
-        batch = tf.cast(batch, tf.float32)
-        arg1 = tf.math.rsqrt(batch)
-        arg2 = batch * (self.warmup_steps ** -1.5)
-        lr = tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
-        keras.backend.set_value(self.model.optimizer.lr, lr)
-
-
-
-
 def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,warmup_steps):
     '''Create the transformer model
     '''
@@ -161,16 +140,21 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,warm
 
     model = keras.Model(inputs=[seq_input,seq_target,org_input], outputs=[pred_CS,pred_type])
 
+    #learning_rate
+    initial_learning_rate = 0.001
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate,
+    decay_steps=10000,
+    decay_rate=0.96,
+    staircase=True)
 
     #Optimizer
-    opt = tf.keras.optimizers.Adam(learning_rate = 0.001,amsgrad=True)
+    opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
 
     #Compile
     model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
 
-    #Lrate
-    lrate = LRschedule(ff_dim, warmup_steps)
-    return model, lrate
+    return model
 
 ######################MAIN######################
 args = parser.parse_args()
@@ -245,10 +229,10 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
     num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
-    warmup_steps = int(1000/batch_size) # int(net_params['warmup_steps'])
+    warmup_steps = 2000 # int(net_params['warmup_steps'])
 
     #Create model
-    model, lrate = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,warmup_steps)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,warmup_steps)
 
     #Summary of model
     print(model.summary())
@@ -266,9 +250,9 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
         save_weights_only=True, mode='auto', save_freq='epoch')
 
         #Callbacks
-        callbacks=[checkpointer, lrate]
+        callbacks=[checkpointer]
     else:
-        callbacks = [lrate]
+        callbacks = []
 
     history = model.fit(
         x_train, y_train, batch_size=batch_size, epochs=num_epochs,
