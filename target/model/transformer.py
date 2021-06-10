@@ -14,8 +14,6 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from categorical_focal_loss import SparseCategoricalFocalLoss
 from tensorflow.keras.callbacks import ModelCheckpoint
-import tensorflow_addons as tfa
-
 
 #visualization
 from tensorflow.keras.callbacks import TensorBoard
