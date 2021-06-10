@@ -106,7 +106,7 @@ class DecoderBlock(layers.Layer):
         return self.layernorm2(out2 + ffn_output), attn_weights2
 
 
-def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,warmup_steps):
+def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     '''Create the transformer model
     '''
 
@@ -229,10 +229,9 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
     num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
-    warmup_steps = 2000 # int(net_params['warmup_steps'])
 
     #Create model
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,warmup_steps)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
 
     #Summary of model
     print(model.summary())
