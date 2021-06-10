@@ -23,6 +23,7 @@ from tensorflow.keras.callbacks import TensorBoard
 #Custom
 from process_data import parse_and_format
 from attention_class import MultiHeadSelfAttention
+from lr_finder import LRFinder
 #from lr_finder import LRFinder
 
 
@@ -36,6 +37,7 @@ parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help
 parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = 'Path to checpoint directory. Include /in end')
 parser.add_argument('--checkpoint', nargs=1, type= int, default=sys.stdin, help = 'If to checkpoint or not: 1= True, 0 = False')
 parser.add_argument('--num_epochs', nargs=1, type= int, default=sys.stdin, help = 'Num epochs (int)')
+parser.add_argument('--find_lr', nargs=1, type= int, default=sys.stdin, help = 'Find lr (1) or not (0)')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = 'Path to output directory. Include /in end')
 
 #from tensorflow.keras.backend import set_session
@@ -106,7 +108,7 @@ class DecoderBlock(layers.Layer):
         return self.layernorm2(out2 + ffn_output), attn_weights2
 
 
-def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
+def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr):
     '''Create the transformer model
     '''
 
@@ -142,11 +144,14 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
 
     #learning_rate
     initial_learning_rate = 0.001
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate,
-    decay_steps=10000,
-    decay_rate=0.96,
-    staircase=True)
+    if find_lr ==False:
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate,
+        decay_steps=10000,
+        decay_rate=0.96,
+        staircase=True)
+    else:
+        lr_schedule = initial_learning_rate
 
     #Optimizer
     opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
@@ -165,6 +170,7 @@ param_combo = args.param_combo[0]
 checkpointdir = args.checkpointdir[0]
 checkpoint = bool(args.checkpoint[0])
 num_epochs = args.num_epochs[0]
+find_lr = bool(args.find_lr[0])
 outdir = args.outdir[0]
 
 #Params
@@ -231,37 +237,50 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     batch_size = int(net_params['batch_size']) #32
 
     #Create model
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr)
 
     #Summary of model
     print(model.summary())
-    #Checkpoint
-    if checkpoint == True:
-        #Make dir
-        try:
-            os.mkdir(checkpointdir+'TP'+str(test_partition)+'/VP'+str(valid_partition))
-        except:
-            print('Checkpoint directory exists...')
 
-        checkpoint_path=checkpointdir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+"/weights_"+str(param_combo)+"_{epoch:02d}.hdf5"
-        checkpointer = tf.keras.callbacks.ModelCheckpoint(
-        checkpoint_path, monitor='val_loss', verbose=0, save_best_only=True,
-        save_weights_only=True, mode='auto', save_freq='epoch')
 
-        #Callbacks
-        callbacks=[checkpointer]
+    if find_lr == True:
+        lr_finder = LRFinder(model)
+        lr_finder.find(x_train, y_train, start_lr=0.00001, end_lr=1, batch_size=batch_size, epochs=1)
+        losses = lr_finder.losses
+        lrs = lr_finder.lrs
+        l_l = np.asarray([lrs, losses])
+        np.savetxt(outdir+'lrs_losses'+str(param_combo)+'.txt', l_l)
+        num_epochs = 0
+
+
     else:
-        callbacks = []
+        #Checkpoint
+        if checkpoint == True:
+            #Make dir
+            try:
+                os.mkdir(checkpointdir+'TP'+str(test_partition)+'/VP'+str(valid_partition))
+            except:
+                print('Checkpoint directory exists...')
 
-    history = model.fit(
-        x_train, y_train, batch_size=batch_size, epochs=num_epochs,
-        validation_data=(x_valid, y_valid),
-        callbacks=callbacks
-    )
+            checkpoint_path=checkpointdir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+"/weights_"+str(param_combo)+"_{epoch:02d}.hdf5"
+            checkpointer = tf.keras.callbacks.ModelCheckpoint(
+            checkpoint_path, monitor='val_loss', verbose=0, save_best_only=True,
+            save_weights_only=True, mode='auto', save_freq='epoch')
 
-    #Save loss
-    train_losses.append(history.history['loss'])
-    valid_losses.append(history.history['val_loss'])
+            #Callbacks
+            callbacks=[checkpointer]
+        else:
+            callbacks = []
+
+        history = model.fit(
+            x_train, y_train, batch_size=batch_size, epochs=num_epochs,
+            validation_data=(x_valid, y_valid),
+            callbacks=callbacks
+        )
+
+        #Save loss
+        train_losses.append(history.history['loss'])
+        valid_losses.append(history.history['val_loss'])
 
 
 #Save array of losses
