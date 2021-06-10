@@ -240,7 +240,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr)
 
     #Summary of model
-    print(model.summary())
+    #print(model.summary())
 
 
     if find_lr == True:
@@ -251,6 +251,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
         l_l = np.asarray([lrs, losses])
         np.savetxt(outdir+'lrs_losses'+str(param_combo)+'.txt', l_l)
         num_epochs = 0
+        break
 
 
     else:
@@ -282,9 +283,9 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
         train_losses.append(history.history['loss'])
         valid_losses.append(history.history['val_loss'])
 
-
-#Save array of losses
-outid = str(test_partition)+'_'+str(param_combo)
-np.save(outdir+'train_losses_'+outid+'.npy',np.array(train_losses))
-np.save(outdir+'valid_losses_'+outid+'.npy',np.array(valid_losses))
-print('Done')
+if find_lr != True:
+    #Save array of losses
+    outid = str(test_partition)+'_'+str(param_combo)
+    np.save(outdir+'train_losses_'+outid+'.npy',np.array(train_losses))
+    np.save(outdir+'valid_losses_'+outid+'.npy',np.array(valid_losses))
+    print('Done')

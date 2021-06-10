@@ -5,7 +5,7 @@ CHECKPOINTDIR=../results/checkpoint/
 CHECKPOINT=0
 NUM_EPOCHS=30
 FINDLR=1
-OUTDIR=../results/
+OUTDIR=../results/lrate/
 
 for PARAM_COMBO in {1..360}
 do
