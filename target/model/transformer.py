@@ -138,9 +138,9 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
         x2 = embedding_layer2(x2)
 
     x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
-    x2 = tf.math.argmax(x2,axis=-1) #Needed for iterative training
-    pred_CS = layers.Dense(1, activation="relu", name='CS')(x2) #Annotate
-    pred_type = layers.Dense(5, activation="softmax", name='Type')(x2) #Annotate
+    x2 = tf.keras.layers.GlobalAveragePooling1D( data_format='channels_first')(x2)
+    pred_CS = layers.Dense(maxlen, activation="softmax", name='CS')(x2) # #CS
+    pred_type = layers.Dense(5, activation="softmax", name='Type')(x2) #Type
 
 
     model = keras.Model(inputs=[seq_input,seq_target,org_input], outputs=[pred_CS,pred_type])
@@ -155,7 +155,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
 
     #Compile
-    model.compile(optimizer = opt, loss= [tf.keras.losses.MeanAbsoluteError(),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
+    model.compile(optimizer = opt, loss= [tf.keras.losses.SparseCategoricalCrossentropy(),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
 
     return model
 
@@ -222,7 +222,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Random annotations are added as input
     x_valid_target_inp = np.random.randint(5,size=(len(valid_i),maxlen))
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_orgs] #inp seq, target annoation, organism
-    y_valid = annotations[valid_i] #,train_types[train_i]]
+    y_valid = [CS[valid_i],Types[valid_i]]
 
     #Model
     #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
@@ -239,6 +239,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
     #Summary of model
     print(model.summary())
+    pdb.set_trace()
     #Checkpoint
     if checkpoint == True:
         #Make dir

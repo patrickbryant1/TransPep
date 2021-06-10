@@ -2,12 +2,11 @@
 DATADIR=../data/
 VARIABLE_PARAMS=./param_combos.csv
 CHECKPOINTDIR=../results/checkpoint/
-SAVE_MODEL=1
-CHECKPOINT=1
+CHECKPOINT=0
 NUM_EPOCHS=30
 OUTDIR=../results/
 
-PARAM_COMBO=691
+PARAM_COMBO=1
 TEST_PARTITION=0
 python3 ./transformer.py --datadir $DATADIR --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR'/' --checkpoint $CHECKPOINT --num_epochs $NUM_EPOCHS --outdir $OUTDIR
 
