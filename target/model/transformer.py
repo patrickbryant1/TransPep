@@ -141,7 +141,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, fin
     model = keras.Model(inputs=[seq_input,seq_target,org_input], outputs=[pred_CS,pred_type])
 
     #learning_rate
-    initial_learning_rate = 0.001
+    initial_learning_rate = 0.001 #From lr finder
     if find_lr ==False:
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate,
