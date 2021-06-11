@@ -155,7 +155,9 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, fin
     opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
 
     #Compile
-    model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
+    #The CS loss should probably be scaled - much harder to learn: x4 in paper more or less
+    model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=3),SparseCategoricalFocalLoss(gamma=3)],
+                                metrics=["accuracy"])
 
     return model
 
@@ -213,7 +215,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_train_seqs = sequences[train_i]
     x_train_orgs = np.repeat(np.expand_dims(np.eye(2)[meta.Org[train_i]],axis=1),maxlen,axis=1)
     #Random annotations are added as input
-    x_train_target_inp = np.random.randint(1,size=(len(train_i),maxlen))
+    x_train_target_inp = np.zeros((len(train_i),maxlen))
     x_train = [x_train_seqs,x_train_target_inp,x_train_orgs] #inp seq, target annoation, organism
     y_train = [CS[train_i],Types[train_i]]
 
@@ -221,7 +223,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_valid_seqs = sequences[valid_i]
     x_valid_orgs = np.repeat(np.expand_dims(np.eye(2)[meta.Org[valid_i]],axis=1),maxlen,axis=1)
     #Random annotations are added as input
-    x_valid_target_inp = np.random.randint(1,size=(len(valid_i),maxlen))
+    x_valid_target_inp =np.zeros((len(valid_i),maxlen))
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_orgs] #inp seq, target annoation, organism
     y_valid = [CS[valid_i],Types[valid_i]]
 
@@ -238,7 +240,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr)
 
     #Summary of model
-    #print(model.summary())
+    print(model.summary())
 
 
     if find_lr == True:

@@ -259,9 +259,11 @@ def eval_type_cs(pred_types, pred_CS, true_types, true_CS):
         #Get the TP and FP CS
         TP_CS = {0:0,5:0} #exact CS, +/-1 error, +/-2 error, +/-3 error
         FP_CS = {0:0,5:0}
-        pdb.set_trace()
 
         TP_CS[0]=np.argwhere(P_CS==P_CS_pred).shape[0]
+        FP_CS[0]=P_CS.shape[0]-TP_CS[0]
+        TP_CS[5]=np.argwhere(np.absolute(P_CS-P_CS_pred)<=5).shape[0]
+        FP_CS[5]=P_CS.shape[0]-TP_CS[5]
         #Add the FPs from the wrong detection
         for d in [0,5]:
             FP_CS[d] += FP
