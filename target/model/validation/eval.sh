@@ -4,7 +4,7 @@
 DATADIR=../../data/
 RESULTSDIR=../../results/
 VARIABLE_PARAMS=../param_combos.csv
-./eval_loss.py --resultsdir $RESULTSDIR --datadir $DATADIR --variable_params $VARIABLE_PARAMS
+#./eval_loss.py --resultsdir $RESULTSDIR --datadir $DATADIR --variable_params $VARIABLE_PARAMS
 
 
 #Run the trained models
@@ -14,10 +14,9 @@ DATADIR=../../data/
 OUTDIR=../../results/
 
 
-#0
-TEST_PARTITION=0
-PARAM_COMBO=691
-#./run_trained.py --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR'TP'$TEST_PARTITION'/' --datadir $DATADIR --test_partition $TEST_PARTITION --outdir $OUTDIR
+#TEST_PARTITION=0
+PARAM_COMBO=186
+./run_trained.py --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR --datadir $DATADIR  --outdir $OUTDIR
 
 #1
 TEST_PARTITION=1

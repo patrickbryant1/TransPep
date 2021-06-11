@@ -29,7 +29,6 @@ parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, 
 parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
 parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = '''path checkpoints with .h5 files containing weights for net.''')
 parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = 'Path to data directory.')
-parser.add_argument('--test_partition', nargs=1, type= int, default=sys.stdin, help = 'Which CV fold to test on.')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = '''path to output dir.''')
 
 
@@ -91,7 +90,7 @@ class DecoderBlock(layers.Layer):
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out2 + ffn_output), attn_weights2
 
-def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr):
+def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers):
     '''Create the transformer model
     '''
 
@@ -127,14 +126,12 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, fin
 
     #learning_rate
     initial_learning_rate = 0.001 #From lr finder
-    if find_lr ==False:
-        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate,
-        decay_steps=10000,
-        decay_rate=0.96,
-        staircase=True)
-    else:
-        lr_schedule = initial_learning_rate
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate,
+    decay_steps=10000,
+    decay_rate=0.96,
+    staircase=True)
+
 
     #Optimizer
     opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
@@ -153,9 +150,8 @@ def load_model(net_params, vocab_size, maxlen, weights):
     ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
     num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
-    num_iterations = int(net_params['num_iterations'])
     #Create model
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
     model.load_weights(weights)
 
     #print(model.summary())
@@ -191,41 +187,8 @@ def run_model(model,x_valid):
 
     return preds
 
-def get_pred_types(pred_annotations):
-    '''Get the predicted types based on the annotations
-    '''
 
-    #5 classes of transit peptides
-    #0=no targeting peptide, 1=sp: signal peptide, 2=mt:mitochondrial transit peptide,
-    #3=ch:chloroplast transit peptide, 4=th:thylakoidal lumen composite transit peptide
-    type_conversion = {1:'SP', 2:'MT', 3:'CH', 4:'TH'}
-
-    pred_types = []
-    for i in range(len(pred_annotations)):
-        if (1 in pred_annotations[i]) or (2 in pred_annotations[i]) or (3 in pred_annotations[i]) or (4 in pred_annotations[i]):
-            counts = Counter(pred_annotations[i])
-            keys = [*counts.keys()]
-
-            key_count=0 #Count the occurance of each annotation - take the max for the type
-            key_type = 0
-            for key in type_conversion: #Got through all keys
-                if key not in keys:
-                    continue
-                else:
-                    if counts[key]>key_count:
-                        key_count=counts[key]
-                        key_type=key
-
-            #Save
-            pred_types.append(key_type)
-
-        else:
-            pred_types.append(0)
-
-    return np.array(pred_types)
-
-
-def eval_type_cs(pred_annotations, pred_types, true_annotations, true_types, true_CS):
+def eval_type_cs(all_pred_types, all_pred_CS, all_true_types, all_true_CS):
     '''
     5 classes of transit peptides
     0=no targeting peptide, 1=sp: signal peptide, 2=mt:mitochondrial transit peptide,
@@ -346,45 +309,40 @@ vocab_size = 21  #Amino acids and unknown (X)
 maxlen = 200  # Only consider the first 70 amino acids
 
 #Load and run model for each valid partition
-all_pred_annotations = []
-all_true_annotations = []
+all_pred_types = []
+all_pred_CS = []
 all_true_types = []
 all_true_CS = []
 
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #weights
-    weights=glob.glob(checkpointdir+'VP'+str(valid_partition)+'/*.hdf5')
+    weights=glob.glob(checkpointdir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+'/*.hdf5')
     #model
     model = load_model(net_params, vocab_size, maxlen, weights[0])
     #Get data
     x_valid_seqs,x_valid_orgs, x_valid_target_inp, y_valid, true_types, true_CS = get_data(datadir, valid_partition, maxlen, vocab_size)
     #Predict
     x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_orgs] #inp seq, target annoation, organism
-    preds = run_model(model,x_valid)
+    pred_CS, pred_types = run_model(model,x_valid)
 
-    #Pred and true annotations
-    y_pred = np.argmax(preds,axis=2)
 
     #Save
     #Pred
-    all_pred_annotations.extend([*y_pred])
+    all_pred_types.extend([*np.argmax(pred_types,axis=1)])
+    all_pred_CS.extend([*np.argmax(pred_CS,axis=1)])
     #True
-    all_true_annotations.extend([*y_valid])
     all_true_types.extend([*true_types])
     all_true_CS.extend([*true_CS])
 
 
-
 #Array conversions
-all_pred_annotations = np.array(all_pred_annotations)
-#The type will be fetched from the annotations
-all_pred_types = get_pred_types(all_pred_annotations)
-all_true_annotations = np.array(all_true_annotations)
+all_pred_types = np.array(all_pred_types)
+all_pred_CS = np.array(all_pred_CS)
 all_true_types = np.array(all_true_types)
 all_true_CS = np.array(all_true_CS)
 
 #Eval
-eval_df = eval_type_cs(all_pred_annotations, all_pred_types, all_true_annotations, all_true_types, all_true_CS)
+eval_df = eval_type_cs(all_pred_types, all_pred_CS, all_true_types, all_true_CS)
 
 eval_df.to_csv(outdir+'eval_df'+str(test_partition)+'.csv')
 print(eval_df)
