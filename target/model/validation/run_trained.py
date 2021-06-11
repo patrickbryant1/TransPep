@@ -91,7 +91,7 @@ class DecoderBlock(layers.Layer):
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out2 + ffn_output), attn_weights2
 
-def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_iterations):
+def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr):
     '''Create the transformer model
     '''
 
@@ -101,7 +101,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
 
     ##Embeddings
     embedding_layer1 = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 5, embed_dim+2) #5 annotation classes. Need to add 2 so that x1 and x2 match - the organsims
+    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 1, embed_dim+2) #5 annotation classes. Need to add 2 so that x1 and x2 match - the organsims
     x1 = embedding_layer1(seq_input)
     #Add kingdom input
     x1 = layers.Concatenate()([x1,org_input])
@@ -110,37 +110,37 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers,num_
     #Define the transformer
     encoder = EncoderBlock(embed_dim+2, num_heads, ff_dim)
     decoder = DecoderBlock(embed_dim+2, num_heads, ff_dim)
-    #Iterate
-    for i in range(num_iterations):
-        #Encode
-        for j in range(num_layers):
-            x1, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
-        #Decoder
-        for k in range(num_layers):
-            x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
-        x2 = layers.Dense(5, activation="softmax")(x2) #Annotate
-        x_rs = layers.Reshape((maxlen,5))(x2)
-        x2 = tf.math.argmax(x_rs,axis=-1) #Needed for iterative training
-        x2 = embedding_layer2(x2)
+    #Encode
+    for j in range(num_layers):
+        x1, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
+    #Decoder
+    for k in range(num_layers):
+        x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
 
-    x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
-    preds = layers.Dense(5, activation="softmax")(x2) #Annotate
+    x2 = tf.keras.layers.GlobalMaxPooling1D( data_format='channels_first')(x2)
+    pred_CS = layers.Dense(maxlen, activation="softmax", name='CS')(x2) # #CS
+    pred_type = layers.Dense(5, activation="softmax", name='Type')(x2) #Type
 
 
-    model = keras.Model(inputs=[seq_input,seq_target,org_input], outputs=preds)
+    model = keras.Model(inputs=[seq_input,seq_target,org_input], outputs=[pred_CS,pred_type])
+
+    #learning_rate
+    initial_learning_rate = 0.001 #From lr finder
+    if find_lr ==False:
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate,
+        decay_steps=10000,
+        decay_rate=0.96,
+        staircase=True)
+    else:
+        lr_schedule = initial_learning_rate
+
     #Optimizer
-    initial_learning_rate = 0.001
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate,
-    decay_steps=10000,
-    decay_rate=0.96,
-    staircase=True)
-
     opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
 
     #Compile
-    model.compile(optimizer = opt, loss= SparseCategoricalFocalLoss(gamma=2), metrics=["accuracy"])
+    model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=2),SparseCategoricalFocalLoss(gamma=2)], metrics=["accuracy"])
 
     return model
 
@@ -167,7 +167,8 @@ def get_data(datadir, valid_partition, maxlen, vocab_size):
     '''
 
     meta = pd.read_csv(datadir+'meta.csv')
-    annotations = np.load(datadir+'annotations.npy', allow_pickle=True)
+    CS = meta.CS.values
+    Types = meta.Type.values
     sequences = np.load(datadir+'sequences.npy', allow_pickle=True)
     #Valid data
     valid_i = np.where(meta.Fold==valid_partition)[0]
@@ -176,12 +177,12 @@ def get_data(datadir, valid_partition, maxlen, vocab_size):
     x_valid_seqs = sequences[valid_i]
     x_valid_orgs = np.repeat(np.expand_dims(np.eye(2)[meta.Org[valid_i]],axis=1),maxlen,axis=1)
     #Random annotations are added as input
-    x_valid_target_inp = np.random.randint(5,size=(len(valid_i),maxlen))
-    y_valid = annotations[valid_i] #,train_types[train_i]]
+    x_valid_target_inp = np.random.randint(1,size=(len(valid_i),maxlen))
+    y_valid = [CS[valid_i],Types[valid_i]]
 
     #Get the true types and CS
-    true_types = meta.Type.values[valid_i]
-    true_CS = meta.CS.values[valid_i]
+    true_types = Types[valid_i]
+    true_CS = CS[valid_i]
 
     return x_valid_seqs,x_valid_orgs, x_valid_target_inp, y_valid, true_types, true_CS
 
