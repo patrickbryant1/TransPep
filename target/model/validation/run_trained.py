@@ -188,7 +188,7 @@ def run_model(model,x_valid):
     return preds
 
 
-def eval_type_cs(all_pred_types, all_pred_CS, all_true_types, all_true_CS):
+def eval_type_cs(pred_types, pred_CS, true_types, true_CS):
     '''
     5 classes of transit peptides
     0=no targeting peptide, 1=sp: signal peptide, 2=mt:mitochondrial transit peptide,
@@ -212,17 +212,16 @@ def eval_type_cs(all_pred_types, all_pred_CS, all_true_types, all_true_CS):
     F1s = []
     MCCs = []
 
-
     #Go through all types
-    for type in type_conversion:
+    for pt in type_conversion:
 
         #Type metrics
-        P = np.argwhere(true_types==type)[:,0]
-        N = np.argwhere(true_types!=type)[:,0]
+        P = np.argwhere(true_types==pt)[:,0]
+        N = np.argwhere(true_types!=pt)[:,0]
         #Calc TP and FP
         #Get the pred pos and neg
-        pred_P = np.argwhere(pred_types==type)[:,0]
-        pred_N = np.argwhere(pred_types!=type)[:,0]
+        pred_P = np.argwhere(pred_types==pt)[:,0]
+        pred_N = np.argwhere(pred_types!=pt)[:,0]
 
         #TP and TN
         TP = np.intersect1d(P,pred_P).shape[0]
@@ -247,30 +246,22 @@ def eval_type_cs(all_pred_types, all_pred_CS, all_true_types, all_true_CS):
         MCCs.append((TP*TN-FP*FN)/np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN)))
 
         #CS metrics
-        if type==0: #NO CS
+        if pt==0: #NO CS
             CS_recalls['0'].append(0)
             CS_recalls['5'].append(0)
             continue
+
         #Get all true positive CSs
         P_CS  = true_CS[np.intersect1d(P,pred_P)]
-
         #Get all pred positive CSs from the true positives (all the other will be wrong)
-        P_CS_pred = []
-        P_annotations_pred = pred_annotations[np.intersect1d(P,pred_P)]
-        for i in range(len(P_annotations_pred)):
-            P_CS_pred.append(np.argwhere(P_annotations_pred[i]==type)[-1,0])
+        P_CS_pred = pred_CS[np.intersect1d(P,pred_P)]
 
         #Get the TP and FP CS
         TP_CS = {0:0,5:0} #exact CS, +/-1 error, +/-2 error, +/-3 error
         FP_CS = {0:0,5:0}
-        for i in range(len(P_CS)):
-            CS_diff = P_CS[i]-P_CS_pred[i]
-            for d in [0,5]:
-                if CS_diff<=d and CS_diff>=-d:
-                    TP_CS[d]+=1
-                else:
-                    FP_CS[d]+=1
+        pdb.set_trace()
 
+        TP_CS[0]=np.argwhere(P_CS==P_CS_pred).shape[0]
         #Add the FPs from the wrong detection
         for d in [0,5]:
             FP_CS[d] += FP
