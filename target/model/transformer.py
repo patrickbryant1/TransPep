@@ -281,7 +281,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
         train_losses.append(history.history['loss'])
         valid_losses.append(history.history['val_loss'])
 
-if find_lr != True:
+if find_lr != True and checkpoint != True:
     #Save array of losses
     outid = str(test_partition)+'_'+str(param_combo)
     np.save(outdir+'train_losses_'+outid+'.npy',np.array(train_losses))
