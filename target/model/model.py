@@ -102,7 +102,7 @@ def accuracy_function(real, pred):
 
 
 
-def create_model(maxlen, vocab_size, d_model,num_heads, dff,num_layers, find_lr):
+def create_model(maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers, find_lr):
     '''Create the transformer model
     '''
 
@@ -117,8 +117,8 @@ def create_model(maxlen, vocab_size, d_model,num_heads, dff,num_layers, find_lr)
     d_model=d_model,
     num_heads=num_heads,
     dff=dff,
-    input_vocab_size=tokenizers.pt.get_vocab_size(),
-    target_vocab_size=tokenizers.en.get_vocab_size(),
+    input_vocab_size=input_vocab_size,
+    target_vocab_size=target_vocab_size,
     pe_input=1000,
     pe_target=1000,
     rate=dropout_rate)
