@@ -79,6 +79,9 @@ class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
         return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
 
 def loss_function(real, pred):
+
+    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
+
     mask = tf.math.logical_not(tf.math.equal(real, 0))
     loss_ = loss_object(real, pred)
 
@@ -98,16 +101,14 @@ def accuracy_function(real, pred):
     mask = tf.cast(mask, dtype=tf.float32)
     return tf.reduce_sum(accuracies)/tf.reduce_sum(mask) #Normalize loss with the number of items in mask (nonzero)
 
+def get_batch():
+    '''Get a batch of train data'''
 
-def create_and_train_model(maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers, x_train):
+def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers, x_train):
     '''Create the transformer model
     '''
 
-    seq_input = layers.Input(shape=(maxlen,)) #Input aa sequences
-    seq_target = layers.Input(shape=(maxlen,)) #Targets - annotations
-    org_input = layers.Input(shape=(maxlen,2)) #2 Organisms plant/not
-
-
+    dropout_rate=0.5
     #Transformer
     transformer = Transformer(
     num_layers=num_layers,
@@ -116,8 +117,8 @@ def create_and_train_model(maxlen, input_vocab_size, target_vocab_size, d_model,
     dff=dff,
     input_vocab_size=input_vocab_size,
     target_vocab_size=target_vocab_size,
-    pe_input=maxlen+1,
-    pe_target=maxlen+1,
+    pe_input=maxlen+2,
+    pe_target=maxlen+2,
     rate=dropout_rate)
 
 
@@ -163,13 +164,23 @@ def create_and_train_model(maxlen, input_vocab_size, target_vocab_size, d_model,
             train_accuracy(accuracy_function(tar_real, predictions))
 
 
+    #Number of steps per epoch
+    steps_per_epoch = int(len(x_train[0])/batch_size-1)
+    train_inds = np.arange(len(x_train[0])) #Indices
+
     for epoch in range(EPOCHS):
         train_loss.reset_states()
         train_accuracy.reset_states()
 
+        #Shuffle inds
+        np.random.shuffle(train_inds)
+
         # inp -> portuguese, tar -> english
-        for (batch, (inp, tar)) in enumerate(train_batches):
+        for batch in range(steps_per_epoch):
+            batch_inds = train_inds[batch:batch+batch_size]
+            inp, orgs, tar = x_train[0][batch_inds], x_train[1][batch_inds], x_train[2][batch_inds]
             train_step(inp, tar)
 
             if batch % 50 == 0:
                 print(f'Epoch {epoch + 1} Batch {batch} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
+        pdb.set_trace()

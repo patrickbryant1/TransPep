@@ -56,10 +56,9 @@ outdir = args.outdir[0]
 net_params = variable_params.loc[param_combo-1]
 test_partition = int(net_params['test_partition'])
 #Fixed params
-vocab_size
-input_vocab_size = 23  #Amino acids and unknown (X)
-target_vocab_size = 8
-maxlen = 200  # Only consider the first 70 amino acids
+input_vocab_size = 24  #Amino acids and unknown (X)
+target_vocab_size = 9
+maxlen = 202  # Only consider the first 200 amino acids + 2 (start and end)
 
 
 #Get data
@@ -105,14 +104,10 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Model
     #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
     #Variable params
-    input_vocab_size = 21
-    target_vocab_size = 5
     d_model = int(net_params['embed_dim']) #32  # Embedding size for each token
     num_heads = int(net_params['num_heads']) #1  # Number of attention heads
     dff = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
     num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
-
-    pdb.set_trace()
     #Create and train model
-    create_and_train_model(maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers, x_train)
+    create_and_train_model(num_epochs, batch_size, maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers, x_train)
