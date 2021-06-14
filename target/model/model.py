@@ -101,10 +101,8 @@ def accuracy_function(real, pred):
     mask = tf.cast(mask, dtype=tf.float32)
     return tf.reduce_sum(accuracies)/tf.reduce_sum(mask) #Normalize loss with the number of items in mask (nonzero)
 
-def get_batch():
-    '''Get a batch of train data'''
 
-def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers, x_train):
+def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers, x_train, x_valid):
     '''Create the transformer model
     '''
 
@@ -130,6 +128,8 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
 
     train_loss = tf.keras.metrics.Mean(name='train_loss')
     train_accuracy = tf.keras.metrics.Mean(name='train_accuracy')
+    valid_loss = tf.keras.metrics.Mean(name='valid_loss')
+    valid_accuracy = tf.keras.metrics.Mean(name='valid_accuracy')
     # The @tf.function trace-compiles train_step into a TF graph for faster
     # execution. The function specializes to the precise shape of the argument
     # tensors. To avoid re-tracing due to the variable sequence lengths or variable
@@ -163,6 +163,17 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
             train_loss(loss)
             train_accuracy(accuracy_function(tar_real, predictions))
 
+    @tf.function()
+    def valid_step(inp, tar):
+        tar_inp = tar[:, :-1] #The first char is the start token - the last the end token
+        tar_real = tar[:, 1:]
+        enc_padding_mask, combined_mask, dec_padding_mask = create_masks(inp, tar_inp)
+        predictions, _ = transformer(inp, tar_inp, True, enc_padding_mask, combined_mask, dec_padding_mask)
+        loss = loss_function(tar_real, predictions)
+
+        valid_loss(loss)
+        #valid_accuracy(accuracy_function(tar_real, predictions))
+
 
     #Number of steps per epoch
     steps_per_epoch = int(len(x_train[0])/batch_size-1)
@@ -171,6 +182,8 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
     for epoch in range(EPOCHS):
         train_loss.reset_states()
         train_accuracy.reset_states()
+        valid_loss.reset_states()
+        valid_accuracy.reset_states()
 
         #Shuffle inds
         np.random.shuffle(train_inds)
@@ -183,4 +196,9 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
 
             if batch % 50 == 0:
                 print(f'Epoch {epoch + 1} Batch {batch} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
-        pdb.set_trace()
+
+        #Evaluate the valid set
+        valid_step(x_valid[0], x_valid[2])
+        print(f'Epoch {epoch + 1} Valid Loss {valid_loss.result():.4f}')
+
+    pdb.set_trace()

@@ -286,6 +286,7 @@ class Transformer(tf.keras.Model):
     final_output = self.final_layer(dec_output)  # (batch_size, tar_seq_len, target_vocab_size)
 
     #Here a Viterbi decoder step should be added
+    #final_output = tf.math.argmax(final_output,axis=-1)
 
 
     return final_output, attention_weights

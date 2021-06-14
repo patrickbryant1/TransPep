@@ -97,9 +97,10 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_train = [x_train_inp, x_train_orgs, x_train_tar]
 
     #Validation data
-    x_valid_seqs = sequences[valid_i]
+    x_valid_inp = sequences[valid_i]
     x_valid_orgs = np.repeat(np.expand_dims(meta.Org[valid_i],axis=1),maxlen,axis=1)
     x_valid_tar = annotations[valid_i]
+    x_valid = [x_valid_inp, x_valid_orgs, x_valid_tar]
 
     #Model
     #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
@@ -110,4 +111,4 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
     #Create and train model
-    create_and_train_model(num_epochs, batch_size, maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers, x_train)
+    create_and_train_model(num_epochs, batch_size, maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers, x_train, x_valid)
