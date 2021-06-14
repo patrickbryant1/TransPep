@@ -56,7 +56,9 @@ outdir = args.outdir[0]
 net_params = variable_params.loc[param_combo-1]
 test_partition = int(net_params['test_partition'])
 #Fixed params
-vocab_size = 21  #Amino acids and unknown (X)
+vocab_size
+input_vocab_size = 23  #Amino acids and unknown (X)
+target_vocab_size = 8
 maxlen = 200  # Only consider the first 70 amino acids
 
 
@@ -76,6 +78,7 @@ except:
 
 
 
+
 #Get data
 #Run through all by taking as input
 # Nested cross-validation loop with 5 folds from https://github.com/JJAlmagro/TargetP-2.0/blob/master/train.py
@@ -90,12 +93,13 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
     #Training data
     x_train_inp = sequences[train_i]
-    x_train_orgs = np.repeat(np.expand_dims(np.eye(2)[meta.Org[train_i]],axis=1),maxlen,axis=1)
+    x_train_orgs = np.repeat(np.expand_dims(meta.Org[train_i],axis=1),maxlen,axis=1)
     x_train_tar = annotations[train_i]
+    x_train = [x_train_inp, x_train_orgs, x_train_tar]
 
     #Validation data
     x_valid_seqs = sequences[valid_i]
-    x_valid_orgs = np.repeat(np.expand_dims(np.eye(2)[meta.Org[valid_i]],axis=1),maxlen,axis=1)
+    x_valid_orgs = np.repeat(np.expand_dims(meta.Org[valid_i],axis=1),maxlen,axis=1)
     x_valid_tar = annotations[valid_i]
 
     #Model
@@ -109,5 +113,6 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
 
+    pdb.set_trace()
     #Create and train model
-    create_and_train_model(maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers)
+    create_and_train_model(maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers, x_train)

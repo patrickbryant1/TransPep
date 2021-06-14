@@ -99,7 +99,7 @@ def accuracy_function(real, pred):
     return tf.reduce_sum(accuracies)/tf.reduce_sum(mask) #Normalize loss with the number of items in mask (nonzero)
 
 
-def create_and_train_model(maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers):
+def create_and_train_model(maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers, x_train):
     '''Create the transformer model
     '''
 

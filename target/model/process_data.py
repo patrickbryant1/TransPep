@@ -75,24 +75,31 @@ def parse_and_format(filename,data):
     #1=no targeting peptide/Inside cell, 2=sp: signal peptide, 3=mt:mitochondrial transit peptide,
     #4=ch:chloroplast transit peptide, 5=th:thylakoidal lumen composite transit peptide
     #6=Outside of cell - only valid for SPs - not for the peptides going into mt or ch/th
-    annotations = np.zeros((len(merged),200))
+    annotations = np.zeros((len(merged),202))
+    Seqs = np.zeros((len(merged),202))
     for i in range(len(merged)):
         row = merged.loc[i]
-        annotations[i,:int(row.CS)+1]=row.Type
+        annotations[i,1:int(row.CS)+1]=row.Type
 
         #Inside of cell/organoid - non secreted
+        endpoint = min(201,row.Seqlen)
         if row.Type != 2:
-            annotations[i,int(row.CS)+1:row.Seqlen]=1
+            annotations[i,1+int(row.CS)+1:endpoint]=1
         #SP
         else:
-            annotations[i,int(row.CS)+1:row.Seqlen]=6
-        pdb.set_trace()
+            annotations[i,1+int(row.CS)+1:endpoint]=6
+
+        #Get sequences
+        Seqs[i,1:201] = row.Sequence
 
 
-    #Get sequences
-    Seqs = []
-    [Seqs.append(np.array(seq)) for seq in merged.Sequence]
+    #Set start and end tokens: start = 99, end = 100
+    annotations[:,0]=7
+    annotations[:,-1]=8
+    Seqs[:,0]=22
+    Seqs[:,-1]=23
+
     #Drop sequences from merged
     merged = merged.drop(columns=['Sequence'])
 
-    return merged, np.array(Seqs), annotations
+    return merged, Seqs, annotations
