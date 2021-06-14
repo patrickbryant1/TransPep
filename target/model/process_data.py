@@ -32,7 +32,7 @@ def parse_and_format(filename,data):
                     current_seq = current_seq[:200]
                 else:
                     pad = np.zeros(200)
-                    pad[:] = 20 #Unknown/unusual
+                    pad[:] = 20 #Unknown/unusual - maybe this is a bad way of padding, perhaps the padding vals should be 0?
                     pad[:len(current_seq)]=current_seq
                     current_seq = pad
                 Seqs.append(current_seq)

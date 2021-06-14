@@ -15,6 +15,7 @@ from tensorflow.keras import layers
 
 #Custom
 from categorical_focal_loss import SparseCategoricalFocalLoss
+from transformer_classes import Transformer
 
 import pdb
 
@@ -32,6 +33,7 @@ def create_padding_mask(seq):
     # to the attention logits.
     return seq[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1, 1, seq_len)
 
+
 def create_look_ahead_mask(size):
     '''The look-ahead mask is used to mask the future tokens in a sequence.
     In other words, the mask indicates which entries should not be used.
@@ -44,7 +46,63 @@ def create_look_ahead_mask(size):
     mask = 1 - tf.linalg.band_part(tf.ones((size, size)), -1, 0)
     return mask  # (seq_len, seq_len)
 
-def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr):
+def create_masks(inp, tar):
+  # Encoder padding mask
+  enc_padding_mask = create_padding_mask(inp)
+
+  # Used in the 2nd attention block in the decoder.
+  # This padding mask is used to mask the encoder outputs.
+  dec_padding_mask = create_padding_mask(inp)
+
+  # Used in the 1st attention block in the decoder.
+  # It is used to pad and mask future tokens in the input received by
+  # the decoder.
+  look_ahead_mask = create_look_ahead_mask(tf.shape(tar)[1])
+  dec_target_padding_mask = create_padding_mask(tar)
+  combined_mask = tf.maximum(dec_target_padding_mask, look_ahead_mask)
+
+  return enc_padding_mask, combined_mask, dec_padding_mask
+
+class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
+  def __init__(self, d_model, warmup_steps=4000):
+    super(CustomSchedule, self).__init__()
+
+    self.d_model = d_model
+    self.d_model = tf.cast(self.d_model, tf.float32)
+
+    self.warmup_steps = warmup_steps
+
+  def __call__(self, step):
+    arg1 = tf.math.rsqrt(step)
+    arg2 = step * (self.warmup_steps ** -1.5)
+
+    return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
+
+def loss_function(real, pred):
+  mask = tf.math.logical_not(tf.math.equal(real, 0))
+  loss_ = loss_object(real, pred)
+
+  mask = tf.cast(mask, dtype=loss_.dtype)
+  loss_ *= mask
+
+  return tf.reduce_sum(loss_)/tf.reduce_sum(mask)
+
+
+def accuracy_function(real, pred):
+  accuracies = tf.equal(real, tf.argmax(pred, axis=2))
+
+  mask = tf.math.logical_not(tf.math.equal(real, 0))
+  accuracies = tf.math.logical_and(mask, accuracies)
+
+  accuracies = tf.cast(accuracies, dtype=tf.float32)
+  mask = tf.cast(mask, dtype=tf.float32)
+  return tf.reduce_sum(accuracies)/tf.reduce_sum(mask)
+
+
+
+
+
+def create_model(maxlen, vocab_size, d_model,num_heads, dff,num_layers, find_lr):
     '''Create the transformer model
     '''
 
@@ -52,49 +110,61 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, fin
     seq_target = layers.Input(shape=(maxlen,)) #Targets - annotations
     org_input = layers.Input(shape=(maxlen,2)) #2 Organisms plant/not
 
-    ##Embeddings
-    embedding_layer1 = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    embedding_layer2 = TokenAndPositionEmbedding(maxlen, 1, embed_dim+2) #5 annotation classes. Need to add 2 so that x1 and x2 match - the organsims
-    x1 = embedding_layer1(seq_input)
-    #Add kingdom input
-    x1 = layers.Concatenate()([x1,org_input])
-    x2 = embedding_layer2(seq_target)
 
-    #Define the transformer
-    encoder = EncoderBlock(embed_dim+2, num_heads, ff_dim)
-    decoder = DecoderBlock(embed_dim+2, num_heads, ff_dim)
+    #Transformer
+    transformer = Transformer(
+    num_layers=num_layers,
+    d_model=d_model,
+    num_heads=num_heads,
+    dff=dff,
+    input_vocab_size=tokenizers.pt.get_vocab_size(),
+    target_vocab_size=tokenizers.en.get_vocab_size(),
+    pe_input=1000,
+    pe_target=1000,
+    rate=dropout_rate)
 
-    #Encode
-    for j in range(num_layers):
-        x1, enc_attn_weights = encoder(x1,x1,x1) #q,k,v
-    #Decoder
-    for k in range(num_layers):
-        x2, enc_dec_attn_weights = decoder(x2,x1,x1) #q,k,v - the k and v from the encoder goes into he decoder
+    ]:
 
-    x2 = tf.keras.layers.GlobalMaxPooling1D( data_format='channels_first')(x2)
-    pred_CS = layers.Dense(maxlen, activation="softmax", name='CS')(x2) # #CS
-    pred_type = layers.Dense(5, activation="softmax", name='Type')(x2) #Type
+    learning_rate = CustomSchedule(d_model)
+
+    optimizer = tf.keras.optimizers.Adam(learning_rate, beta_1=0.9, beta_2=0.98,
+                                         epsilon=1e-9)
+
+    train_loss = tf.keras.metrics.Mean(name='train_loss')
+    train_accuracy = tf.keras.metrics.Mean(name='train_accuracy')
+
+    # The @tf.function trace-compiles train_step into a TF graph for faster
+    # execution. The function specializes to the precise shape of the argument
+    # tensors. To avoid re-tracing due to the variable sequence lengths or variable
+    # batch sizes (the last batch is smaller), use input_signature to specify
+    # more generic shapes.
+
+    train_step_signature = [
+        tf.TensorSpec(shape=(None, None), dtype=tf.int64),
+        tf.TensorSpec(shape=(None, None), dtype=tf.int64),
+    ]
 
 
-    model = keras.Model(inputs=[seq_input,seq_target,org_input], outputs=[pred_CS,pred_type])
+    @tf.function(input_signature=train_step_signature)
+    def train_step(inp, tar):
+      tar_inp = tar[:, :-1]
+      tar_real = tar[:, 1:]
 
-    #learning_rate
-    initial_learning_rate = 0.001 #From lr finder
-    if find_lr ==False:
-        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate,
-        decay_steps=10000,
-        decay_rate=0.96,
-        staircase=True)
-    else:
-        lr_schedule = initial_learning_rate
+      enc_padding_mask, combined_mask, dec_padding_mask = create_masks(inp, tar_inp)
 
-    #Optimizer
-    opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True)
+      with tf.GradientTape() as tape:
+        predictions, _ = transformer(inp, tar_inp,
+                                     True,
+                                     enc_padding_mask,
+                                     combined_mask,
+                                     dec_padding_mask)
+        loss = loss_function(tar_real, predictions)
 
-    #Compile
-    #The CS loss should probably be scaled - much harder to learn: x4 in paper more or less
-    model.compile(optimizer = opt, loss= [SparseCategoricalFocalLoss(gamma=3),SparseCategoricalFocalLoss(gamma=3)],
-                                metrics=["accuracy"])
+      gradients = tape.gradient(loss, transformer.trainable_variables)
+      optimizer.apply_gradients(zip(gradients, transformer.trainable_variables))
 
-    return model
+      train_loss(loss)
+      train_accuracy(accuracy_function(tar_real, predictions))
+
+
+    return train_step, train_loss, train_accuracy

@@ -265,6 +265,7 @@ class Transformer(tf.keras.Model):
     self.tokenizer = Encoder(num_layers, d_model, num_heads, dff,
                              input_vocab_size, pe_input, rate)
 
+    #Here, all steps are decoded simultaneously. I however need to use the previous decoder output as input
     self.decoder = Decoder(num_layers, d_model, num_heads, dff,
                            target_vocab_size, pe_target, rate)
 
@@ -275,10 +276,16 @@ class Transformer(tf.keras.Model):
 
     enc_output = self.tokenizer(inp, training, enc_padding_mask)  # (batch_size, inp_seq_len, d_model)
 
+    #The target here should be the previous decode predictions - not the actual targets
+    #Or maybe this doesn't matter? Maybe the model can learn to disregard the bias from a stretch of similar chars?
+
     # dec_output.shape == (batch_size, tar_seq_len, d_model)
     dec_output, attention_weights = self.decoder(
         tar, enc_output, training, look_ahead_mask, dec_padding_mask)
 
     final_output = self.final_layer(dec_output)  # (batch_size, tar_seq_len, target_vocab_size)
+
+    #Here a Viterbi decoder step should be added
+
 
     return final_output, attention_weights
