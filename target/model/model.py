@@ -155,6 +155,33 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
                                          enc_padding_mask,
                                          combined_mask,
                                          dec_padding_mask)
+
+
+            #Here a decoder is added
+            pdb.set_trace()
+            predictions = tf.argmax(predictions,axis=2)
+            #Get pred start - the type
+            #1=no targeting peptide/Inside cell, 2=sp: signal peptide, 3=mt:mitochondrial transit peptide,
+            #4=ch:chloroplast transit peptide, 5=th:thylakoidal lumen composite transit peptide
+            #6=Outside of cell - only valid for SPs - not for the peptides going into mt or ch/th
+            t1 = predictions[:,1]
+            #The ones that start with 1 should continue with 1up to the mask
+            #The others should have the same char as in t1 up to the point of the first 1 or 6
+            t2 = tf.gather(predictions,tf.where(tf.math.not_equal(predictions, t1)))[:,0]
+
+            pdb.set_trace()
+            #Update tensor
+            #index1 = 1 --> t2
+            #index2 = t2 --> end (200)
+            predictions = tf.tensor_scatter_nd_update(predictions, index1, t1)
+
+            #others = tf.not_equal(first_pos) #get mismatch
+            #final_output[:,others:] = final_output[,others] #set all after to the same
+            #Set all before to the same
+            #final_output[:,:others] = t1
+            #Apply mask
+            #final_output[mask]=0
+
             loss = loss_function(tar_real, predictions)
 
             gradients = tape.gradient(loss, transformer.trainable_variables)
@@ -194,8 +221,7 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
             inp, orgs, tar = x_train[0][batch_inds], x_train[1][batch_inds], x_train[2][batch_inds]
             train_step(inp, tar)
 
-            if batch % 50 == 0:
-                print(f'Epoch {epoch + 1} Batch {batch} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
+        print(f'Epoch {epoch + 1} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
 
         #Evaluate the valid set
         valid_step(x_valid[0], x_valid[2])
