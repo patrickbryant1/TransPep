@@ -92,11 +92,11 @@ def loss_function(real, pred):
 
 
 def accuracy_function(real, pred):
+    real = tf.cast(real, dtype=tf.int64)
     accuracies = tf.equal(real, tf.argmax(pred, axis=2))
 
     mask = tf.math.logical_not(tf.math.equal(real, 0))
     accuracies = tf.math.logical_and(mask, accuracies)
-
     accuracies = tf.cast(accuracies, dtype=tf.float32)
     mask = tf.cast(mask, dtype=tf.float32)
     return tf.reduce_sum(accuracies)/tf.reduce_sum(mask) #Normalize loss with the number of items in mask (nonzero)
@@ -172,7 +172,7 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
         loss = loss_function(tar_real, predictions)
 
         valid_loss(loss)
-        #valid_accuracy(accuracy_function(tar_real, predictions))
+        valid_accuracy(accuracy_function(tar_real, predictions))
 
 
     #Number of steps per epoch
@@ -199,6 +199,4 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
 
         #Evaluate the valid set
         valid_step(x_valid[0], x_valid[2])
-        print(f'Epoch {epoch + 1} Valid Loss {valid_loss.result():.4f}')
-
-    pdb.set_trace()
+        print(f'Epoch {epoch + 1} Valid Loss {valid_loss.result():.4f}  Valid Accuracy {valid_accuracy.result():.4f}')
