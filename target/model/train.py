@@ -16,7 +16,7 @@ from tensorflow.keras.callbacks import TensorBoard
 
 #Custom
 from process_data import parse_and_format
-from model import create_model
+from model import create_and_train_model
 import pdb
 #Arguments for argparse module:
 parser = argparse.ArgumentParser(description = '''A Transformer Neural Network for sorting peptides.''')
@@ -89,32 +89,25 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     train_i = np.setdiff1d(np.arange(len(meta)),np.concatenate([test_i,valid_i]))
 
     #Training data
-    x_train_seqs = sequences[train_i]
+    x_train_inp = sequences[train_i]
     x_train_orgs = np.repeat(np.expand_dims(np.eye(2)[meta.Org[train_i]],axis=1),maxlen,axis=1)
-    #Random annotations are added as input
-    x_train_target_inp = np.zeros((len(train_i),maxlen))
-    x_train = [x_train_seqs,x_train_target_inp,x_train_orgs] #inp seq, target annoation, organism
-    y_train = [CS[train_i],Types[train_i]]
+    x_train_tar = annotations[train_i]
 
     #Validation data
     x_valid_seqs = sequences[valid_i]
     x_valid_orgs = np.repeat(np.expand_dims(np.eye(2)[meta.Org[valid_i]],axis=1),maxlen,axis=1)
-    #Random annotations are added as input
-    x_valid_target_inp =np.zeros((len(valid_i),maxlen))
-    x_valid = [x_valid_seqs,x_valid_target_inp,x_valid_orgs] #inp seq, target annoation, organism
-    y_valid = [CS[valid_i],Types[valid_i]]
+    x_valid_tar = annotations[valid_i]
 
     #Model
     #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
     #Variable params
-    embed_dim = int(net_params['embed_dim']) #32  # Embedding size for each token
+    input_vocab_size = 21
+    target_vocab_size = 5
+    d_model = int(net_params['embed_dim']) #32  # Embedding size for each token
     num_heads = int(net_params['num_heads']) #1  # Number of attention heads
-    ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
+    dff = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
     num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
 
-    #Create model
-    train_step, train_loss, train_accuracy = create_model(maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers)
-
-    #Summary of model
-    print(model.summary())
+    #Create and train model
+    create_and_train_model(maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers)
