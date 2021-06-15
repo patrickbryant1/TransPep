@@ -80,7 +80,7 @@ class CustomSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
 
 def loss_function(real, pred):
 
-    loss_object = tf.keras.losses.CategoricalCrossentropy(from_logits=True, reduction='none')
+    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
 
     mask = tf.math.logical_not(tf.math.equal(real, 0)) #Where there ar nonzero
     loss_ = loss_object(real, pred)
@@ -93,6 +93,7 @@ def loss_function(real, pred):
 
 def accuracy_function(real, pred):
     real = tf.cast(real, dtype=tf.int64)
+    pred = tf.cast(pred, dtype=tf.int64)
     accuracies = tf.equal(real, pred)
 
     mask = tf.math.logical_not(tf.math.equal(real, 0))
@@ -157,23 +158,22 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
                                          dec_padding_mask)
 
 
-            #Here a decoder is added
-            predictions = tf.argmax(predictions,axis=2)
+            #Here a decoder is added to get the accuracy of the allowed transitions - this should really be linked to the loss as well
+            argmax_predictions = tf.argmax(predictions,axis=2)
             #Get pred start - the type
             #1=no targeting peptide/Inside cell, 2=sp: signal peptide, 3=mt:mitochondrial transit peptide,
             #4=ch:chloroplast transit peptide, 5=th:thylakoidal lumen composite transit peptide
             #6=Outside of cell - only valid for SPs - not for the peptides going into mt or ch/th
-            t1 = predictions[:,1]
+            t1 = argmax_predictions[:,1]
             #The ones that start with 1 should continue with 1 up to the mask
             #The others should have the same char as in t1 up to the point of the first 1 or 6
             #Here all predicted annotations are set to the first predicted character up to the point
             #where they differ
             for i in range(batch_size):
-                tf.print(predictions[i])
-                mi = tf.keras.backend.min(tf.where(predictions[i,1:]!=t1[i])) #Get mismatch index
+                mi = tf.keras.backend.min(tf.where(argmax_predictions[i,1:]!=t1[i])) #Get mismatch index
                 indices = tf.range(1,mi,1) #(start, limit, delta)
                 inserts = tf.repeat(t1[i],mi-1)
-                tf.tensor_scatter_nd_update(predictions[i],indices, inserts)
+                tf.tensor_scatter_nd_update(argmax_predictions[i],indices, inserts)
 
             loss = loss_function(tar_real, predictions)
 
@@ -181,7 +181,7 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
             optimizer.apply_gradients(zip(gradients, transformer.trainable_variables))
 
             train_loss(loss)
-            train_accuracy(accuracy_function(tar_real, predictions))
+            train_accuracy(accuracy_function(tar_real, argmax_predictions))
 
     @tf.function()
     def valid_step(inp, tar):
@@ -191,8 +191,24 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
         predictions, _ = transformer(inp, tar_inp, True, enc_padding_mask, combined_mask, dec_padding_mask)
         loss = loss_function(tar_real, predictions)
 
+        argmax_predictions = tf.argmax(predictions,axis=2)
+        #Get pred start - the type
+        #1=no targeting peptide/Inside cell, 2=sp: signal peptide, 3=mt:mitochondrial transit peptide,
+        #4=ch:chloroplast transit peptide, 5=th:thylakoidal lumen composite transit peptide
+        #6=Outside of cell - only valid for SPs - not for the peptides going into mt or ch/th
+        t1 = argmax_predictions[:,1]
+        #The ones that start with 1 should continue with 1 up to the mask
+        #The others should have the same char as in t1 up to the point of the first 1 or 6
+        #Here all predicted annotations are set to the first predicted character up to the point
+        #where they differ
+        for i in range(len(x_valid[0])):
+            mi = tf.keras.backend.min(tf.where(argmax_predictions[i,1:]!=t1[i])) #Get mismatch index
+            indices = tf.range(1,mi,1) #(start, limit, delta)
+            inserts = tf.repeat(t1[i],mi-1)
+            tf.tensor_scatter_nd_update(argmax_predictions[i],indices, inserts)
+
         valid_loss(loss)
-        valid_accuracy(accuracy_function(tar_real, predictions))
+        valid_accuracy(accuracy_function(tar_real, argmax_predictions))
 
 
     #Number of steps per epoch
