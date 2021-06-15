@@ -102,6 +102,45 @@ def accuracy_function(real, pred):
     mask = tf.cast(mask, dtype=tf.float32)
     return tf.reduce_sum(accuracies)/tf.reduce_sum(mask) #Normalize loss with the number of items in mask (nonzero)
 
+def evaluate(sequence, transformer, max_length=202):
+    '''Evaluate the translations
+    '''
+
+    encoder_input = tf.convert_to_tensor([sequence])
+
+    #Decoder output start and end tokens
+    start, end = 7, 8
+    output = tf.convert_to_tensor([start],dtype=tf.int64) #The decoder start token is omitted here
+    output = tf.expand_dims(output, 0)
+
+    for i in range(max_length):
+        enc_padding_mask, combined_mask, dec_padding_mask = create_masks(
+            encoder_input, output)
+
+        # predictions.shape == (batch_size, seq_len, vocab_size)
+        predictions, attention_weights = transformer(encoder_input,
+                                                     output,
+                                                     False,
+                                                     enc_padding_mask,
+                                                     combined_mask,
+                                                     dec_padding_mask)
+
+        # select the last word from the seq_len dimension
+        predictions = predictions[:, -1:, :]  # (batch_size, 1, vocab_size)
+
+        predicted_id = tf.argmax(predictions, axis=-1)
+
+        # concatentate the predicted_id to the output which is given to the decoder
+        # as its input.
+        output = tf.concat([output, predicted_id], axis=-1)
+
+        # return the result if the predicted_id is equal to the end token
+        if predicted_id == end:
+            break
+
+    output = output.numpy()[0,:]
+
+    return output, attention_weights
 
 def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_vocab_size, d_model,num_heads, dff,num_layers, x_train, x_valid):
     '''Create the transformer model
@@ -233,5 +272,10 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
         print(f'Epoch {epoch + 1} Loss {train_loss.result():.4f} Accuracy {train_accuracy.result():.4f}')
 
         #Evaluate the valid set
-        valid_step(x_valid[0], x_valid[2])
-        print(f'Epoch {epoch + 1} Valid Loss {valid_loss.result():.4f}  Valid Accuracy {valid_accuracy.result():.4f}')
+        #valid_step(x_valid[0], x_valid[2])
+        #print(f'Epoch {epoch + 1} Valid Loss {valid_loss.result():.4f}  Valid Accuracy {valid_accuracy.result():.4f}')
+
+
+    #Evaluate the model on the valid set
+    output, attention_weights = evaluate(x_valid[50][0], transformer, 202)
+    pdb.set_trace()

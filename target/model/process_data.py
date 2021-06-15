@@ -93,11 +93,11 @@ def parse_and_format(filename,data):
         Seqs[i,1:201] = row.Sequence
 
 
-    #Set start and end tokens: start = 99, end = 100
-    annotations[:,0]=7
-    annotations[:,-1]=8
-    Seqs[:,0]=22
-    Seqs[:,-1]=23
+    #Set start and end tokens:
+    annotations[:,0]=7 #start
+    annotations[:,-1]=8 #end
+    Seqs[:,0]=22 #start
+    Seqs[:,-1]=23 #end
 
     #Drop sequences from merged
     merged = merged.drop(columns=['Sequence'])
