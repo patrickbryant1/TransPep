@@ -77,9 +77,10 @@ def parse_and_format(filename,data):
     #6=Outside of cell - only valid for SPs - not for the peptides going into mt or ch/th
     annotations = np.zeros((len(merged),202))
     Seqs = np.zeros((len(merged),202))
+
     for i in range(len(merged)):
         row = merged.loc[i]
-        annotations[i,1:int(row.CS)+1]=row.Type
+        annotations[i,1:1+int(row.CS)+1]=row.Type
 
         #Inside of cell/organoid - non secreted
         endpoint = min(201,row.Seqlen)
@@ -98,7 +99,6 @@ def parse_and_format(filename,data):
     annotations[:,-1]=8 #end
     Seqs[:,0]=22 #start
     Seqs[:,-1]=23 #end
-
     #Drop sequences from merged
     merged = merged.drop(columns=['Sequence'])
 

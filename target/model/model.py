@@ -277,5 +277,5 @@ def create_and_train_model(EPOCHS, batch_size, maxlen, input_vocab_size, target_
 
 
     #Evaluate the model on the valid set
-    output, attention_weights = evaluate(x_valid[50][0], transformer, 202)
+    output, attention_weights = evaluate(x_valid[0][50], transformer, 202)
     pdb.set_trace()
