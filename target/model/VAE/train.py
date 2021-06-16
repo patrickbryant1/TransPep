@@ -97,10 +97,8 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Model
     #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
     #Variable params
-    d_model = int(net_params['embed_dim']) #32  # Embedding size for each token
+    encode_dim = int(net_params['encode_dim']) #32  # Embedding size for each token
     num_heads = int(net_params['num_heads']) #1  # Number of attention heads
-    dff = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
-    num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
     #Create and train model
     model = create_model(maxlen, encode_dim)
