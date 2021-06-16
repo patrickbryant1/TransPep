@@ -43,9 +43,9 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
 
     #Encode
     x = embedding_layer(encoder_inp)
-    x, enc_attn_weights = enc_attention(x,x,x) #Initial attention layer
+    #x, enc_attn_weights = enc_attention(x,x,x) #Initial attention layer
     #Maxpool
-    x = tf.keras.layers.GlobalMaxPooling1D( data_format='channels_last')(x)
+    #x = tf.keras.layers.GlobalMaxPooling1D( data_format='channels_last')(x)
     x = layers.Dense(encode_dim,activation='relu')(x)
     x = layers.Dropout(0.1)(x)
     x = layers.BatchNormalization()(x) #Bacth normalize, focus on segment
@@ -67,7 +67,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     print(encoder.summary())
 
     #Decoder
-    latent_inp = keras.Input(shape=(latent_dim,))
+    latent_inp = keras.Input(shape=(maxlen,latent_dim))
 
     x = layers.Dense(int(encode_dim/4),activation='relu')(latent_inp)
     x = layers.Dropout(0.1)(x)
@@ -81,23 +81,21 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
 
     #decoder attention
     dec_attention = MultiHeadSelfAttention(maxlen,num_heads)
-    x, enc_attn_weights = dec_attention(x,x,x)
+    #x, enc_attn_weights = dec_attention(x,x,x)
     #Maxpool
-    x = tf.keras.layers.GlobalMaxPooling1D( data_format='channels_last')(x)
-    x_exp = tf.expand_dims(x,-1)
+    #x = tf.keras.layers.GlobalMaxPooling1D( data_format='channels_last')(x)
+    #x_exp = tf.expand_dims(x,-1)
     #Final
-    preds = layers.Dense((vocab_size), activation="softmax")(x_exp) #Annotate
+    preds = layers.Dense((vocab_size), activation="softmax")(x) #Annotate
     #model
     decoder = keras.Model(latent_inp, preds, name="decoder")
     print(decoder.summary())
-    import pdb
-    pdb.set_trace()
 
     #VAE
     vae_outp = decoder(encoder(encoder_inp)[2]) #Inp z to decoder
     vae = keras.Model(encoder_inp, vae_outp, name='vae')
     #Loss
-    reconstruction_loss = keras.losses.SparseCategoricalCrossentropy()(encoder_inp,vae_outp)
+    reconstruction_loss = keras.losses.SparseCategoricalCrossentropy()(encoder_inp,vae_outp) #true,pred
     #kl loss
     kl_loss = 1 + z_log_var - keras.backend.square(z_mean) - keras.backend.exp(z_log_var)
     kl_loss = keras.backend.sum(kl_loss, axis=-1)
@@ -105,7 +103,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     vae_loss = keras.backend.mean(reconstruction_loss + kl_loss)
 
     #Optimizer
-    initial_learning_rate = 1e-3
+    initial_learning_rate = 1e-1
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
     initial_learning_rate,
     decay_steps=10000,

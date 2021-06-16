@@ -100,7 +100,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     batch_size = int(net_params['batch_size']) #32
     #Create and train model
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr)
-    pdb.set_trace()
+
     history = model.fit(x=x_train,y=x_train,
             epochs=num_epochs,
             validation_data=(x_valid,x_valid),

@@ -8,7 +8,7 @@ import pdb
 
 embed_dim = [16,32]
 num_heads = [1,4,8]
-ff_dim = [16,32]
+ff_dim = [64,32]
 num_layers = [1,2,4]
 batch_sizes = [32,64]
 test_partitions = [0,1,2,3,4]

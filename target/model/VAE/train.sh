@@ -3,7 +3,7 @@ DATADIR=../../data/
 VARIABLE_PARAMS=./param_combos.csv
 CHECKPOINTDIR=../../results/checkpoint/
 CHECKPOINT=0
-NUM_EPOCHS=10
+NUM_EPOCHS=100
 FINDLR=0
 OUTDIR=../../results/
 
