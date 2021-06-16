@@ -3,6 +3,40 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 #####FUNCTIONS and CLASSES#####
+
+class TokenAndPositionEmbedding(layers.Layer):
+    def __init__(self, maxlen, vocab_size, embed_dim):
+        super(TokenAndPositionEmbedding, self).__init__()
+        self.token_emb = layers.Embedding(input_dim=vocab_size, output_dim=embed_dim)
+        self.pos_emb = layers.Embedding(input_dim=maxlen, output_dim=embed_dim)
+
+    def call(self, x):
+        maxlen = tf.shape(x)[-1]
+        positions = tf.range(start=0, limit=maxlen, delta=1)
+        positions = self.pos_emb(positions)
+        x = self.token_emb(x)
+        return x + positions
+
+class EncoderBlock(layers.Layer):
+    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
+        super(EncoderBlock, self).__init__()
+        self.att = MultiHeadSelfAttention(embed_dim,num_heads)
+        self.ffn = keras.Sequential(
+            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
+        )
+        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
+        self.dropout1 = layers.Dropout(rate)
+        self.dropout2 = layers.Dropout(rate)
+
+    def call(self, in_q,in_k,in_v, training): #Inputs is a list with [q,k,v]
+        attn_output,attn_weights = self.att(in_q,in_k,in_v) #The weights are needed for downstream analysis
+        attn_output = self.dropout1(attn_output, training=training)
+        out1 = self.layernorm1(in_q + attn_output)
+        ffn_output = self.ffn(out1)
+        ffn_output = self.dropout2(ffn_output, training=training)
+        return self.layernorm2(out1 + ffn_output), attn_weights
+
 class Sampling(layers.Layer):
     """Uses (z_mean, z_log_var) to sample z, the vector encoding a digit."""
 
@@ -14,23 +48,22 @@ class Sampling(layers.Layer):
 
         return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
-def create_model(maxlen, encode_dim):
+def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr):
     '''Create the transformer model
     '''
 
     #Latent dim - dimension for sampling
-    latent_dim = int(encode_dim/8)
+    latent_dim = int(ff_dim/8)
     #Encoder
-    encoder_inp = layers.Input(shape=(maxlen)) #Input methylation profiles
-    x = layers.Dense(encode_dim,activation='relu')(encoder_inp)
-    x = layers.Dropout(0.1)(x)
-    x = layers.BatchNormalization()(x) #Bacth normalize, focus on segment
-    x = layers.Dense(int(encode_dim/2),activation='relu')(x)
-    x = layers.Dropout(0.1)(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Dense(int(encode_dim/4),activation='relu')(x)
-    x = layers.Dropout(0.1)(x)
-    x = layers.BatchNormalization()(x)
+    encoder_inp = layers.Input(shape=(maxlen)) #Input AA sequence
+    ##Embeddings
+    embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
+    encoder = EncoderBlock(embed_dim, num_heads, ff_dim)
+
+    #Encode
+    x = embedding_layer1(encoder_input)
+    x, enc_attn_weights = encoder(x,x,x)
+
     #Constrain to distribution
     z_mean = layers.Dense(latent_dim, name="z_mean")(x)
     z_log_var = layers.Dense(latent_dim, name="z_log_var")(x)
@@ -38,24 +71,16 @@ def create_model(maxlen, encode_dim):
     z = Sampling()([z_mean, z_log_var])
     #model
     encoder = keras.Model(encoder_inp, [z_mean, z_log_var, z], name="encoder")
-    #encoder.summary()
+    print(encoder.summary())
 
     #Decoder
     latent_inp = keras.Input(shape=(latent_dim,))
-    x = layers.Dense(int(encode_dim/4),activation='relu')(latent_inp)
-    x = layers.Dropout(0.1)(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Dense(int(encode_dim/2),activation='relu')(x)
-    x = layers.Dropout(0.1)(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Dense(encode_dim,activation='relu')(x)
-    x = layers.Dropout(0.1)(x)
-    x = layers.BatchNormalization()(x)
+
     #Final
-    preds = layers.Dense(maxlen, activation="sigmoid")(x) #Annotate
+    preds = layers.Dense(vocab_size, activation="softmax")(x) #Annotate
     #model
     decoder = keras.Model(latent_inp, preds, name="decoder")
-    #decoder.summary()
+    print(decoder.summary())
 
     #VAE
     vae_outp = decoder(encoder(encoder_inp)[2]) #Inp z to decoder

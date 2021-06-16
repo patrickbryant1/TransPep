@@ -56,7 +56,7 @@ outdir = args.outdir[0]
 net_params = variable_params.loc[param_combo-1]
 test_partition = int(net_params['test_partition'])
 #Fixed params
-input_vocab_size = 22  #Amino acids, unknown (X) and padding
+vocab_size = 22  #Amino acids, unknown (X) and padding
 maxlen = 200  # Only consider the first 200 amino acids
 
 
@@ -101,7 +101,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     num_heads = int(net_params['num_heads']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
     #Create and train model
-    model = create_model(maxlen, encode_dim)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr)
 
     history = model.fit(x=x_train,y=x_train,
             epochs=num_epochs,
