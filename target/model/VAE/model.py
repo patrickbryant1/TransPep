@@ -56,7 +56,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     x = layers.Dropout(0.1)(x)
     x = layers.BatchNormalization()(x)
 
-
+    x = layers.Flatten()(x)
     #Constrain to distribution
     z_mean = layers.Dense(latent_dim, name="z_mean")(x)
     z_log_var = layers.Dense(latent_dim, name="z_log_var")(x)
@@ -67,9 +67,11 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     print(encoder.summary())
 
     #Decoder
-    latent_inp = keras.Input(shape=(maxlen,latent_dim))
+    latent_inp = keras.Input(shape=(latent_dim))
 
-    x = layers.Dense(int(encode_dim/4),activation='relu')(latent_inp)
+    x = layers.Dense(int(encode_dim/4)*maxlen,activation='relu')(latent_inp)
+    x = layers.Reshape((maxlen,int(encode_dim/4)))(x)
+
     x = layers.Dropout(0.1)(x)
     x = layers.BatchNormalization()(x)
     x = layers.Dense(int(encode_dim/2),activation='relu')(x)
