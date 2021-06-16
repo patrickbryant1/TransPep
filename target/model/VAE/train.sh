@@ -7,7 +7,7 @@ NUM_EPOCHS=10
 FINDLR=0
 OUTDIR=../../results/
 
-PARAM_COMBO=186
+PARAM_COMBO=1
 #TEST_PARTITION=0
 python3 ./train.py --datadir $DATADIR --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR'/' --checkpoint $CHECKPOINT --num_epochs $NUM_EPOCHS --find_lr $FINDLR --outdir $OUTDIR
 #

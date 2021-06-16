@@ -2,6 +2,7 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from attention_class import MultiHeadSelfAttention
 #####FUNCTIONS and CLASSES#####
 
 class TokenAndPositionEmbedding(layers.Layer):
@@ -17,26 +18,6 @@ class TokenAndPositionEmbedding(layers.Layer):
         x = self.token_emb(x)
         return x + positions
 
-class EncoderBlock(layers.Layer):
-    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
-        super(EncoderBlock, self).__init__()
-        self.att = MultiHeadSelfAttention(embed_dim,num_heads)
-        self.ffn = keras.Sequential(
-            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
-        )
-        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
-        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
-        self.dropout1 = layers.Dropout(rate)
-        self.dropout2 = layers.Dropout(rate)
-
-    def call(self, in_q,in_k,in_v, training): #Inputs is a list with [q,k,v]
-        attn_output,attn_weights = self.att(in_q,in_k,in_v) #The weights are needed for downstream analysis
-        attn_output = self.dropout1(attn_output, training=training)
-        out1 = self.layernorm1(in_q + attn_output)
-        ffn_output = self.ffn(out1)
-        ffn_output = self.dropout2(ffn_output, training=training)
-        return self.layernorm2(out1 + ffn_output), attn_weights
-
 class Sampling(layers.Layer):
     """Uses (z_mean, z_log_var) to sample z, the vector encoding a digit."""
 
@@ -48,27 +29,39 @@ class Sampling(layers.Layer):
 
         return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
-def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr):
+def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers, find_lr):
     '''Create the transformer model
     '''
 
     #Latent dim - dimension for sampling
-    latent_dim = int(ff_dim/8)
+    latent_dim = int(encode_dim/8)
     #Encoder
     encoder_inp = layers.Input(shape=(maxlen)) #Input AA sequence
     ##Embeddings
     embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    encoder = EncoderBlock(embed_dim, num_heads, ff_dim)
+    enc_attention = MultiHeadSelfAttention(embed_dim,num_heads)
 
     #Encode
-    x = embedding_layer1(encoder_input)
-    x, enc_attn_weights = encoder(x,x,x)
+    x = embedding_layer(encoder_inp)
+    x, enc_attn_weights = enc_attention(x,x,x) #Initial attention layer
+    #Maxpool
+    x = tf.keras.layers.GlobalMaxPooling1D( data_format='channels_last')(x)
+    x = layers.Dense(encode_dim,activation='relu')(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.BatchNormalization()(x) #Bacth normalize, focus on segment
+    x = layers.Dense(int(encode_dim/2),activation='relu')(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dense(int(encode_dim/4),activation='relu')(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.BatchNormalization()(x)
+
 
     #Constrain to distribution
     z_mean = layers.Dense(latent_dim, name="z_mean")(x)
     z_log_var = layers.Dense(latent_dim, name="z_log_var")(x)
     #z = z_mean + exp(z_log_sigma) * epsilon, where epsilon is a random normal tensor.
-    z = Sampling()([z_mean, z_log_var])
+    z = Sampling(name='z')([z_mean, z_log_var])
     #model
     encoder = keras.Model(encoder_inp, [z_mean, z_log_var, z], name="encoder")
     print(encoder.summary())
@@ -76,18 +69,36 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, fin
     #Decoder
     latent_inp = keras.Input(shape=(latent_dim,))
 
+    x = layers.Dense(int(encode_dim/4),activation='relu')(latent_inp)
+    x = layers.Dropout(0.1)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dense(int(encode_dim/2),activation='relu')(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Dense(encode_dim,activation='relu')(x)
+    x = layers.Dropout(0.1)(x)
+    x = layers.BatchNormalization()(x)
+
+    #decoder attention
+    dec_attention = MultiHeadSelfAttention(maxlen,num_heads)
+    x, enc_attn_weights = dec_attention(x,x,x)
+    #Maxpool
+    x = tf.keras.layers.GlobalMaxPooling1D( data_format='channels_last')(x)
+    x_exp = tf.expand_dims(x,-1)
     #Final
-    preds = layers.Dense(vocab_size, activation="softmax")(x) #Annotate
+    preds = layers.Dense((vocab_size), activation="softmax")(x_exp) #Annotate
     #model
     decoder = keras.Model(latent_inp, preds, name="decoder")
     print(decoder.summary())
+    import pdb
+    pdb.set_trace()
 
     #VAE
     vae_outp = decoder(encoder(encoder_inp)[2]) #Inp z to decoder
     vae = keras.Model(encoder_inp, vae_outp, name='vae')
     #Loss
-    reconstruction_loss = keras.losses.mean_absolute_error(encoder_inp,vae_outp)
-    #reconstruction_loss *= 10
+    reconstruction_loss = keras.losses.SparseCategoricalCrossentropy()(encoder_inp,vae_outp)
+    #kl loss
     kl_loss = 1 + z_log_var - keras.backend.square(z_mean) - keras.backend.exp(z_log_var)
     kl_loss = keras.backend.sum(kl_loss, axis=-1)
     kl_loss *= -0.5

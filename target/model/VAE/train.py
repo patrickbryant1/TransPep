@@ -72,9 +72,6 @@ except:
     meta.to_csv(datadir+'meta.csv',index=False)
     np.save(datadir+'sequences.npy',sequences)
 
-
-pdb.set_trace()
-
 #Get data
 #Run through all by taking as input
 # Nested cross-validation loop with 5 folds from https://github.com/JJAlmagro/TargetP-2.0/blob/master/train.py
@@ -93,20 +90,21 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     x_train = sequences[train_i]
     #Validation data
     x_valid = sequences[valid_i]
-
     #Model
     #Based on: https://keras.io/examples/nlp/text_classification_with_transformer/
     #Variable params
-    encode_dim = int(net_params['encode_dim']) #32  # Embedding size for each token
+    embed_dim = int(net_params['embed_dim']) #32  # Embedding size for each token
     num_heads = int(net_params['num_heads']) #1  # Number of attention heads
+    ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
+    num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
     #Create and train model
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr)
-
+    pdb.set_trace()
     history = model.fit(x=x_train,y=x_train,
             epochs=num_epochs,
             validation_data=(x_valid,x_valid),
-            callbacks=callbacks
+            callbacks=[]
             )
 
     #Save loss
