@@ -121,7 +121,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
             except:
                 print('Checkpoint directory exists...')
 
-            checkpoint_path=checkpointdir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+"/weights_"+str(param_combo)+"_{epoch:02d}.hdf5"
+            checkpoint_path=checkpointdir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+"/weights_"+str(param_combo)+".hdf5"
             checkpointer = tf.keras.callbacks.ModelCheckpoint(
             checkpoint_path, monitor='val_loss', verbose=0, save_best_only=True,
             save_weights_only=True, mode='auto', save_freq='epoch')
@@ -134,7 +134,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
         history = model.fit(x=x_train,y=x_train,
             epochs=num_epochs,
             validation_data=(x_valid,x_valid),
-            callbacks=[]
+            callbacks=callbacks
             )
 
         #Save loss

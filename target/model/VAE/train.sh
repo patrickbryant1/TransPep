@@ -1,9 +1,9 @@
 
 DATADIR=../../data/
 VARIABLE_PARAMS=./param_combos.csv
-CHECKPOINTDIR=../../results/checkpoint/
-CHECKPOINT=0
-NUM_EPOCHS=100
+CHECKPOINTDIR=../../results/VAE/checkpoint/
+CHECKPOINT=1
+NUM_EPOCHS=50
 FINDLR=0
 OUTDIR=../../results/
 
