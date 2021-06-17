@@ -101,14 +101,51 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Create and train model
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, find_lr)
 
-    history = model.fit(x=x_train,y=x_train,
+    if find_lr == True:
+        lr_finder = LRFinder(model)
+        lr_finder.find(x_train, y_train, start_lr=0.00001, end_lr=1, batch_size=batch_size, epochs=1)
+        losses = lr_finder.losses
+        lrs = lr_finder.lrs
+        l_l = np.asarray([lrs, losses])
+        np.savetxt(outdir+'lrs_losses'+str(param_combo)+'.txt', l_l)
+        num_epochs = 0
+        break
+
+    else:
+        #Checkpoint
+        if checkpoint == True:
+            #Make dir
+            try:
+                os.mkdir(checkpointdir+'TP'+str(test_partition)+'/VP'+str(valid_partition))
+            except:
+                print('Checkpoint directory exists...')
+
+            checkpoint_path=checkpointdir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+"/weights_"+str(param_combo)+"_{epoch:02d}.hdf5"
+            checkpointer = tf.keras.callbacks.ModelCheckpoint(
+            checkpoint_path, monitor='val_loss', verbose=0, save_best_only=True,
+            save_weights_only=True, mode='auto', save_freq='epoch')
+
+            #Callbacks
+            callbacks=[checkpointer]
+        else:
+            callbacks = []
+
+        history = model.fit(x=x_train,y=x_train,
             epochs=num_epochs,
             validation_data=(x_valid,x_valid),
             callbacks=[]
             )
 
-    #Save loss
-    train_losses.append(history.history['loss'])
-    valid_losses.append(history.history['val_loss'])
-    train_acc.append(history.history['accuracy'])
-    valid_acc.append(history.history['val_accuracy'])
+        #Save loss
+        train_losses.append(history.history['loss'])
+        valid_losses.append(history.history['val_loss'])
+        train_acc.append(history.history['accuracy'])
+        valid_acc.append(history.history['val_accuracy'])
+
+if find_lr != True and checkpoint != True:
+    #Save array of losses
+    outid = str(test_partition)+'_'+str(param_combo)
+    np.save(outdir+'train_losses_'+outid+'.npy',np.array(train_losses))
+    np.save(outdir+'valid_losses_'+outid+'.npy',np.array(valid_losses))
+    print('Done')
+    

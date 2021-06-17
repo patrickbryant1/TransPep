@@ -87,15 +87,19 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     #Loss
     vae_loss = keras.losses.SparseCategoricalCrossentropy()(encoder_inp,vae_outp) #true,pred
 
-    #Optimizer
-    initial_learning_rate = 1e-3
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate,
-    decay_steps=10000,
-    decay_rate=0.96,
-    staircase=True)
+    #learning_rate
+    initial_learning_rate = 1e-3 #From lr finder
 
-    opt = tf.keras.optimizers.Adam(learning_rate = 1e-3,amsgrad=True,clipnorm=1.0)
+    if find_lr ==False:
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate,
+        decay_steps=10000,
+        decay_rate=0.96,
+        staircase=True)
+    else:
+        lr_schedule = initial_learning_rate
+
+    opt = tf.keras.optimizers.Adam(learning_rate = lr_schedule,amsgrad=True,clipnorm=1.0)
 
     #Compile
     vae.add_loss(vae_loss)
