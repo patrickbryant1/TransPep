@@ -65,7 +65,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     #Reshape
     x = layers.Reshape((maxlen,embed_dim))(x)
     #decoder attention
-    dec_attention = MultiHeadSelfAttention(maxlen,num_heads)
+    dec_attention = MultiHeadSelfAttention(embed_dim,num_heads)
     for i in range(2):
         x, enc_attn_weights = dec_attention(x,x,x)
     #Final
@@ -86,7 +86,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     vae_loss = reconstruction_loss  #keras.backend.mean(reconstruction_loss + kl_loss)
 
     #Optimizer
-    initial_learning_rate = 1e-1
+    initial_learning_rate = 1e-3
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
     initial_learning_rate,
     decay_steps=10000,
