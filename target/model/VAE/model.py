@@ -88,7 +88,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     vae_loss = keras.losses.SparseCategoricalCrossentropy()(encoder_inp,vae_outp) #true,pred
 
     #learning_rate
-    initial_learning_rate = 1e-5 #From lr finder
+    initial_learning_rate = 1e-3 #From lr finder
 
     if find_lr ==False:
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
