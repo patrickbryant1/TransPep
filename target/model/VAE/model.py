@@ -79,7 +79,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     #dec_attention = MultiHeadSelfAttention(embed_dim,num_heads)
     dec_attention = EncoderBlock(embed_dim, num_heads, encode_dim)
     for i in range(num_layers):
-        x, enc_attn_weights = dec_attention(x,x,x)
+        x, dec_attn_weights = dec_attention(x,x,x)
     #Final
     preds = layers.Dense((vocab_size), activation="softmax")(x) #Annotate
     #model
