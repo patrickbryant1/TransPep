@@ -17,6 +17,7 @@ from tensorflow.keras.callbacks import TensorBoard
 #Custom
 from process_data import parse_and_format
 from model import create_model
+from lr_finder import LRFinder
 import pdb
 #Arguments for argparse module:
 parser = argparse.ArgumentParser(description = '''An attention based VAE Neural Network for encoding peptides.''')
@@ -148,4 +149,3 @@ if find_lr != True and checkpoint != True:
     np.save(outdir+'train_losses_'+outid+'.npy',np.array(train_losses))
     np.save(outdir+'valid_losses_'+outid+'.npy',np.array(valid_losses))
     print('Done')
-    
