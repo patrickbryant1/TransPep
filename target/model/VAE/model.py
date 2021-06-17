@@ -62,7 +62,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     z = layers.Dense(latent_dim, name="z")(x)
     #model
     encoder = keras.Model(encoder_inp, [z], name="encoder")
-    print(encoder.summary())
+    #print(encoder.summary())
 
     #Decoder
     latent_inp = keras.Input(shape=(latent_dim))
@@ -79,7 +79,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     preds = layers.Dense((vocab_size), activation="softmax")(x) #Annotate
     #model
     decoder = keras.Model(latent_inp, preds, name="decoder")
-    print(decoder.summary())
+    #print(decoder.summary())
 
     #VAE
     vae_outp = decoder(encoder(encoder_inp)) #Inp z to decoder

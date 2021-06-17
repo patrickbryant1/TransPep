@@ -104,7 +104,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 
     if find_lr == True:
         lr_finder = LRFinder(model)
-        lr_finder.find(x_train, y_train, start_lr=0.00001, end_lr=1, batch_size=batch_size, epochs=1)
+        lr_finder.find(x_train, x_train, start_lr=0.00001, end_lr=1, batch_size=batch_size, epochs=1)
         losses = lr_finder.losses
         lrs = lr_finder.lrs
         l_l = np.asarray([lrs, losses])
