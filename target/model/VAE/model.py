@@ -60,11 +60,6 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     #Flatten
     x = layers.Flatten()(x) # (batch_size, seq_len, encode_dim)
     z = layers.Dense(latent_dim, name="z")(x)
-    # #Constrain to distribution
-    # z_mean = layers.Dense(latent_dim, name="z_mean")(x)
-    # z_log_var = layers.Dense(latent_dim, name="z_log_var")(x)
-    # #z = z_mean + exp(z_log_sigma) * epsilon, where epsilon is a random normal tensor.
-    # z = Sampling(name='z')([z_mean, z_log_var])
     #model
     encoder = keras.Model(encoder_inp, [z], name="encoder")
     print(encoder.summary())
@@ -90,12 +85,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     vae_outp = decoder(encoder(encoder_inp)) #Inp z to decoder
     vae = keras.Model(encoder_inp, vae_outp, name='vae')
     #Loss
-    reconstruction_loss = keras.losses.SparseCategoricalCrossentropy()(encoder_inp,vae_outp) #true,pred
-    #kl loss
-    # kl_loss = 1 + z_log_var - keras.backend.square(z_mean) - keras.backend.exp(z_log_var)
-    # kl_loss = keras.backend.sum(kl_loss, axis=-1)
-    # kl_loss *= -0.5
-    vae_loss = reconstruction_loss  #keras.backend.mean(reconstruction_loss + kl_loss)
+    vae_loss = keras.losses.SparseCategoricalCrossentropy()(encoder_inp,vae_outp) #true,pred
 
     #Optimizer
     initial_learning_rate = 1e-3
