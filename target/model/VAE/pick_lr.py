@@ -17,7 +17,7 @@ for name in lrates:
     plt.plot(lrs_losses[0,:],lrs_losses[1,:],alpha=0.1,color='tab:blue')
 
 plt.xscale('log')
-plt.ylim([0,10])
+plt.ylim([3,5])
 plt.title('Learning rate optimization')
 plt.xlabel('learning rate')
 plt.ylabel('loss')
