@@ -3,6 +3,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from attention_class import MultiHeadSelfAttention
+import pdb
 #####FUNCTIONS and CLASSES#####
 
 class TokenAndPositionEmbedding(layers.Layer):
@@ -18,16 +19,26 @@ class TokenAndPositionEmbedding(layers.Layer):
         x = self.token_emb(x)
         return x + positions
 
-class Sampling(layers.Layer):
-    """Uses (z_mean, z_log_var) to sample z, the vector encoding a digit."""
+class EncoderBlock(layers.Layer):
+    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1):
+        super(EncoderBlock, self).__init__()
+        self.att = MultiHeadSelfAttention(embed_dim,num_heads)
+        self.ffn = keras.Sequential(
+            [layers.Dense(ff_dim, activation="relu"), layers.Dense(embed_dim),]
+        )
+        self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
+        self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
+        self.dropout1 = layers.Dropout(rate)
+        self.dropout2 = layers.Dropout(rate)
 
-    def call(self, inputs):
-        z_mean, z_log_var = inputs
-        batch = tf.shape(z_mean)[0]
-        dim = tf.shape(z_mean)[1]
-        epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
+    def call(self, in_q,in_k,in_v, training): #Inputs is a list with [q,k,v]
+        attn_output,attn_weights = self.att(in_q,in_k,in_v) #The weights are needed for downstream analysis
+        attn_output = self.dropout1(attn_output, training=training)
+        out1 = self.layernorm1(in_q + attn_output)
+        ffn_output = self.ffn(out1)
+        ffn_output = self.dropout2(ffn_output, training=training)
+        return self.layernorm2(out1 + ffn_output), attn_weights
 
-        return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
 def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers, find_lr):
     '''Create the transformer model
@@ -39,15 +50,15 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     encoder_inp = layers.Input(shape=(maxlen)) #Input AA sequence
     ##Embeddings
     embedding_layer = TokenAndPositionEmbedding(maxlen, vocab_size, embed_dim)
-    enc_attention = MultiHeadSelfAttention(embed_dim,num_heads)
-
+    #enc_attention = MultiHeadSelfAttention(embed_dim,num_heads)
+    enc_attention = EncoderBlock(embed_dim, num_heads, encode_dim)
     #Encode
     x = embedding_layer(encoder_inp)
     #Attention layer
-    for i in range(2):
+    for i in range(num_layers):
         x, enc_attn_weights = enc_attention(x,x,x)
     #Flatten
-    x = layers.Reshape((maxlen*embed_dim,))(x) # (batch_size, seq_len, embed_dim)
+    x = layers.Flatten()(x) # (batch_size, seq_len, encode_dim)
     z = layers.Dense(latent_dim, name="z")(x)
     # #Constrain to distribution
     # z_mean = layers.Dense(latent_dim, name="z_mean")(x)
@@ -65,8 +76,9 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     #Reshape
     x = layers.Reshape((maxlen,embed_dim))(x)
     #decoder attention
-    dec_attention = MultiHeadSelfAttention(embed_dim,num_heads)
-    for i in range(2):
+    #dec_attention = MultiHeadSelfAttention(embed_dim,num_heads)
+    dec_attention = EncoderBlock(embed_dim, num_heads, encode_dim)
+    for i in range(num_layers):
         x, enc_attn_weights = dec_attention(x,x,x)
     #Final
     preds = layers.Dense((vocab_size), activation="softmax")(x) #Annotate
