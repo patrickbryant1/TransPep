@@ -41,7 +41,6 @@ def load_model(net_params, vocab_size, maxlen, weights):
     batch_size = int(net_params['batch_size']) #32
     #Create model
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, False)
-    pdb.set_trace()
     model.load_weights(weights)
 
     return model
@@ -104,6 +103,8 @@ all_encodings_z = []
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #weights
     weights=glob.glob(checkpointdir+'TP'+str(test_partition)+'/VP'+str(valid_partition)+'/*.hdf5')
+    if len(weights)<1:
+        continue
     #model
     model = load_model(net_params, vocab_size, maxlen, weights[0])
     #Get data
