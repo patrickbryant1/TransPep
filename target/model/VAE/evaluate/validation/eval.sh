@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 
 #Evaluate the loss
-DATADIR=../../data/
-RESULTSDIR=../../results/
-VARIABLE_PARAMS=../param_combos.csv
-#./eval_loss.py --resultsdir $RESULTSDIR --datadir $DATADIR --variable_params $VARIABLE_PARAMS
+DATADIR=../../../../data/
+RESULTSDIR=../../../../results/VAE/
+VARIABLE_PARAMS=../../param_combos.csv
+./eval_loss.py --resultsdir $RESULTSDIR --datadir $DATADIR --variable_params $VARIABLE_PARAMS
 
 
 #Run the trained models
-VARIABLE_PARAMS=../param_combos.csv
-CHECKPOINTDIR=../../results/checkpoint/
-DATADIR=../../data/
-OUTDIR=../../results/
+VARIABLE_PARAMS=../../param_combos.csv
+CHECKPOINTDIR=../../../../results/checkpoint/
+DATADIR=../../../../data/
+OUTDIR=../../../../results/VAE/
 
 
 #TEST_PARTITION=0
 PARAM_COMBO=186
-./run_trained.py --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR --datadir $DATADIR  --outdir $OUTDIR
+#./run_trained.py --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR --datadir $DATADIR  --outdir $OUTDIR
 
 #1
 TEST_PARTITION=1
