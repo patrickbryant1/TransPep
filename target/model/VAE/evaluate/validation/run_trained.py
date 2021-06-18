@@ -15,10 +15,10 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
-
 import glob
 from model import create_model
-
+#Umap
+import umap
 
 import pdb
 
@@ -70,7 +70,6 @@ def get_attention_and_encodings(model,x_valid):
     '''
     # Names
     names = [weight.name for layer in model.layers for weight in layer.weights]
-
     #Self-attention
     #get_enc_self_attention = keras.backend.function(model.layers[0].input, )
     #enc_attention = get_enc_layer_output(x_valid)
@@ -115,4 +114,11 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     all_true_types.extend([*true_types])
     all_true_CS.extend([*true_CS])
     all_encodings_z.extend([*encodings_z])
+
+
+#Array conversions
+all_encodings_z = np.array(all_encodings_z)
+
+#Umap
+mapper = umap.UMAP().fit(all_encodings_z)
 pdb.set_trace()
