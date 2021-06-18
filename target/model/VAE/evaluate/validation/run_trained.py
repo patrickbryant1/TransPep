@@ -40,7 +40,7 @@ def load_model(net_params, vocab_size, maxlen, weights):
     num_layers = int(net_params['num_layers']) #1  # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
     #Create model
-    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers)
+    model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, False)
     model.load_weights(weights)
 
     return model
@@ -68,16 +68,17 @@ def get_data(datadir, valid_partition):
 def get_attention_and_encodings(model,x_valid):
     '''Obtain the output of the attention layers
     '''
-    # with a Sequential model
+    # Names
+    names = [weight.name for layer in model.layers for weight in layer.weights]
+
     #Self-attention
-    pdb.set_trace()
-    get_enc_self_attention = keras.backend.function(x_valid)
-    enc_attention = get_enc_layer_output([data[0],data[2]])[0][0][1]
+    #get_enc_self_attention = keras.backend.function(model.layers[0].input, )
+    #enc_attention = get_enc_layer_output(x_valid)
 
     #Endodings
-    get_encodings = keras.backend.function(x_valid)
-    enc_dec_attention = get_encodings(data)[0][0][1]
-    return enc_attention, enc_dec_attention
+    get_encodings = keras.backend.function(model.layers[0].input, model.get_layer('encoder').output)
+    encodings_z = get_encodings(x_valid)
+    return encodings_z #enc_attention
 
 
 ######################MAIN######################
@@ -98,6 +99,7 @@ maxlen = 200  # Only consider the first 70 amino acids
 
 all_true_types = []
 all_true_CS = []
+all_encodings_z = []
 #Load and run model for each valid partition
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #weights
@@ -107,11 +109,10 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Get data
     x_valid, true_types, true_CS = get_data(datadir, valid_partition)
     #Get attention and encodings
-    get_attention_and_encodings(model,x_valid)
-
-
+    encodings_z = get_attention_and_encodings(model,x_valid)
     #Save
     #True
     all_true_types.extend([*true_types])
     all_true_CS.extend([*true_CS])
-    
+    all_encodings_z.extend([*encodings_z])
+pdb.set_trace()
