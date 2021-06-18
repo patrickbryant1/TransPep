@@ -105,13 +105,6 @@ test_partition = int(net_params['test_partition'])
 vocab_size = 22  #Amino acids and unknown (X)
 maxlen = 200  # Only consider the first 70 amino acids
 
-all_true_CS = []
-all_true_types = []
-all_true_orgs = []
-all_true_IDs = []
-all_encodings_z = []
-all_enc_attention = []
-all_seqs = []
 #Load and run model for each valid partition
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #weights
@@ -125,29 +118,9 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Get attention and encodings
     encodings_z, enc_attention = get_attention_and_encodings(model,x_valid)
     #Save
-    all_true_CS.extend([*true_CS])
-    all_true_types.extend([*true_types])
-    all_true_orgs.extend([*true_orgs])
-    all_true_IDs.extend([*true_IDs])
-    all_encodings_z.extend([*encodings_z])
-    all_enc_attention.extend([*np.max(enc_attention,axis=1)])
-    all_seqs.extend([*x_valid])
-
-
-#Array conversions
-all_encodings_z = np.array(all_encodings_z)
-all_seqs = np.array(all_seqs)
-
-#Umap
-print('Mapping UMAP for seqs...')
-us_seq = umap.UMAP().fit_transform(all_seqs)
-print('Mapping UMAP for encodings...')
-us = umap.UMAP().fit_transform(all_encodings_z)
-#Save
-np.save(outdir+'umap_seqs'+str(test_partition)+'.npy',us_seq)
-np.save(outdir+'umap'+str(test_partition)+'.npy',us)
-np.save(outdir+'enc_attention'+str(test_partition)+'.npy',np.array(all_enc_attention))
-np.save(outdir+'CS'+str(test_partition)+'.npy',np.array(all_true_CS))
-np.save(outdir+'types'+str(test_partition)+'.npy',np.array(all_true_types))
-np.save(outdir+'orgs'+str(test_partition)+'.npy',np.array(all_true_orgs))
-np.save(outdir+'IDs'+str(test_partition)+'.npy',np.array(all_true_IDs))
+    np.save(outdir+'enc_z'+str(test_partition+str(valid_partition))+'.npy',np.array(encodings_z))
+    np.save(outdir+'enc_attention'+str(test_partition+str(valid_partition))+'.npy',np.array(enc_attention))
+    np.save(outdir+'CS'+str(test_partition)+str(valid_partition)+'.npy',np.array(true_CS))
+    np.save(outdir+'types'+str(test_partition)+str(valid_partition)+'.npy',np.array(true_types))
+    np.save(outdir+'orgs'+str(test_partition)+str(valid_partition)+'.npy',np.array(true_orgs))
+    np.save(outdir+'IDs'+str(test_partition)+str(valid_partition)+'.npy',np.array(true_IDs))

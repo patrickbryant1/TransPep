@@ -46,6 +46,10 @@ for i in range(5):
     us_seq = umap.UMAP().fit_transform(all_seqs)
     print('Mapping UMAP for encodings...')
     us = umap.UMAP().fit_transform(all_encodings_z)
-    #Save
-    np.save(outdir+'umap_seqs'+str(test_partition)+'.npy',us_seq)
-    np.save(outdir+'umap'+str(test_partition)+'.npy',us)
+
+    #Umap
+    #Umap
+    print('Mapping UMAP for seqs...')
+    us_seq = umap.UMAP().fit_transform(all_seqs)
+    print('Mapping UMAP for encodings...')
+    us = umap.UMAP().fit_transform(all_encodings_z)
