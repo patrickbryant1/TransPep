@@ -16,8 +16,15 @@ OUTDIR=../../../../results/VAE/valid/
 
 #TEST_PARTITION=0
 PARAM_COMBO=156
-python3 run_trained.py --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR --datadir $DATADIR  --outdir $OUTDIR
+# for VP in 1 2 3 4
+# do
+#   python3 run_trained.py --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --valid_partition $VP --checkpointdir $CHECKPOINTDIR --datadir $DATADIR  --outdir $OUTDIR
+# done
 
+#VIS
+DATADIR=../../../../results/VAE/valid/
+OUTDIR=../../../../results/VAE/valid/
+python3 vis_umap.py --datadir $DATADIR  --outdir $OUTDIR
 #1
 TEST_PARTITION=1
 PARAM_COMBO=837
