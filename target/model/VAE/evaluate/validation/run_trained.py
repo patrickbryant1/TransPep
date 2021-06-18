@@ -52,6 +52,8 @@ def get_data(datadir, valid_partition):
     meta = pd.read_csv(datadir+'meta.csv')
     CS = meta.CS.values
     Types = meta.Type.values
+    Orgs = meta.Org.values
+    IDs = meta.ID.values
     sequences = np.load(datadir+'sequences.npy', allow_pickle=True)
     #Valid data
     valid_i = np.where(meta.Fold==valid_partition)[0]
@@ -60,10 +62,13 @@ def get_data(datadir, valid_partition):
     x_valid = sequences[valid_i]
 
     #Get the true types and CS
-    true_types = Types[valid_i]
-    true_CS = CS[valid_i]
 
-    return x_valid, true_types, true_CS
+    true_CS = CS[valid_i]
+    true_types = Types[valid_i]
+    true_orgs = Orgs[valid_i]
+    true_IDs = IDs[valid_i]
+
+    return x_valid, true_CS, true_types, true_orgs, true_IDs
 
 def get_attention_and_encodings(model,x_valid):
     '''Obtain the output of the attention layers
@@ -96,8 +101,10 @@ test_partition = int(net_params['test_partition'])
 vocab_size = 22  #Amino acids and unknown (X)
 maxlen = 200  # Only consider the first 70 amino acids
 
-all_true_types = []
 all_true_CS = []
+all_true_types = []
+all_true_orgs = []
+all_true_IDs = []
 all_encodings_z = []
 all_seqs = []
 #Load and run model for each valid partition
@@ -109,13 +116,16 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #model
     model = load_model(net_params, vocab_size, maxlen, weights[0])
     #Get data
-    x_valid, true_types, true_CS = get_data(datadir, valid_partition)
+    x_valid, true_CS, true_types, true_orgs, true_IDs = get_data(datadir, valid_partition)
     #Get attention and encodings
     encodings_z = get_attention_and_encodings(model,x_valid)
     #Save
     #True
-    all_true_types.extend([*true_types])
+
     all_true_CS.extend([*true_CS])
+    all_true_types.extend([*true_types])
+    all_true_orgs.extend([*true_orgs])
+    all_true_IDs.extend([*true_IDs])
     all_encodings_z.extend([*encodings_z])
     all_seqs.extend([*x_valid])
 
@@ -123,9 +133,7 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 #Array conversions
 all_encodings_z = np.array(all_encodings_z)
 all_seqs = np.array(all_seqs)
-#Colors
-colors = {1:'b',2:'r',3:'k',4:'orange',5:'magenta'}
-type_colors = [colors[i] for i in all_true_types]
+
 #Umap
 print('Mapping UMAP for seqs...')
 us_seq = umap.UMAP().fit_transform(all_seqs)
@@ -134,14 +142,7 @@ us = umap.UMAP().fit_transform(all_encodings_z)
 #Save
 np.save(outdir+'umap_seqs'+str(test_partition)+'.npy',us_seq)
 np.save(outdir+'umap'+str(test_partition)+'.npy',us)
-
-
-plt.scatter(us[:,0], us[:,1], c=type_colors,s=2,alpha=0.5)
-#Interactive
-#p = umap.plot.interactive(mapper, labels=all_true_types, hover_data=hover_data, point_size=2)
-#umap.plot.show(p)
-#5 classes of transit peptides
-#0 = pad
-#1=no targeting peptide/Inside cell, 2=sp: signal peptide, 3=mt:mitochondrial transit peptide,
-#4=ch:chloroplast transit peptide, 5=th:thylakoidal lumen composite transit peptide
-#6=Outside of cell - only valid for SPs - not for the peptides going into mt or ch/th
+np.save(outdir+'CS'+str(test_partition)+'.npy',np.array(all_true_CS))
+np.save(outdir+'types'+str(test_partition)+'.npy',np.array(all_true_types))
+np.save(outdir+'orgs'+str(test_partition)+'.npy',np.array(all_true_orgs))
+np.save(outdir+'IDs'+str(test_partition)+'.npy',np.array(all_true_IDs))
