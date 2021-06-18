@@ -8,8 +8,7 @@ import numpy as np
 import pandas as pd
 import time
 from collections import Counter
-#Preprocessing
-from process_data import parse_and_format
+
 #Keras
 import tensorflow as tf
 from tensorflow import keras
@@ -17,6 +16,7 @@ from tensorflow.keras import layers
 
 import glob
 from model import create_model
+import matplotlib.pyplot as plt
 #Umap
 import umap
 
@@ -120,5 +120,11 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
 all_encodings_z = np.array(all_encodings_z)
 
 #Umap
-mapper = umap.UMAP().fit(all_encodings_z)
-pdb.set_trace()
+print('Mapping UMAP...')
+us = umap.UMAP().fit_transform(all_encodings_z)
+#Save
+np.save(outdir+'umap'+str(test_partitions)+'.npy',us)
+#plt.scatter(us[:,0], us[:,1], c=all_true_types)
+#Interactive
+#p = umap.plot.interactive(mapper, labels=all_true_types, hover_data=hover_data, point_size=2)
+#umap.plot.show(p)

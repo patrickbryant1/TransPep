@@ -62,7 +62,7 @@ def create_model(maxlen, vocab_size, embed_dim,num_heads, encode_dim,num_layers,
     z = layers.Dense(latent_dim, name="z")(x)
     #model
     encoder = keras.Model(encoder_inp, [z], name="encoder")
-    print(encoder.summary())
+    #print(encoder.summary())
 
     #Decoder
     latent_inp = keras.Input(shape=(latent_dim))

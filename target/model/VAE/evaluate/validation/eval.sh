@@ -11,12 +11,12 @@ VARIABLE_PARAMS=../../param_combos.csv
 VARIABLE_PARAMS=../../param_combos.csv
 CHECKPOINTDIR=../../../../results/VAE/checkpoint/
 DATADIR=../../../../data/
-OUTDIR=../../../../results/VAE/
+OUTDIR=../../../../results/VAE/valid/
 
 
 #TEST_PARTITION=0
 PARAM_COMBO=1
-./run_trained.py --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR --datadir $DATADIR  --outdir $OUTDIR
+python3 run_trained.py --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR --datadir $DATADIR  --outdir $OUTDIR
 
 #1
 TEST_PARTITION=1
