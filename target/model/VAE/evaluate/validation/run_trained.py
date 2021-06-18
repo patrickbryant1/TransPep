@@ -74,13 +74,17 @@ def get_attention_and_encodings(model,x_valid):
     '''Obtain the output of the attention layers
     '''
     # Names
-    #encoder_layers = [layer.name for layer in model.get_layer('encoder').layers]
+    encoder_layers = [layer.name for layer in model.get_layer('encoder').layers]
+    for name in encoder_layers:
+        if 'encoder_block' in name:
+            break
+
     #Self-attention
-    get_enc_self_attention = keras.backend.function(model.layers[0].input, model.get_layer('encoder').get_layer('encoder_block').output)
+    get_enc_self_attention = keras.backend.function(model.layers[0].input, model.get_layer('encoder').get_layer(name).output)
     _, enc_attention = get_enc_self_attention(x_valid)
 
     #Endodings
-    get_encodings = keras.backend.function(model.layers[0].input, model.get_layer('encoder').output)
+    get_encodings = keras.backend.function(model.layers[0].input, model.get_layer('encoder').get_layer('z').output)
     encodings_z = get_encodings(x_valid)
     return encodings_z, enc_attention
 

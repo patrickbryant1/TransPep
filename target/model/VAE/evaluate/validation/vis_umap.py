@@ -40,3 +40,12 @@ outdir = args.outdir[0]
 for i in range(5):
     seqs = np.load(outdir+'umap_seqs'+str(i)+'.npy',allow_pickle=True)
     emb = np.load(outdir+'umap'+str(i)+'.npy',allow_pickle=True)
+
+    #Umap
+    print('Mapping UMAP for seqs...')
+    us_seq = umap.UMAP().fit_transform(all_seqs)
+    print('Mapping UMAP for encodings...')
+    us = umap.UMAP().fit_transform(all_encodings_z)
+    #Save
+    np.save(outdir+'umap_seqs'+str(test_partition)+'.npy',us_seq)
+    np.save(outdir+'umap'+str(test_partition)+'.npy',us)
