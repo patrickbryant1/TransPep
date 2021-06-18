@@ -23,7 +23,7 @@ import umap
 import pdb
 
 #Arguments for argparse module:
-parser = argparse.ArgumentParser(description = '''A program that reads a keras model from a .json and a .h5 file''')
+parser = argparse.ArgumentParser(description = '''Runs saved models and obtain intermediate layer outputs''')
 parser.add_argument('--variable_params', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with variable params.')
 parser.add_argument('--param_combo', nargs=1, type= int, default=sys.stdin, help = 'Parameter combo.')
 parser.add_argument('--checkpointdir', nargs=1, type= str, default=sys.stdin, help = '''path checkpoints with .h5 files containing weights for net.''')
@@ -74,15 +74,15 @@ def get_attention_and_encodings(model,x_valid):
     '''Obtain the output of the attention layers
     '''
     # Names
-    names = [weight.name for layer in model.layers for weight in layer.weights]
+    #encoder_layers = [layer.name for layer in model.get_layer('encoder').layers]
     #Self-attention
-    #get_enc_self_attention = keras.backend.function(model.layers[0].input, )
-    #enc_attention = get_enc_layer_output(x_valid)
+    get_enc_self_attention = keras.backend.function(model.layers[0].input, model.get_layer('encoder').get_layer('encoder_block').output)
+    _, enc_attention = get_enc_self_attention(x_valid)
 
     #Endodings
     get_encodings = keras.backend.function(model.layers[0].input, model.get_layer('encoder').output)
     encodings_z = get_encodings(x_valid)
-    return encodings_z #enc_attention
+    return encodings_z, enc_attention
 
 
 ######################MAIN######################
@@ -106,6 +106,7 @@ all_true_types = []
 all_true_orgs = []
 all_true_IDs = []
 all_encodings_z = []
+all_enc_attention = []
 all_seqs = []
 #Load and run model for each valid partition
 for valid_partition in np.setdiff1d(np.arange(5),test_partition):
@@ -118,15 +119,14 @@ for valid_partition in np.setdiff1d(np.arange(5),test_partition):
     #Get data
     x_valid, true_CS, true_types, true_orgs, true_IDs = get_data(datadir, valid_partition)
     #Get attention and encodings
-    encodings_z = get_attention_and_encodings(model,x_valid)
+    encodings_z, enc_attention = get_attention_and_encodings(model,x_valid)
     #Save
-    #True
-
     all_true_CS.extend([*true_CS])
     all_true_types.extend([*true_types])
     all_true_orgs.extend([*true_orgs])
     all_true_IDs.extend([*true_IDs])
     all_encodings_z.extend([*encodings_z])
+    all_enc_attention.extend([*np.max(enc_attention,axis=1)])
     all_seqs.extend([*x_valid])
 
 
@@ -142,6 +142,7 @@ us = umap.UMAP().fit_transform(all_encodings_z)
 #Save
 np.save(outdir+'umap_seqs'+str(test_partition)+'.npy',us_seq)
 np.save(outdir+'umap'+str(test_partition)+'.npy',us)
+np.save(outdir+'enc_attention'+str(test_partition)+'.npy',np.array(all_enc_attention))
 np.save(outdir+'CS'+str(test_partition)+'.npy',np.array(all_true_CS))
 np.save(outdir+'types'+str(test_partition)+'.npy',np.array(all_true_types))
 np.save(outdir+'orgs'+str(test_partition)+'.npy',np.array(all_true_orgs))
