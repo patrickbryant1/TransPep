@@ -15,7 +15,7 @@ OUTDIR=../../../../results/VAE/valid/
 
 
 #TEST_PARTITION=0
-PARAM_COMBO=1
+PARAM_COMBO=156
 python3 run_trained.py --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR --datadir $DATADIR  --outdir $OUTDIR
 
 #1

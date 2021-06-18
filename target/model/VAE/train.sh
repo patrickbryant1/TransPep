@@ -3,11 +3,11 @@ DATADIR=../../data/
 VARIABLE_PARAMS=./param_combos.csv
 CHECKPOINTDIR=../../results/VAE/checkpoint/
 CHECKPOINT=1
-NUM_EPOCHS=50
+NUM_EPOCHS=25
 FINDLR=0
 OUTDIR=../../results/
 
-PARAM_COMBO=1
+PARAM_COMBO=156
 #TEST_PARTITION=0
 python3 ./train.py --datadir $DATADIR --variable_params $VARIABLE_PARAMS --param_combo $PARAM_COMBO --checkpointdir $CHECKPOINTDIR'/' --checkpoint $CHECKPOINT --num_epochs $NUM_EPOCHS --find_lr $FINDLR --outdir $OUTDIR
 #

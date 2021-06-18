@@ -34,13 +34,14 @@ parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = ''
 def load_model(net_params, vocab_size, maxlen, weights):
 
     #Variable params
-    embed_dim = int(net_params['embed_dim']) #32  # Embedding size for each token
-    num_heads = int(net_params['num_heads']) #1  # Number of attention heads
-    ff_dim = int(net_params['ff_dim']) #32  # Hidden layer size in feed forward network inside transformer
-    num_layers = int(net_params['num_layers']) #1  # Number of attention heads
+    embed_dim = int(net_params['embed_dim']) # Embedding size for each token
+    num_heads = int(net_params['num_heads'])  # Number of attention heads
+    ff_dim = int(net_params['ff_dim'])  # Hidden layer size in feed forward network inside transformer and the final embedding size
+    num_layers = int(net_params['num_layers']) # Number of attention heads
     batch_size = int(net_params['batch_size']) #32
     #Create model
     model = create_model(maxlen, vocab_size, embed_dim,num_heads, ff_dim,num_layers, False)
+    pdb.set_trace()
     model.load_weights(weights)
 
     return model
@@ -124,6 +125,7 @@ print('Mapping UMAP...')
 us = umap.UMAP().fit_transform(all_encodings_z)
 #Save
 np.save(outdir+'umap'+str(test_partitions)+'.npy',us)
+pdb.set_trace()
 #plt.scatter(us[:,0], us[:,1], c=all_true_types)
 #Interactive
 #p = umap.plot.interactive(mapper, labels=all_true_types, hover_data=hover_data, point_size=2)
