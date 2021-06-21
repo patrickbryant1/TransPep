@@ -23,8 +23,9 @@ PARAM_COMBO=156
 
 #VIS
 DATADIR=../../../../results/VAE/valid/
+TAX=/home/patrick/TransPep/target/data/taxonomy_df.csv
 OUTDIR=../../../../results/VAE/valid/
-python3 vis_umap.py --datadir $DATADIR  --outdir $OUTDIR
+python3 vis_umap.py --datadir $DATADIR --taxonomy $TAX  --outdir $OUTDIR
 #1
 TEST_PARTITION=1
 PARAM_COMBO=837

@@ -12,16 +12,17 @@ import glob
 import matplotlib.pyplot as plt
 import matplotlib
 import seaborn as sns
-import umap
+from collections import Counter
 import pdb
 
 #Arguments for argparse module:
 parser = argparse.ArgumentParser(description = '''A program that reads a keras model from a .json and a .h5 file''')
 parser.add_argument('--datadir', nargs=1, type= str, default=sys.stdin, help = 'Path to data directory containing UMAP of embeddings and raw sequences.')
+parser.add_argument('--taxonomy', nargs=1, type= str, default=sys.stdin, help = 'Path to csv with taxonomy mappings.')
 parser.add_argument('--outdir', nargs=1, type= str, default=sys.stdin, help = '''path to output dir.''')
 
 
-def vis_umap(us, us_seq, all_types, all_orgs):
+def vis_umap(us, us_seq, all_types, all_orgs, proline_counts):
     '''Visualize UMAP
     '''
     #5 classes of transit peptides
@@ -43,13 +44,19 @@ def vis_umap(us, us_seq, all_types, all_orgs):
     df['u2_seq']=us_seq[:,1]
     df['type']=types
     df['org']=orgs
+
     #Plot
+    #Proline
+    fig,ax = plt.subplots(figsize=(12/2.54,12/2.54))
+    plt.scatter(df['u1'],df['u2'],s=proline_counts*10,c='b',alpha=0.1)
+    plt.show()
+    pdb.set_trace()
 
     #Types enc
     fig,ax = plt.subplots(figsize=(12/2.54,12/2.54))
     for type in df.type.unique():
         sel = df[df.type==type]
-        plt.scatter(sel['u1'],sel['u2'],s=2,color=type_colors[type],label=type,alpha=0.5)
+        plt.scatter(sel['u1'],sel['u2'],s=2,color=type_colors[type],label=type,alpha=0.1)
     plt.legend()
     plt.title('Embeddings')
     ax.spines['top'].set_visible(False)
@@ -63,7 +70,7 @@ def vis_umap(us, us_seq, all_types, all_orgs):
     fig,ax = plt.subplots(figsize=(12/2.54,12/2.54))
     for type in df.type.unique():
         sel = df[df.type==type]
-        plt.scatter(sel['u1_seq'],sel['u2_seq'],s=2,color=type_colors[type],label=type,alpha=0.5)
+        plt.scatter(sel['u1_seq'],sel['u2_seq'],s=2,color=type_colors[type],label=type,alpha=0.1)
     plt.legend()
     plt.title('Sequences')
     ax.spines['top'].set_visible(False)
@@ -77,7 +84,7 @@ def vis_umap(us, us_seq, all_types, all_orgs):
     fig,ax = plt.subplots(figsize=(12/2.54,12/2.54))
     for org in df.org.unique():
         sel = df[df.org==org]
-        plt.scatter(sel['u1'],sel['u2'],s=2,color=org_colors[org],label=org,alpha=0.5)
+        plt.scatter(sel['u1'],sel['u2'],s=2,color=org_colors[org],label=org,alpha=0.1)
     plt.legend()
     plt.title('Embeddings')
     ax.spines['top'].set_visible(False)
@@ -91,7 +98,7 @@ def vis_umap(us, us_seq, all_types, all_orgs):
     fig,ax = plt.subplots(figsize=(12/2.54,12/2.54))
     for org in df.org.unique():
         sel = df[df.org==org]
-        plt.scatter(sel['u1_seq'],sel['u2_seq'],s=2,color=org_colors[org],label=org,alpha=0.5)
+        plt.scatter(sel['u1_seq'],sel['u2_seq'],s=2,color=org_colors[org],label=org,alpha=0.1)
     plt.legend()
     plt.title('Sequences')
     ax.spines['top'].set_visible(False)
@@ -101,12 +108,13 @@ def vis_umap(us, us_seq, all_types, all_orgs):
     plt.tight_layout()
     plt.savefig(outdir+'org_umap_seq.png',dpi=300)
 
-    pdb.set_trace()
+
 ######################MAIN######################
 args = parser.parse_args()
 #Set font size
 matplotlib.rcParams.update({'font.size': 7})
 datadir = args.datadir[0]
+taxonomy = pd.read_csv(args.taxonomy[0])
 outdir = args.outdir[0]
 
 #Get seq and emb projections
@@ -115,17 +123,20 @@ for i in [0]:
     all_types = []
     all_orgs = []
     all_seqs = []
+    all_ids = []
     for j in np.setdiff1d(range(5),i):
         all_encodings_z.extend([*np.load(outdir+'enc_z'+str(i)+'_'+str(j)+'.npy',allow_pickle=True)])
         all_types.extend([*np.load(outdir+'types'+str(i)+'_'+str(j)+'.npy',allow_pickle=True)])
         all_orgs.extend([*np.load(outdir+'orgs'+str(i)+'_'+str(j)+'.npy',allow_pickle=True)])
         all_seqs.extend([*np.load(outdir+'seqs'+str(i)+'_'+str(j)+'.npy',allow_pickle=True)])
-    # #Umap
+        all_ids.extend([*np.load(outdir+'IDs'+str(i)+'_'+str(j)+'.npy',allow_pickle=True)])
 
+    # #Umap
     try:
         us =np.load(datadir+'umap'+str(i)+'.npy',allow_pickle=True)
         us_seq =np.load(datadir+'umap_seq'+str(i)+'.npy',allow_pickle=True)
     except:
+        import umap
         print('Mapping UMAP for encodings...')
         us = umap.UMAP().fit_transform(all_encodings_z)
         print('Mapping UMAP for seqs...')
@@ -133,5 +144,17 @@ for i in [0]:
         #save
         np.save(datadir+'umap'+str(i)+'.npy',us)
         np.save(datadir+'umap_seq'+str(i)+'.npy',us_seq)
+
+    #Merge ids with taxonomy
+    tax_sel = taxonomy[taxonomy.From.isin(all_ids)]
+    tax_ids, tax_classes = tax_sel.From.values, tax_sel.Taxonomy.values
+    tax_inds = np.argwhere(np.isin(all_ids,tax_ids)==True)
+    #Count proline (= 15)occurence in sequence
+
+    proline_counts = np.zeros(len(all_seqs))
+    for i in range(len(all_seqs)):
+        proline_counts[i] = np.argwhere(np.array(all_seqs[i])==18).shape[0]
+    proline_counts = proline_counts/max(proline_counts)
+
     #Visualize
-    vis_umap(us,us_seq, all_types, all_orgs)
+    vis_umap(us,us_seq, all_types, all_orgs, proline_counts)
