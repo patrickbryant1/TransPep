@@ -32,6 +32,7 @@ def get_fasta(filename):
     Seqs = []
     Lens = []
     Types = []
+    Solubility = []
 
 
     #Go through each line
@@ -42,6 +43,7 @@ def get_fasta(filename):
                 line = line.split()
                 IDs.append(line[0][1:])
                 Types.append(line[1][:-2])
+                Solubility.append(line[1][-1])
 
             else: #Sequence
                 current_seq = []
@@ -64,38 +66,36 @@ def get_fasta(filename):
     fasta_df = pd.DataFrame()
     fasta_df['ID'] = IDs
     fasta_df['Type'] = Types
+    fasta_df['Solubility'] = Solubility
     fasta_df['Sequence'] = Seqs
     fasta_df['Seqlen'] = Lens
-    pdb.set_trace()
+
+    Seqs = fasta_df.Sequence.values
+    return fasta_df, np.array([*Seqs])
 
 
 
-def vis_umap(us, all_types):
+def vis_umap(us, all_types, outdir):
     '''Visualize UMAP
     '''
     #5 classes of transit peptides
 
     #Colors
-    type_descr = {1:'NA',2:'SP',3:'MT',4:'CH',5:'TH'}
-    type_colors = {'NA':'grey','SP':'tab:blue','MT':'magenta','CH':'g','TH':'k'}
-    types = [type_descr[i] for i in all_types]
-    org_descr = {0:'No plant',1:'Plant'}
-    org_colors = {'No plant':'grey','Plant':'g'}
-    orgs = [org_descr[i] for i in all_orgs]
+    type_colors = {'Cell.membrane':'grey', 'Cytoplasm-Nucleus':'tab:blue', 'Cytoplasm':'orange',
+       'Endoplasmic.reticulum':'r', 'Golgi.apparatus':'magenta', 'Lysosome/Vacuole':'g',
+       'Mitochondrion':'tab:purple', 'Nucleus':'k', 'Peroxisome':'royalblue', 'Plastid':'mediumseagreen',
+       'Extracellular':'maroon'}
+
     df = pd.DataFrame()
     df['u1']=us[:,0]
     df['u2']=us[:,1]
-    df['u1_seq']=us_seq[:,0]
-    df['u2_seq']=us_seq[:,1]
-    df['type']=types
-    df['org']=orgs
-
+    df['type']=all_types
 
     #Types seq
     fig,ax = plt.subplots(figsize=(12/2.54,12/2.54))
     for type in df.type.unique():
         sel = df[df.type==type]
-        plt.scatter(sel['u1_seq'],sel['u2_seq'],s=2,color=type_colors[type],label=type,alpha=0.5)
+        plt.scatter(sel['u1'],sel['u2'],s=2,color=type_colors[type],label=type,alpha=0.5)
     plt.legend()
     plt.title('Sequences')
     ax.spines['top'].set_visible(False)
@@ -103,7 +103,7 @@ def vis_umap(us, all_types):
     plt.xlabel('u1')
     plt.ylabel('u2')
     plt.tight_layout()
-    plt.savefig(outdir+'type_umap_seq'+suffix+'.png',dpi=300)
+    plt.savefig(outdir+'type_umap_seq.png',dpi=300)
 
 
 ######################MAIN######################
@@ -114,16 +114,16 @@ fasta = args.fasta[0]
 outdir = args.outdir[0]
 
 #Get seqs
-fasta_df = get_fasta(fasta)
-
+fasta_df, Seqs = get_fasta(fasta)
+fasta_df
 #Get seq and emb projections
-import umap
-print('Mapping UMAP for encodings...')
-us = umap.UMAP().fit_transform(all_encodings_z)
+# import umap
+# print('Mapping UMAP for encodings...')
+# us = umap.UMAP().fit_transform(Seqs)
+##save
+#np.save(outdir+'deeploc_umap.npy',us)
 
-#save
-np.save(datadir+'umap'+str(i)+'_'+str(j)+'.npy',us)
-np.save(datadir+'umap_seq'+str(i)+'_'+str(j)+'.npy',us_seq)
-
+from sklearn.manifold import TSNE
+us = TSNE(n_components=2).fit_transform(Seqs)
 #Visualize
-vis_umap(us,us_seq, all_types, all_orgs, str(i)+'_'+str(j))
+vis_umap(us, fasta_df.Type.values, outdir)
