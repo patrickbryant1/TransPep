@@ -149,11 +149,11 @@ for i in [0]:
     tax_sel = taxonomy[taxonomy.From.isin(all_ids)]
     tax_ids, tax_classes = tax_sel.From.values, tax_sel.Taxonomy.values
     tax_inds = np.argwhere(np.isin(all_ids,tax_ids)==True)
-    #Count proline (= 15)occurence in sequence
 
+    #Count proline (= 15)occurence in sequence
     proline_counts = np.zeros(len(all_seqs))
     for i in range(len(all_seqs)):
-        proline_counts[i] = np.argwhere(np.array(all_seqs[i])==18).shape[0]
+        proline_counts[i] = np.argwhere(np.array(all_seqs[i])==8).shape[0]
     proline_counts = proline_counts/max(proline_counts)
 
     #Visualize
