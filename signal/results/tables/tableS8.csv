@@ -1,0 +1,6 @@
+Method,Archaea,Gram-negative bacteria,Gram-positive bacteria
+SignalP 5.0,0.948,0.965,0.889
+PRED-TAT,0.948,0.948,0.853
+TatP,0.667,0.689,0.68
+TATFIND,0.902,0.91,0.8
+TransPep,0.88,0.875,0.81
