@@ -1,0 +1,6 @@
+Method,Archaea,Gram-negative bacteria,Gram-positive bacteria
+SignalP 5.0,0.91,0.946,0.923
+LipoP,0.755,0.833,0.822
+PRED-LIPO,0.743,0.707,0.775
+SPEPlip,n.d.,0.884,0.843
+TransPep,0.878,0.938,0.907

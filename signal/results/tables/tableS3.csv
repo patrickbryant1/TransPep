@@ -1,0 +1,19 @@
+Method,Archaea,Eukaryotes,Gram-negative bacteria,Gram-positive bacteria
+SignalP 5.0,0.917,0.883,0.83,0.76
+SignalP 4.1,n.d,0.808,0.248,0.148
+DeepSig,n.d,0.819,0.166,0.115
+LipoP,0.604,0.363,0.483,0.403
+Philius,0.447,0.421,0.127,0.075
+Phobius,0.514,0.51,0.132,0.074
+PolyPhobius,0.453,0.456,0.144,0.111
+PrediSi,n.d.,0.553,0.244,0.121
+PRED-LIPO,0.586,0.234,0.398,0.41
+PRED-SIGNAL,0.584,0.272,0.098,0.114
+PRED-TAT,0.626,0.326,0.187,0.189
+Signal-3L 2.0,n.d.,0.597,0.11,0.106
+Signal-CF,n.d.,0.326,0.106,0.084
+SOSUIsignal,n.d.,0.375,0.108,0.047
+SPEPlip,n.d.,0.655,0.498,0.35
+SCOPTOCUS,0.408,0.492,0.127,0.1
+TOPCONS2,0.432,0.477,0.131,0.071
+TransPep,0.855,0.81,0.737,0.661
